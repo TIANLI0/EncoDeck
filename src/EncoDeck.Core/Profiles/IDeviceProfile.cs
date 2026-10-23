@@ -36,11 +36,23 @@ public enum DeviceForm
 }
 
 /// <summary>
+/// Top level of category › brand › model (e.g. Headset › OPPO › Enco Free4, Cup › DokiDoki › BH2PRO).
+/// </summary>
+public enum DeviceCategory
+{
+    Headset,
+    /// <summary>Experimental BLE actuator ("cup") devices; see <see cref="ICupProfile"/>.</summary>
+    Cup,
+}
+
+/// <summary>
 /// Static description of a device model: how to recognize it and what it can do.
 /// Protocol details live in the protocol adapter, not here.
 /// </summary>
 public interface IDeviceProfile
 {
+    DeviceCategory Category => DeviceCategory.Headset;
+
     /// <summary>Stable id such as <c>oppo-enco-x4</c>.</summary>
     string ModelId { get; }
 

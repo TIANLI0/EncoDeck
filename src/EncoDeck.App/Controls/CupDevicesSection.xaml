@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl x:Class="EncoDeck.App.Controls.CupDevicesSection"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ Visibility="Collapsed">
+ <!-- Devices › paired devices: the experimental cup category (only while its opt-in is on). -->
+ <StackPanel Spacing="8" Margin="0,8,0,0">
+  <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="0,0,0,8" />
+  <TextBlock x:Uid="Cup_Paired" Text="Cup devices (experimental)" Style="{StaticResource BodyStrongTextBlockStyle}" />
+  <StackPanel x:Name="SessionHost" Spacing="8" />
+  <TextBlock x:Name="NoSessionText" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" />
+
+  <Grid Margin="0,8,0,0">
+   <TextBlock x:Uid="Cup_Nearby" Text="Nearby devices" Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" />
+   <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+    <ProgressRing x:Name="ScanRing" Width="16" Height="16" />
+    <Button x:Name="ScanButton" Click="OnScan" />
+   </StackPanel>
+  </Grid>
+  <TextBlock x:Name="ScanStatus" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" AutomationProperties.LiveSetting="Polite" />
+  <StackPanel x:Name="DeviceHost" Spacing="4" />
+ </StackPanel>
+</UserControl>

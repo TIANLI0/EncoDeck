@@ -31,6 +31,7 @@ internal static class ProbeApp
                 "set-eq" => await WriteCommands.SetEqualizerAsync(options, ct),
                 "monitor" => await MonitorCommand.RunAsync(options, ct),
                 "render-model" => await RenderModelCommand.RunAsync(options, ct),
+                "dokidoki" => await DokiDokiCommand.RunAsync(options, ct),
                 _ => Unknown(options.Command),
             };
         }
@@ -80,6 +81,19 @@ internal static class ProbeApp
               monitor [--seconds N]       Run the app's device runtime headlessly, print state changes
                                           and finally every feature value the session start read.
                       [--set-anc a,b --confirm-write]  Also run commands (off|anc|transparency|adaptive|smart|deep|medium|light|less|standard|more).
+
+            Experimental DokiDoki / TryFun BLE:
+              dokidoki scan [--seconds N]
+                                          Scan advertisements matching TF-/DK-/TRYFUN- names
+                                          or service FFAC; deduplicate by address.
+              dokidoki connect --address XX:XX:XX:XX:XX:XX
+                          [--address-type auto|public|random|unspecified]
+                          [--seconds N] [--heartbeat-ms N]
+                                          Connect without classic pairing, list services and
+                                          characteristics, subscribe FFB8, send heartbeats,
+                                          and always send zero/stop frames before disconnect.
+              dokidoki stop --address XX:XX:XX:XX:XX:XX
+                                          Connect and send zero to linear, rotary, and vibration.
 
             Diagnostics:
               render-model --file <x.vfxms> --out <dir>  Render a HeyMelody 3D model off screen to PNG

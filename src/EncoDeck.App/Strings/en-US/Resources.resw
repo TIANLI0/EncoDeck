@@ -614,4 +614,50 @@
   <data name="Home_SwitchDevice.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.HelpText" xml:space="preserve"><value>Switch device</value></data>
   <data name="Home_SwitchDevice_NotConnected" xml:space="preserve"><value>{0} (not connected)</value></data>
   <data name="Home_ManageDevices" xml:space="preserve"><value>Manage devices</value></data>
+  <data name="Settings_CupExperimental.Header" xml:space="preserve"><value>Experimental cup devices</value></data>
+  <data name="Settings_CupExperimental.Description" xml:space="preserve"><value>Adds cup devices (BLE actuators such as DokiDoki) to the Devices page; a connected one appears in the Home device switcher. Allows nonzero output. Unverified protocol; off by default; use at your own risk.</value></data>
+  <data name="Home_SwitchDevice_Cup" xml:space="preserve"><value>{0} (cup device)</value></data>
+  <data name="Cup_Category.Text" xml:space="preserve"><value>Cup device · experimental</value></data>
+  <data name="Cup_NotConnected" xml:space="preserve"><value>Cup device</value></data>
+  <data name="Cup_NoSession" xml:space="preserve"><value>No cup device connected. Scan for a nearby one below; no Windows pairing is needed.</value></data>
+  <data name="Cup_Support.Text" xml:space="preserve"><value>Feature support</value></data>
+  <data name="Cup_Support_NeedsSleeve" xml:space="preserve"><value>Supported (sleeve required)</value></data>
+  <data name="Cup_Support_Headset" xml:space="preserve"><value>Headset features (noise control, battery, EQ)</value></data>
+  <data name="Cup_Nearby.Text" xml:space="preserve"><value>Nearby devices</value></data>
+  <data name="Cup_Output.Text" xml:space="preserve"><value>Output</value></data>
+  <data name="Cup_Warning.Title" xml:space="preserve"><value>Experimental</value></data>
+  <data name="Cup_Warning.Message" xml:space="preserve"><value>Unverified protocol for a body-contact device. The device does not confirm commands, so the app cannot know whether it is running. Keep Stop all within reach (also in the tray menu).</value></data>
+  <data name="Cup_StopAll.Content" xml:space="preserve"><value>Stop all</value></data>
+  <data name="Cup_Reconnect.Content" xml:space="preserve"><value>Reconnect</value></data>
+  <data name="Cup_Disconnect.Content" xml:space="preserve"><value>Disconnect</value></data>
+  <data name="Cup_Scan" xml:space="preserve"><value>Scan for devices</value></data>
+  <data name="Cup_StopScan" xml:space="preserve"><value>Stop scanning</value></data>
+  <data name="Cup_Scanning" xml:space="preserve"><value>Scanning for 15 seconds… Close the brand's official app first; it may hold the device.</value></data>
+  <data name="Cup_ScanHint" xml:space="preserve"><value>No devices found yet. Switch the device on and scan.</value></data>
+  <data name="Cup_ScanFailed" xml:space="preserve"><value>Scan failed: {0}</value></data>
+  <data name="Cup_Unnamed" xml:space="preserve"><value>(no name)</value></data>
+  <data name="Cup_UnknownModel" xml:space="preserve"><value>Unknown model</value></data>
+  <data name="Cup_RandomAddress" xml:space="preserve"><value>(random)</value></data>
+  <data name="Cup_InSession" xml:space="preserve"><value>In use</value></data>
+  <data name="Cup_Connect" xml:space="preserve"><value>Connect</value></data>
+  <data name="Cup_ChooseModel" xml:space="preserve"><value>Choose model</value></data>
+  <data name="Cup_Confirm_Title" xml:space="preserve"><value>Connect experimental device?</value></data>
+  <data name="Cup_Confirm_Message" xml:space="preserve"><value>{0} will be connected as {1}. The protocol is unverified and the device does not confirm commands. Output starts only when you move a slider; Stop all, disconnecting, switching device, sleep and exit all stop the device.</value></data>
+  <data name="Cup_Confirm_Manual" xml:space="preserve"><value>The model was chosen by you, not detected. A wrong choice sends the other model's commands.</value></data>
+  <data name="Cup_Confirm_Accept" xml:space="preserve"><value>I understand, connect</value></data>
+  <data name="Cup_State_Connecting" xml:space="preserve"><value>Connecting…</value></data>
+  <data name="Cup_State_Ready" xml:space="preserve"><value>Connected</value></data>
+  <data name="Cup_State_Reconnecting" xml:space="preserve"><value>Connection lost, retrying…</value></data>
+  <data name="Cup_State_Unavailable" xml:space="preserve"><value>Could not connect</value></data>
+  <data name="Cup_State_Disconnected" xml:space="preserve"><value>Disconnected</value></data>
+  <data name="Cup_Channel_Vibration" xml:space="preserve"><value>Vibration</value></data>
+  <data name="Cup_Channel_Linear" xml:space="preserve"><value>Linear</value></data>
+  <data name="Cup_Channel_Rotary" xml:space="preserve"><value>Rotary</value></data>
+  <data name="Cup_Written" xml:space="preserve"><value>Sent (the device does not confirm commands).</value></data>
+  <data name="Cup_CommandFailed" xml:space="preserve"><value>Failed: {0}</value></data>
+  <data name="Cup_Stopped" xml:space="preserve"><value>Stop sent to every channel.</value></data>
+  <data name="Cup_StopFailed" xml:space="preserve"><value>Stop could not be sent: {0}. Switch the device off by hand.</value></data>
+  <data name="Tray_CupStop" xml:space="preserve"><value>Stop cup device output</value></data>
+  <data name="Cup_Paired.Text" xml:space="preserve"><value>Cup devices (experimental)</value></data>
+  <data name="Cup_SessionEnded" xml:space="preserve"><value>The cup device disconnected: {0}. Scan and connect again.</value></data>
 </root>

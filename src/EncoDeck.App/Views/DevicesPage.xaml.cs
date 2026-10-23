@@ -17,6 +17,7 @@ public sealed partial class DevicesPage : Page
         Loaded += (_, _) =>
         {
             App.Instance.Host.Devices.KnownDevicesChanged += OnDevicesChanged;
+            App.Instance.Host.Cups.Changed += OnDevicesChanged;
             ViewModel.PropertyChanged += OnViewModelChanged;
             App.Instance.Host.Settings.Changed += OnSettingsChanged;
             Build();
@@ -25,6 +26,7 @@ public sealed partial class DevicesPage : Page
         Unloaded += (_, _) =>
         {
             App.Instance.Host.Devices.KnownDevicesChanged -= OnDevicesChanged;
+            App.Instance.Host.Cups.Changed -= OnDevicesChanged;
             ViewModel.PropertyChanged -= OnViewModelChanged;
             App.Instance.Host.Settings.Changed -= OnSettingsChanged;
         };
@@ -135,18 +137,15 @@ public sealed partial class DevicesPage : Page
             button.Click += OnOpenBluetoothSettings;
             action = button;
         }
-        else if (device.IsActive)
+        else if (device.IsActive && !App.Instance.Host.Cups.IsShownOnHome)
         {
             action = new TextBlock { Text = Loc.Get("Devices_Active"), VerticalAlignment = VerticalAlignment.Center, Style = (Style)Application.Current.Resources["SecondaryTextStyle"] };
         }
         else
         {
             var button = new Button { Content = Loc.Get("Devices_UseThis"), VerticalAlignment = VerticalAlignment.Center };
-            button.Click += async (_, _) =>
-            {
-                App.Instance.Host.Settings.Update(s => s with { PreferredDeviceId = device.Identity.DeviceId });
-                await App.Instance.Host.Devices.SelectDeviceAsync(device.Identity.DeviceId);
-            };
+            // Also leaves the cup view (stopping its output) when a cup device is shown on Home.
+            button.Click += async (_, _) => await Controls.DeviceSwitcherMenu.SelectHeadsetAsync(device.Identity.DeviceId);
             action = button;
         }
         Grid.SetColumn((FrameworkElement)action, 2);

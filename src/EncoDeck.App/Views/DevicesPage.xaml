@@ -16,6 +16,8 @@
                     <TextBlock x:Name="NoDevicesText" x:Uid="Devices_None" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}"
                                Text="No paired earbuds that EncoDeck supports. Pair them in Windows Bluetooth settings." />
                     <HyperlinkButton x:Uid="Devices_OpenBluetooth" Content="Open Bluetooth settings" Click="OnOpenBluetoothSettings" Padding="0,4" />
+                    <!-- Experimental; collapsed unless cup devices are switched on in Settings. -->
+                    <controls:CupDevicesSection />
                 </StackPanel>
             </Border>
 

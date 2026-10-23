@@ -78,6 +78,12 @@ public sealed record AppSettings
     /// <summary>Show controls whose protocol support is only experimental.</summary>
     public bool EnableExperimentalFeatures { get; init; }
 
+    /// <summary>
+    /// Show experimental cup (BLE actuator) devices and allow nonzero output. Independent of
+    /// <see cref="EnableExperimentalFeatures"/>, which only covers headset commands.
+    /// </summary>
+    public bool EnableExperimentalCupDevices { get; init; }
+
     /// <summary>Record raw control-channel bytes (redacted) to the diagnostic log.</summary>
     public bool RawProtocolLogging { get; init; }
 

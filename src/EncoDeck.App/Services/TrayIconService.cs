@@ -22,7 +22,9 @@ public sealed partial class TrayIconService : IDisposable
     private readonly ISettingsStore _settings;
     private readonly WindowManager _windows;
     private readonly Action _exit;
+    private readonly CupService? _cups;
     private TaskbarIcon? _icon;
+    private MenuFlyoutItem? _cupStopItem;
     private MenuFlyoutItem? _statusItem;
     private ToggleMenuFlyoutItem? _popupItem;
     private ToggleMenuFlyoutItem? _offItem;
@@ -31,12 +33,13 @@ public sealed partial class TrayIconService : IDisposable
     private ToggleMenuFlyoutItem? _transparencyItem;
     private string? _lastToolTip;
 
-    public TrayIconService(DeviceViewModel device, ISettingsStore settings, WindowManager windows, Action exit)
+    public TrayIconService(DeviceViewModel device, ISettingsStore settings, WindowManager windows, Action exit, CupService? cups = null)
     {
         _device = device;
         _settings = settings;
         _windows = windows;
         _exit = exit;
+        _cups = cups;
     }
 
     public Guid Id => _icon?.Id ?? Guid.Empty;
@@ -67,6 +70,17 @@ public sealed partial class TrayIconService : IDisposable
             Command = new RelayCommand(() => _settings.Update(s => s with { ShowConnectionPopup = !s.ShowConnectionPopup })),
         };
         menu.Items.Add(_popupItem);
+        if (_cups is { } cups)
+        {
+            // Always reachable while a cup session exists, even with the main window closed.
+            _cupStopItem = new MenuFlyoutItem
+            {
+                Text = Loc.Get("Tray_CupStop"),
+                Command = new RelayCommand(() => _ = cups.EmergencyStopAsync()),
+                Visibility = cups.Session is null ? Microsoft.UI.Xaml.Visibility.Collapsed : Microsoft.UI.Xaml.Visibility.Visible,
+            };
+            menu.Items.Add(_cupStopItem);
+        }
         menu.Items.Add(new MenuFlyoutItem { Text = Loc.Get("Tray_Settings"), Command = new RelayCommand(() => _windows.ShowMain("Settings")) });
         menu.Items.Add(new MenuFlyoutSeparator());
         menu.Items.Add(new MenuFlyoutItem { Text = Loc.Get("Tray_Exit"), Command = new RelayCommand(_exit) });
@@ -84,9 +98,16 @@ public sealed partial class TrayIconService : IDisposable
         _icon.ForceCreate(enablesEfficiencyMode: false);
 
         _device.PropertyChanged += OnDeviceChanged;
+        if (_cups is not null) _cups.Changed += OnCupsChanged;
         _settings.Changed += (_, s) => _icon?.DispatcherQueue.TryEnqueue(() => { if (_popupItem is not null) _popupItem.IsChecked = s.ShowConnectionPopup; });
         Refresh();
     }
+
+    private void OnCupsChanged(object? sender, EventArgs e) => _icon?.DispatcherQueue.TryEnqueue(() =>
+    {
+        if (_cupStopItem is not null && _cups is not null)
+            _cupStopItem.Visibility = _cups.Session is null ? Microsoft.UI.Xaml.Visibility.Collapsed : Microsoft.UI.Xaml.Visibility.Visible;
+    });
 
     private ToggleMenuFlyoutItem NoiseItem(string key, string mode) => new()
     {
@@ -160,6 +181,7 @@ public sealed partial class TrayIconService : IDisposable
     public void Dispose()
     {
         _device.PropertyChanged -= OnDeviceChanged;
+        if (_cups is not null) _cups.Changed -= OnCupsChanged;
         // On WinUI the icon is not removed automatically; without this a ghost icon remains.
         _icon?.Dispose();
         _icon = null;
