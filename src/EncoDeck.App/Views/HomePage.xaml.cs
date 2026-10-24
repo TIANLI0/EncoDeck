@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
+using EncoDeck.App.Controls;
 using EncoDeck.App.Services;
 using EncoDeck.App.ViewModels;
 using EncoDeck.Core.Capabilities;
@@ -28,6 +29,8 @@ public sealed partial class HomePage : Page
         {
             Features.Changed += OnFeaturesChanged;
             App.Instance.Host.Devices.KnownDevicesChanged += OnKnownDevicesChanged;
+            App.Instance.Host.Cups.Changed += OnKnownDevicesChanged;
+            ViewModel.PropertyChanged += OnViewModelChanged;
             Sync();
             SyncSwitcher();
         };
@@ -35,6 +38,8 @@ public sealed partial class HomePage : Page
         {
             Features.Changed -= OnFeaturesChanged;
             App.Instance.Host.Devices.KnownDevicesChanged -= OnKnownDevicesChanged;
+            App.Instance.Host.Cups.Changed -= OnKnownDevicesChanged;
+            ViewModel.PropertyChanged -= OnViewModelChanged;
         };
     }
 
@@ -250,40 +255,24 @@ public sealed partial class HomePage : Page
 
     private void SyncSwitcher()
     {
-        bool several = App.Instance.Host.Devices.KnownDevices.Count > 1;
+        bool several = DeviceSwitcherMenu.EntryCount > 1;
         DeviceSwitcher.Visibility = several ? Visibility.Visible : Visibility.Collapsed;
         DeviceNameText.Visibility = several ? Visibility.Collapsed : Visibility.Visible;
+
+        // Experimental cup devices, only while one is connected: picked in the switcher, or the only device.
+        var cups = App.Instance.Host.Cups;
+        bool cup = cups is { IsEnabled: true, Session: not null } && (cups.IsShownOnHome || !ViewModel.HasDevice);
+        CupView.Visibility = cup ? Visibility.Visible : Visibility.Collapsed;
+        PageRoot.Visibility = cup ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private void OnViewModelChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(DeviceViewModel.HasDevice)) SyncSwitcher();
     }
 
     /// <summary>Built on every open, so the list and the active mark are always current.</summary>
-    private void OnDeviceMenuOpening(object? sender, object e)
-    {
-        DeviceMenu.Items.Clear();
-        foreach (var device in App.Instance.Host.Devices.KnownDevices)
-        {
-            var item = new RadioMenuFlyoutItem
-            {
-                Text = device.IsConnected ? device.Identity.Name : Loc.Format("Home_SwitchDevice_NotConnected", device.Identity.Name),
-                GroupName = "ActiveDevice",
-                IsChecked = device.IsActive,
-                Tag = device.Identity.DeviceId,
-            };
-            item.Click += OnSwitchDevice;
-            DeviceMenu.Items.Add(item);
-        }
-        DeviceMenu.Items.Add(new MenuFlyoutSeparator());
-        var manage = new MenuFlyoutItem { Text = Loc.Get("Home_ManageDevices"), Icon = new FontIcon { Glyph = "\uE713" } };
-        manage.Click += (_, _) => App.Instance.Windows.ShowMain("Devices");
-        DeviceMenu.Items.Add(manage);
-    }
-
-    private async void OnSwitchDevice(object sender, RoutedEventArgs e)
-    {
-        if (sender is not RadioMenuFlyoutItem { Tag: string deviceId }) return;
-        if (App.Instance.Host.Devices.KnownDevices.Any(d => d.IsActive && d.Identity.DeviceId == deviceId)) return;
-        App.Instance.Host.Settings.Update(s => s with { PreferredDeviceId = deviceId });
-        await App.Instance.Host.Devices.SelectDeviceAsync(deviceId);
-    }
+    private void OnDeviceMenuOpening(object? sender, object e) => DeviceSwitcherMenu.Populate(DeviceMenu, cupShown: false);
 
     // ---- sound -----------------------------------------------------------------------------------
 

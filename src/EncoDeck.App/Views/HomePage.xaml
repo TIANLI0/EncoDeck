@@ -231,5 +231,8 @@
                 <Border x:Name="SideHost" Padding="0,0,20,32" />
             </ScrollViewer>
         </Grid>
+
+        <!-- Experimental: shown instead of PageRoot when a cup device is picked in the switcher. -->
+        <controls:CupDeviceView x:Name="CupView" Visibility="Collapsed" />
     </Grid>
 </Page>

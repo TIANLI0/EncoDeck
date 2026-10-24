@@ -189,6 +189,12 @@ public sealed partial class SettingsViewModel : ObservableObject
         set => Update(s => s with { RawProtocolLogging = value }, nameof(RawProtocolLogging));
     }
 
+    public bool EnableExperimentalCupDevices
+    {
+        get => S.EnableExperimentalCupDevices;
+        set => Update(s => s with { EnableExperimentalCupDevices = value }, nameof(EnableExperimentalCupDevices));
+    }
+
     public int ThemeIndex
     {
         get => (int)S.Theme;

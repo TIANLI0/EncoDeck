@@ -200,7 +200,7 @@ public partial class App : Application
             Host.StoreUpdates, () => Windows.MainHandle, _dispatcher,
             ExitApp, Host.Loggers.CreateLogger<SettingsViewModel>());
 
-        _tray = new TrayIconService(Device, Host.Settings, Windows, ExitApp);
+        _tray = new TrayIconService(Device, Host.Settings, Windows, ExitApp, Host.Cups);
         _tray.Create();
         var radio = new BluetoothRadioMonitor();
         _ = radio.StartAsync();
@@ -403,6 +403,11 @@ public partial class App : Application
 
     private void OnSuspendStatusChanged(object? sender, object e)
     {
+        if (PowerManager.SystemSuspendStatus == SystemSuspendStatus.Entering)
+        {
+            Host.Cups.NotifySuspending();
+            return;
+        }
         if (PowerManager.SystemSuspendStatus == SystemSuspendStatus.AutoResume || PowerManager.SystemSuspendStatus == SystemSuspendStatus.ManualResume)
         {
             _logger?.LogInformation("System resumed ({Status})", PowerManager.SystemSuspendStatus);

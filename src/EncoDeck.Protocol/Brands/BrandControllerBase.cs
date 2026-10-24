@@ -161,6 +161,14 @@ public abstract class BrandControllerBase : IDeviceController
     public async ValueTask DisposeAsync()
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
+        try
+        {
+            await OnClosingAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Closing sequence failed");
+        }
         _lifetime.Cancel();
         await _channel.DisposeAsync().ConfigureAwait(false);
         if (_readLoop is { } loop)
@@ -177,6 +185,9 @@ public abstract class BrandControllerBase : IDeviceController
         await DisposeCoreAsync().ConfigureAwait(false);
         _lifetime.Dispose();
     }
+
+    /// <summary>Runs first on dispose, while the channel is still open (e.g. to send a final stop).</summary>
+    protected virtual ValueTask OnClosingAsync() => ValueTask.CompletedTask;
 
     protected virtual ValueTask DisposeCoreAsync() => ValueTask.CompletedTask;
 }

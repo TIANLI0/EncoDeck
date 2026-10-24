@@ -41,7 +41,11 @@ public sealed class AppHost : IAsyncDisposable
         Store = store;
         Devices = devices;
         Cache = cache;
+        Cups = new CupService(settings, loggers);
     }
+
+    /// <summary>Experimental cup (BLE actuator) devices; idle until the user opts in and scans.</summary>
+    public CupService Cups { get; }
 
     public AppPaths Paths { get; }
 
@@ -131,6 +135,8 @@ public sealed class AppHost : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        // First: stop any actuator output before anything else shuts down.
+        await Cups.DisposeAsync();
         await Devices.DisposeAsync();
         await ResourceSync.DisposeAsync();
         await Updates.DisposeAsync();

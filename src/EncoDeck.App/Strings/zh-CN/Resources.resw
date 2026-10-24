@@ -614,4 +614,50 @@
   <data name="Home_SwitchDevice.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.HelpText" xml:space="preserve"><value>切换设备</value></data>
   <data name="Home_SwitchDevice_NotConnected" xml:space="preserve"><value>{0}（未连接）</value></data>
   <data name="Home_ManageDevices" xml:space="preserve"><value>管理设备</value></data>
+  <data name="Settings_CupExperimental.Header" xml:space="preserve"><value>杯子设备（实验性）</value></data>
+  <data name="Settings_CupExperimental.Description" xml:space="preserve"><value>在“设备”页加入杯子设备（如 DokiDoki 等 BLE 执行器）。\n\r协议未经验证，风险自负。</value></data>
+  <data name="Home_SwitchDevice_Cup" xml:space="preserve"><value>{0}（杯子设备）</value></data>
+  <data name="Cup_Category.Text" xml:space="preserve"><value>实验性设备</value></data>
+  <data name="Cup_NotConnected" xml:space="preserve"><value>杯子设备</value></data>
+  <data name="Cup_NoSession" xml:space="preserve"><value>未连接杯子设备，请在下方扫描附近的设备。</value></data>
+  <data name="Cup_Support.Text" xml:space="preserve"><value>功能支持</value></data>
+  <data name="Cup_Support_NeedsSleeve" xml:space="preserve"><value>支持</value></data>
+  <data name="Cup_Support_Headset" xml:space="preserve"><value>耳机功能（降噪、电量、均衡器）</value></data>
+  <data name="Cup_Nearby.Text" xml:space="preserve"><value>附近的设备</value></data>
+  <data name="Cup_Output.Text" xml:space="preserve"><value>输出</value></data>
+  <data name="Cup_Warning.Title" xml:space="preserve"><value>实验性功能</value></data>
+  <data name="Cup_Warning.Message" xml:space="preserve"><value>这是身体接触类设备的未验证协议。由于协议限制，EncoDeck无法确认设备是否遵循蓝牙指令。</value></data>
+  <data name="Cup_StopAll.Content" xml:space="preserve"><value>全部停止</value></data>
+  <data name="Cup_Reconnect.Content" xml:space="preserve"><value>重新连接</value></data>
+  <data name="Cup_Disconnect.Content" xml:space="preserve"><value>断开</value></data>
+  <data name="Cup_Scan" xml:space="preserve"><value>扫描设备</value></data>
+  <data name="Cup_StopScan" xml:space="preserve"><value>停止扫描</value></data>
+  <data name="Cup_Scanning" xml:space="preserve"><value>正在扫描… </value></data>
+  <data name="Cup_ScanHint" xml:space="preserve"><value>尚未发现设备。请打开设备后扫描。</value></data>
+  <data name="Cup_ScanFailed" xml:space="preserve"><value>扫描失败：{0}</value></data>
+  <data name="Cup_Unnamed" xml:space="preserve"><value>（无名称）</value></data>
+  <data name="Cup_UnknownModel" xml:space="preserve"><value>未知型号</value></data>
+  <data name="Cup_RandomAddress" xml:space="preserve"><value>（随机地址）</value></data>
+  <data name="Cup_InSession" xml:space="preserve"><value>使用中</value></data>
+  <data name="Cup_Connect" xml:space="preserve"><value>连接</value></data>
+  <data name="Cup_ChooseModel" xml:space="preserve"><value>选择型号</value></data>
+  <data name="Cup_Confirm_Title" xml:space="preserve"><value>连接实验性设备？</value></data>
+  <data name="Cup_Confirm_Message" xml:space="preserve"><value>将以 {1} 连接 {0}。</value></data>
+  <data name="Cup_Confirm_Manual" xml:space="preserve"><value>型号由你手动选择，而非自动识别。</value></data>
+  <data name="Cup_Confirm_Accept" xml:space="preserve"><value>我已了解，连接</value></data>
+  <data name="Cup_State_Connecting" xml:space="preserve"><value>正在连接…</value></data>
+  <data name="Cup_State_Ready" xml:space="preserve"><value>已连接</value></data>
+  <data name="Cup_State_Reconnecting" xml:space="preserve"><value>连接丢失，正在重试…</value></data>
+  <data name="Cup_State_Unavailable" xml:space="preserve"><value>无法连接</value></data>
+  <data name="Cup_State_Disconnected" xml:space="preserve"><value>已断开</value></data>
+  <data name="Cup_Channel_Vibration" xml:space="preserve"><value>振动</value></data>
+  <data name="Cup_Channel_Linear" xml:space="preserve"><value>线性</value></data>
+  <data name="Cup_Channel_Rotary" xml:space="preserve"><value>旋转</value></data>
+  <data name="Cup_Written" xml:space="preserve"><value>已发送。</value></data>
+  <data name="Cup_CommandFailed" xml:space="preserve"><value>失败：{0}</value></data>
+  <data name="Cup_Stopped" xml:space="preserve"><value>已向所有通道发送停止。</value></data>
+  <data name="Cup_StopFailed" xml:space="preserve"><value>停止未能发送：{0}。请手动关闭设备。</value></data>
+  <data name="Tray_CupStop" xml:space="preserve"><value>停止杯子设备输出</value></data>
+  <data name="Cup_Paired.Text" xml:space="preserve"><value>杯子设备（实验性）</value></data>
+  <data name="Cup_SessionEnded" xml:space="preserve"><value>杯子设备已断开：{0}。请重新扫描并连接。</value></data>
 </root>
