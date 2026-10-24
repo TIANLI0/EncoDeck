@@ -219,6 +219,16 @@ public sealed partial class MoondropTests
         public byte Noise { get; private set; }
         public bool Dual { get; private set; }
         public bool Lhdc { get; private set; } = true;
+        public bool Ldac { get; private set; }
+        public bool Lc3 { get; private set; }
+        public bool InEar { get; private set; } = true;
+        public bool Spatial { get; private set; }
+        public bool HeadTracking { get; private set; }
+        public bool Bass { get; private set; }
+        public bool ChannelSwap { get; private set; }
+        public bool RejectSpatial { get; set; }
+        public HashSet<DeviceToggle> UnsupportedCodecs { get; } = [];
+        public List<(int Feature, int Command, byte[] Payload)> Writes { get; } = [];
         public bool RejectNoise { get; set; }
         public byte AncFeature { get; set; } = 32;
         public byte? LastNoiseWrite { get; private set; }
@@ -250,8 +260,12 @@ public sealed partial class MoondropTests
                 return ValueTask.CompletedTask;
             }
             var request = Assert.Single(_decoder.Feed(data.Span, rfcomm && !rawRfcomm));
+            var codec = request.Command switch { 1 or 3 => DeviceToggle.Lc3, 2 or 4 => DeviceToggle.Ldac, 5 or 6 => DeviceToggle.HiRes, _ => (DeviceToggle)(-1) };
+            if (request.Feature == 16 && UnsupportedCodecs.Contains(codec)) Errors.Add((16, request.Command));
             if (request.Feature == 15 && request.Command == 1 && SuppressGainRead) return ValueTask.CompletedTask;
-            if (request.Payload.Length > 0 && request.Feature is 14 or 15 or 19 or 22) SettingWrites++;
+            if (request.Payload.Length > 0 && request.Feature is 14 or 15 or 16 or 17 or 18 or 19 or 22 or 27 or 30) SettingWrites++;
+            if (request.Payload.Length > 0 && request.Feature is 8 or 14 or 15 or 16 or 17 or 18 or 19 or 20 or 22 or 27 or 30 or 32)
+                Writes.Add((request.Feature, request.Command, request.Payload.ToArray()));
             byte[] payload = (request.Feature, request.Command) switch
             {
                 (0, 1) => Features(),
@@ -267,8 +281,22 @@ public sealed partial class MoondropTests
                 (19, 2) => SetLed(request.Payload),
                 (22, 2) => Touch,
                 (22, 3) => SetTouch(request.Payload),
+                (16, 1) => [Lc3 ? (byte)1 : (byte)0],
+                (16, 3) => SetSwitch(DeviceToggle.Lc3, request.Payload),
+                (16, 2) => [Ldac ? (byte)1 : (byte)0],
+                (16, 4) => SetSwitch(DeviceToggle.Ldac, request.Payload),
                 (16, 5) => [Lhdc ? (byte)1 : (byte)0],
                 (16, 6) => SetLhdc(request.Payload),
+                (17, 1) => [InEar ? (byte)1 : (byte)0],
+                (17, 2) => SetSwitch(DeviceToggle.InEarDetection, request.Payload),
+                (18, 1) => [Spatial ? (byte)1 : (byte)0],
+                (18, 2) => SetSwitch(DeviceToggle.SpatialAudio, request.Payload),
+                (18, 3) => [HeadTracking ? (byte)1 : (byte)0],
+                (18, 4) => SetSwitch(DeviceToggle.HeadTracking, request.Payload),
+                (27, 1) => [Bass ? (byte)1 : (byte)0],
+                (27, 2) => SetSwitch(DeviceToggle.BassEngine, request.Payload),
+                (30, 1) => [ChannelSwap ? (byte)1 : (byte)0],
+                (30, 2) => SetSwitch(DeviceToggle.ChannelSwap, request.Payload),
                 (20, 1) => [Dual ? (byte)1 : (byte)0],
                 (20, 2) => SetDual(request.Payload),
                 _ => [],
@@ -296,8 +324,20 @@ public sealed partial class MoondropTests
         }
         private byte[] SetVoice(byte[] payload) { Voice = (byte[])payload.Clone(); if (RejectVoiceIndex) Voice[2]++; return Voice; }
         private byte[] SetLhdc(byte[] payload) { Lhdc = payload[0] == 1; return payload; }
+        private byte[] SetSwitch(DeviceToggle toggle, byte[] payload)
+        {
+            bool value = payload[0] == 1;
+            if (toggle == DeviceToggle.Lc3) Lc3 = value;
+            if (toggle == DeviceToggle.Ldac) Ldac = value;
+            if (toggle == DeviceToggle.InEarDetection) InEar = value;
+            if (toggle == DeviceToggle.SpatialAudio && !RejectSpatial) Spatial = value;
+            if (toggle == DeviceToggle.HeadTracking) HeadTracking = value;
+            if (toggle == DeviceToggle.BassEngine) Bass = value;
+            if (toggle == DeviceToggle.ChannelSwap) ChannelSwap = value;
+            return payload;
+        }
         private byte[] SetDual(byte[] payload) { Dual = payload[0] == 1; return payload; }
-        private byte[] Features() => [0, .. new[] { 0, 13, 14, 15, 16, 19, 20, 22, (int)AncFeature }.Where(f => !OmittedFeatures.Contains(f)).SelectMany(f => new byte[] { (byte)f, 1 })];
+        private byte[] Features() => [0, .. new[] { 0, 13, 14, 15, 16, 17, 18, 19, 20, 22, 27, 30, (int)AncFeature }.Where(f => !OmittedFeatures.Contains(f)).SelectMany(f => new byte[] { (byte)f, 1 })];
         private byte[] SetGain(byte[] payload) { LastGainWrite = payload[0]; if (!RejectGain) Gain = payload[0]; return []; }
         private byte[] SetLed(byte[] payload) { Led = payload[0] == 1; return []; }
         private byte[] SetTouch(byte[] payload) { LastTouchWrite = (byte[])payload.Clone(); Touch = (byte[])payload.Clone(); if (RejectTouchOtherSlot) Touch[0] ^= 1; return Touch; }

@@ -75,7 +75,7 @@ public sealed partial class MoondropTests
     {
         var (profile, store, identity) = Session("MOONDROP PUDDING");
         var device = new PodChannel(false);
-        device.OmittedFeatures.UnionWith([14, 15, 19, 22]);
+        device.OmittedFeatures.UnionWith([14, 15, 18, 19, 22]);
         await using var controller = profile.CreateController(device, new(identity, store, () => true, NullLoggerFactory.Instance, TimeProvider.System));
         Assert.True(await controller.InitializeAsync(Ct));
         Assert.Equal(CommandStatus.Unsupported, (await controller.SetToggleAsync(DeviceToggle.PromptTone, true, Ct)).Status);
@@ -143,6 +143,98 @@ public sealed partial class MoondropTests
         Assert.Equal(CommandStatus.Timeout, (await controller.SetGainAsync(0, Ct)).Status);
         Assert.Equal(observed, store.Current.Gain);
         Assert.Empty(store.Current.PendingCommands);
+    }
+
+    [Theory]
+    [InlineData(DeviceToggle.InEarDetection, 17)]
+    [InlineData(DeviceToggle.SpatialAudio, 18)]
+    [InlineData(DeviceToggle.HeadTracking, 18)]
+    [InlineData(DeviceToggle.BassEngine, 27)]
+    [InlineData(DeviceToggle.ChannelSwap, 30)]
+    [InlineData(DeviceToggle.Ldac, 16)]
+    [InlineData(DeviceToggle.Lc3, 16)]
+    public async Task AdditionalSettingsUseDiscoveredCommandsAndConfirmedReadback(DeviceToggle toggle, int feature)
+    {
+        var (profile, store, identity) = Session("MOONDROP EDGE");
+        var device = new PodChannel(false);
+        await using var controller = profile.CreateController(device, new(identity, store, () => true, NullLoggerFactory.Instance, TimeProvider.System));
+        Assert.True(await controller.InitializeAsync(Ct));
+        Assert.Equal(CapabilitySupport.Experimental, store.Current.Profile!.Capabilities.Get(MoondropProfile.ToggleCapability(toggle)).Support);
+        Assert.Contains(toggle, store.Current.Toggles.Keys);
+        bool target = !store.Current.Toggles[toggle].Value;
+        var result = await controller.SetToggleAsync(toggle, target, Ct);
+        Assert.True(result.IsSuccess, $"{result}; target={target}; state={string.Join(',', store.Current.Toggles.Select(t => $"{t.Key}={t.Value.Value}"))}");
+        Assert.Equal(target, store.Current.Toggles[toggle].Value);
+        int expectedSet = toggle switch
+        {
+            DeviceToggle.Ldac => 4,
+            DeviceToggle.Lc3 => 3,
+            DeviceToggle.HiRes => 6,
+            DeviceToggle.HeadTracking => 4,
+            _ => 2,
+        };
+        Assert.True(device.Writes.Any(w => w.Feature == feature && w.Command == expectedSet && w.Payload.SequenceEqual(new[] { target ? (byte)1 : (byte)0 })),
+            $"Writes: {string.Join(';', device.Writes.Select(w => $"{w.Feature}/{w.Command}={Convert.ToHexString(w.Payload)}"))}");
+    }
+
+    [Fact]
+    public async Task AdditionalSettingsRequireFeatureDiscoveryAndExperimentalOptIn()
+    {
+        var (profile, store, identity) = Session("MOONDROP EDGE");
+        var device = new PodChannel(false);
+        bool experimental = false;
+        await using var controller = profile.CreateController(device, new(identity, store, () => experimental, NullLoggerFactory.Instance, TimeProvider.System));
+        Assert.True(await controller.InitializeAsync(Ct));
+        Assert.Equal(CommandStatus.Unsupported, (await controller.SetToggleAsync(DeviceToggle.InEarDetection, true, Ct)).Status);
+        experimental = true;
+        Assert.True((await controller.SetToggleAsync(DeviceToggle.InEarDetection, false, Ct)).IsSuccess);
+        device.OmittedFeatures.UnionWith([17, 18, 27, 30]);
+        var omittedDevice = new PodChannel(false);
+        omittedDevice.OmittedFeatures.UnionWith(device.OmittedFeatures);
+        var omittedProfile = (MoondropProfile)new DeviceProfileRegistry(BuiltInProfiles.Create()).Match(identity)!;
+        store.Reset(DeviceState.Empty with { Device = identity, Profile = omittedProfile });
+        await using var omitted = omittedProfile.CreateController(omittedDevice, new(identity, store, () => true, NullLoggerFactory.Instance, TimeProvider.System));
+        Assert.True(await omitted.InitializeAsync(Ct));
+        foreach (var toggle in new[] { DeviceToggle.InEarDetection, DeviceToggle.SpatialAudio, DeviceToggle.HeadTracking, DeviceToggle.BassEngine, DeviceToggle.ChannelSwap })
+            Assert.Equal(CommandStatus.Unsupported, (await omitted.SetToggleAsync(toggle, true, Ct)).Status);
+        Assert.Equal(CommandStatus.Unsupported, (await omitted.SetSpatialAudioAsync(SpatialAudioMode.Fixed, Ct)).Status);
+    }
+
+    [Fact]
+    public async Task CodecDiscoveryRequiresValidIndividualResponses()
+    {
+        var (profile, store, identity) = Session("MOONDROP EDGE");
+        var device = new PodChannel(false);
+        device.UnsupportedCodecs.UnionWith([DeviceToggle.Ldac, DeviceToggle.Lc3]);
+        await using var controller = profile.CreateController(device, new(identity, store, () => true, NullLoggerFactory.Instance, TimeProvider.System));
+        Assert.True(await controller.InitializeAsync(Ct));
+        var discovered = Assert.IsType<MoondropProfile>(store.Current.Profile);
+        Assert.Contains(DeviceToggle.HiRes, discovered.Toggles);
+        Assert.DoesNotContain(DeviceToggle.Ldac, discovered.Toggles);
+        Assert.DoesNotContain(DeviceToggle.Lc3, discovered.Toggles);
+        Assert.Equal(CommandStatus.Unsupported, (await controller.SetToggleAsync(DeviceToggle.Ldac, true, Ct)).Status);
+        Assert.Equal(CommandStatus.Unsupported, (await controller.SetToggleAsync(DeviceToggle.Lc3, true, Ct)).Status);
+        Assert.True((await controller.SetToggleAsync(DeviceToggle.HiRes, false, Ct)).IsSuccess);
+    }
+
+    [Fact]
+    public async Task SpatialAudioUsesIndependentSpatialAndHeadTrackingReadback()
+    {
+        var (profile, store, identity) = Session("MOONDROP EDGE");
+        var device = new PodChannel(false);
+        await using var controller = profile.CreateController(device, new(identity, store, () => true, NullLoggerFactory.Instance, TimeProvider.System));
+        Assert.True(await controller.InitializeAsync(Ct));
+        Assert.Equal(SpatialAudioMode.Off, store.Current.Spatial?.Value);
+        Assert.True((await controller.SetSpatialAudioAsync(SpatialAudioMode.Fixed, Ct)).IsSuccess);
+        Assert.True((await controller.SetSpatialAudioAsync(SpatialAudioMode.HeadTracking, Ct)).IsSuccess);
+        Assert.Equal(SpatialAudioMode.HeadTracking, store.Current.Spatial?.Value);
+        Assert.Contains(device.Writes, w => w.Feature == 18 && w.Command == 2 && w.Payload.SequenceEqual(new byte[] { 1 }));
+        Assert.Contains(device.Writes, w => w.Feature == 18 && w.Command == 4 && w.Payload.SequenceEqual(new byte[] { 1 }));
+        device.RejectSpatial = true;
+        Assert.Equal(CommandStatus.Rejected, (await controller.SetSpatialAudioAsync(SpatialAudioMode.Off, Ct)).Status);
+        Assert.True(store.Current.Toggles[DeviceToggle.SpatialAudio].Value);
+        Assert.False(store.Current.Toggles[DeviceToggle.HeadTracking].Value);
+        Assert.Equal(SpatialAudioMode.Fixed, store.Current.Spatial?.Value);
     }
 
     [Theory]

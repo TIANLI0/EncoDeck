@@ -385,14 +385,17 @@ public sealed partial class DeviceViewModel : ObservableObject
         // "More settings" switches; game mode, dual connection, head gestures and the bass engine
         // have their own sections, as in the official client.
         AddToggle(profile, DeviceToggle.InEarDetection);
+        if (profile is EncoDeck.Protocol.Brands.Moondrop.MoondropProfile) AddToggle(profile, DeviceToggle.ChannelSwap);
         AddToggle(profile, DeviceToggle.SleepDetection);
         AddToggle(profile, DeviceToggle.SwiftPair);
         AddToggle(profile, DeviceToggle.VoiceCommands);
-        if (profile is EncoDeck.Protocol.Brands.Moondrop.MoondropProfile { LhdcSupport: CapabilitySupport.Supported }) AddToggle(profile, DeviceToggle.HiRes);
         if (profile is EncoDeck.Protocol.Brands.Moondrop.MoondropProfile)
         {
-            if (profile.Capabilities.IsAvailable(DeviceCapability.IndicatorLight, _settings.Current.EnableExperimentalFeatures)) AddToggle(profile, DeviceToggle.IndicatorLight);
-            if (profile.Capabilities.IsAvailable(DeviceCapability.PromptTone, _settings.Current.EnableExperimentalFeatures)) AddToggle(profile, DeviceToggle.PromptTone);
+            AddToggle(profile, DeviceToggle.HiRes);
+            AddToggle(profile, DeviceToggle.Ldac);
+            AddToggle(profile, DeviceToggle.Lc3);
+            AddToggle(profile, DeviceToggle.IndicatorLight);
+            AddToggle(profile, DeviceToggle.PromptTone);
         }
 
         bool Has(NoiseControlMode mode) => profile.NoiseControlOptions.Any(o => o.Mode == mode && IsAllowed(o.Support));
@@ -406,7 +409,9 @@ public sealed partial class DeviceViewModel : ObservableObject
     {
         bool offered = profile is OppoDeviceProfile { Definition: var model }
             ? model.FeatureSwitches.Any(f => f.Toggle == toggle && f.Support == CapabilitySupport.Supported)
-            : profile is IControllableProfile other && other.Toggles.Contains(toggle);
+            : profile is IControllableProfile other && other.Toggles.Contains(toggle)
+                && (other is not EncoDeck.Protocol.Brands.Moondrop.MoondropProfile moondrop
+                    || moondrop.Capabilities.IsAvailable(EncoDeck.Protocol.Brands.Moondrop.MoondropProfile.ToggleCapability(toggle), _settings.Current.EnableExperimentalFeatures));
         if (!offered) return;
         Toggles.Add(new DeviceToggleViewModel(toggle, Loc.Get($"Toggle_{toggle}"), Loc.Get($"Toggle_{toggle}_Description")));
     }

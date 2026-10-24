@@ -599,6 +599,18 @@
   <data name="Cap_Gain" xml:space="preserve"><value>增益</value></data>
   <data name="Cap_IndicatorLight" xml:space="preserve"><value>指示灯</value></data>
   <data name="Cap_PromptTone" xml:space="preserve"><value>提示音</value></data>
+  <data name="Cap_HiResCodec" xml:space="preserve"><value>LHDC</value></data>
+  <data name="Cap_Ldac" xml:space="preserve"><value>LDAC</value></data>
+  <data name="Cap_Lc3" xml:space="preserve"><value>LC3</value></data>
+  <data name="Cap_ChannelSwap" xml:space="preserve"><value>左右声道交换</value></data>
+  <data name="Toggle_Ldac" xml:space="preserve"><value>LDAC</value></data>
+  <data name="Toggle_Ldac_Description" xml:space="preserve"><value>耳机端 LDAC 开关。此开关不会为 Windows 安装 LDAC 编码器。</value></data>
+  <data name="Toggle_Lc3" xml:space="preserve"><value>LC3</value></data>
+  <data name="Toggle_Lc3_Description" xml:space="preserve"><value>耳机端 LC3 编码开关，不改变 Windows 蓝牙传输方式。</value></data>
+  <data name="Toggle_ChannelSwap" xml:space="preserve"><value>交换左右声道</value></data>
+  <data name="Toggle_ChannelSwap_Description" xml:space="preserve"><value>在耳机端交换左右音频声道。</value></data>
+  <data name="Moondrop_Bass_Title" xml:space="preserve"><value>动态低音</value></data>
+  <data name="Moondrop_Bass_Summary" xml:space="preserve"><value>在耳机内增强低频。</value></data>
   <data name="Moondrop_Hold1" xml:space="preserve"><value>长按 1 秒</value></data>
   <data name="Moondrop_Hold3" xml:space="preserve"><value>长按 3 秒</value></data>
   <data name="Moondrop_Function_0" xml:space="preserve"><value>无</value></data>

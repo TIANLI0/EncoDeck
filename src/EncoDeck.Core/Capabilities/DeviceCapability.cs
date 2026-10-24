@@ -25,6 +25,10 @@ public enum DeviceCapability
     Gain,
     IndicatorLight,
     PromptTone,
+    HiResCodec,
+    Ldac,
+    Lc3,
+    ChannelSwap,
 }
 
 /// <summary>

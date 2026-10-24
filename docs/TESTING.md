@@ -36,6 +36,8 @@ dotnet test tests/EncoDeck.Tests -c Debug --filter "FullyQualifiedName~ControlCh
 
 2026-10-24：43 项控制通道 / MOONDROP 定向测试和全套 516 项测试通过；新增 EDGE 四字节 ANC 回包与写后回读回归，覆盖 GATT 和 RFCOMM。其他控制器生命周期、错误释放和手动恢复覆盖保留。
 
+2026-10-25：新增 GAIA LDAC / LC3 独立发现、入耳检测、空间音频 / 头部跟踪联合回读、动态低音和左右声道交换的模拟设备回归；覆盖 feature 缺失、无有效回读、写入拒绝与回滚。WinUI `--ui-snapshot --profile moondrop-edge` 验证实验性开启后控件可见、写入中禁用；关闭实验性或 feature 缺失时隐藏，空间音频状态未知时隐藏、动态低音无有效值时禁用；证据在 `artifacts/verification/moondrop-expanded/`，是合成状态，不连接蓝牙。`Moondrop` / `DemoDiscovery` 定向测试 51 项、全套 623 项测试通过。新增设置均为实验性功能，尚未在真机验证。当日 `Probe monitor --seconds 15` 只读运行识别到 EDGE，但设备未连接（`PairedNotConnected`），无法取得新增设置的真实回包。
+
 Windows EDGE 优先通过公共 Winsock `AF_BTH/SOCK_STREAM/BTHPROTO_RFCOMM` 打开所选经典蓝牙地址的已验证通道 1。`Socket.ConnectAsync` 使用的 ConnectEx 被蓝牙提供程序拒绝，因此使用线程池上的普通 `Socket.Connect`，10 秒超时 / 取消时释放 socket。连接后以 GAIA 应用版本、能力与实际状态响应判定就绪；不扫描通道、不按附近同名 BLE 猜测、不改配对或音频连接。其他型号保留 WinRT SDP / GATT 路径。
 
 支持页面仅显示本地化二元标签，隐藏未知项及未移植 MOONDROP 功能，但不修改协议能力与写入门控。UI 状态检查需区分控制就绪、音频已连接但控制不可用、以及未选择设备；隔离状态诊断不能证明真实蓝牙已连接。

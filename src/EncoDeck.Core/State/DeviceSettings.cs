@@ -26,6 +26,12 @@ public enum DeviceToggle
     HiRes,
     IndicatorLight,
     PromptTone,
+    /// <summary>Device-side LDAC switch; not a Windows codec installation.</summary>
+    Ldac,
+    /// <summary>Device-side LC3 switch; independent of the Windows LE Audio transport.</summary>
+    Lc3,
+    /// <summary>Swap the left and right output channels on the device.</summary>
+    ChannelSwap,
 }
 
 /// <summary>Firmware / model information read from the device.</summary>

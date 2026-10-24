@@ -71,6 +71,9 @@ public sealed partial class DevicesPage : Page
                 DeviceCapability.BatteryLevel or DeviceCapability.NoiseCancellation or
                 DeviceCapability.AdaptiveNoiseCancellation or DeviceCapability.NoiseCancellationLevel or
                 DeviceCapability.PromptVolume or DeviceCapability.DualDeviceConnection or
+                DeviceCapability.SpatialAudio or DeviceCapability.HeadTracking or DeviceCapability.InEarDetection or
+                DeviceCapability.BassEngine or DeviceCapability.ChannelSwap or DeviceCapability.HiResCodec or
+                DeviceCapability.Ldac or DeviceCapability.Lc3 or
                 DeviceCapability.Gain or DeviceCapability.IndicatorLight or DeviceCapability.PromptTone or
                 DeviceCapability.TouchCustomization)) continue;
             // Experimental features read as supported once opted in, never as unsupported before.

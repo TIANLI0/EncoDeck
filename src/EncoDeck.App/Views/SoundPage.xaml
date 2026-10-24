@@ -59,8 +59,8 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Spacing="2">
-                            <TextBlock x:Uid="Bass_Title" Text="BassWave dynamic bass" Style="{StaticResource BodyStrongTextBlockStyle}" />
-                            <TextBlock x:Uid="Bass_Summary" Text="Strengthens low frequencies inside the earbuds." Style="{StaticResource SecondaryTextStyle}" />
+                            <TextBlock x:Name="BassTitle" x:Uid="Bass_Title" Text="BassWave dynamic bass" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                            <TextBlock x:Name="BassSummary" x:Uid="Bass_Summary" Text="Strengthens low frequencies inside the earbuds." Style="{StaticResource SecondaryTextStyle}" />
                         </StackPanel>
                         <ToggleSwitch x:Name="BassSwitch" Grid.Column="1" Style="{StaticResource TrailingSwitchStyle}" Toggled="OnBassToggled" />
                     </Grid>

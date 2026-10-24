@@ -32,6 +32,26 @@ public sealed partial class MoondropDeviceController
                 : new(CommandStatus.Rejected, "Device reports a different VoiceConf.");
         }, cancellationToken);
 
+    public override Task<CommandResult> SetSpatialAudioAsync(SpatialAudioMode mode, CancellationToken cancellationToken = default)
+    {
+        if (!CanWrite(DeviceCapability.SpatialAudio, 18) || mode == SpatialAudioMode.HeadTracking && !CanWrite(DeviceCapability.HeadTracking, 18))
+            return Task.FromResult(NotSupported("Spatial audio"));
+        return RunWriteAsync("spatial", async ct =>
+        {
+            await RequestAsync(18, 2, [mode == SpatialAudioMode.Off ? (byte)0 : (byte)1], ct).ConfigureAwait(false);
+            await RequestAsync(18, 4, [mode == SpatialAudioMode.HeadTracking ? (byte)1 : (byte)0], ct).ConfigureAwait(false);
+            var spatial = await RequestAsync(18, 1, [], ct).ConfigureAwait(false);
+            var tracking = await RequestAsync(18, 3, [], ct).ConfigureAwait(false);
+            if (spatial is null || tracking is null || !Apply(spatial, StateSource.QueryResponse) || !Apply(tracking, StateSource.QueryResponse))
+                return new(CommandStatus.Timeout);
+            bool spatialOn = Store.Current.Toggles[DeviceToggle.SpatialAudio].Value;
+            bool trackingOn = Store.Current.Toggles[DeviceToggle.HeadTracking].Value;
+            var actual = !spatialOn ? SpatialAudioMode.Off : trackingOn ? SpatialAudioMode.HeadTracking : SpatialAudioMode.Fixed;
+            UpdateSpatial();
+            return actual == mode ? CommandResult.Ok : new(CommandStatus.Rejected, "Device reports a different spatial audio mode.");
+        }, cancellationToken);
+    }
+
     public override Task<CommandResult> SetGainAsync(int level, CancellationToken cancellationToken = default)
     {
         if (!CanWrite(DeviceCapability.Gain, 15)) return Task.FromResult(NotSupported("Gain"));
@@ -68,6 +88,15 @@ public sealed partial class MoondropDeviceController
             return actual.Payload.AsSpan().SequenceEqual(target) ? CommandResult.Ok
                 : new(CommandStatus.Rejected, "Device reports a different complete TOUCHV2 configuration.");
         }, cancellationToken);
+    }
+
+    private async Task RefreshSpatialAsync(CancellationToken ct)
+    {
+        if (!CanWrite(DeviceCapability.SpatialAudio, 18)) return;
+        var spatial = await RequestAsync(18, 1, [], ct).ConfigureAwait(false);
+        var tracking = await RequestAsync(18, 3, [], ct).ConfigureAwait(false);
+        if (spatial is null || tracking is null || !Apply(spatial, StateSource.QueryResponse) || !Apply(tracking, StateSource.QueryResponse)) return;
+        UpdateSpatial();
     }
 
     private async Task<bool> RefreshSettingsAsync(CancellationToken ct)

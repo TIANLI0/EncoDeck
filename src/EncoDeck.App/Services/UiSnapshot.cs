@@ -45,6 +45,12 @@ internal static class UiSnapshot
             // Same synthetic session as the brand demo; not hardware-support evidence.
             var device = new DeviceIdentity("snapshot", profile.DisplayName, new BluetoothAddress(0));
             sample = BrandDemo.CreateState(DemoDiscovery.AfterSession(profile, profile.DisplayName), device, DateTimeOffset.UtcNow);
+            if (sample.Profile is MoondropProfile moondrop)
+            {
+                var features = new HashSet<int> { 0, 8, 13, 14, 15, 16, 17, 18, 19, 20, 22, 27, 30 };
+                profile = moondrop.WithFeatures(features).WithCodec(DeviceToggle.HiRes).WithCodec(DeviceToggle.Ldac).WithCodec(DeviceToggle.Lc3);
+                sample = BrandDemo.CreateState(profile, device, DateTimeOffset.UtcNow) with { SourceDevices = null, PreferredDevice = null };
+            }
             if (sample.Profile is MoondropProfile && sample.KeyFunctions is not null)
                 sample = sample with
                 {
@@ -115,9 +121,11 @@ internal static class UiSnapshot
                 {
                     main.Navigate(page);
                     await Task.Delay(500);
-                    diagnostics.Add($"scenario={name} page={page} experimental={experimental} connection={state.Connection} gain={state.Gain?.Value} error={app.Device.HasError}");
+                    diagnostics.Add($"scenario={name} page={page} experimental={experimental} connection={state.Connection} gain={state.Gain?.Value} error={app.Device.HasError} bassCapability={app.Features.Has(DeviceCapability.BassEngine)} bassSwitch={app.Features.HasSwitch(DeviceToggle.BassEngine)} bassState={state.BassEngine is not null} spatialCapability={app.Features.Has(DeviceCapability.SpatialAudio)} headCapability={app.Features.Has(DeviceCapability.HeadTracking)} spatialState={state.Spatial is not null}");
                     foreach (var element in Descendants(main.Content).OfType<FrameworkElement>().Where(e => e.Name is "GainSection" or "GainBox" or "GestureCard"
-                        || e.Name.StartsWith("Moondrop", StringComparison.Ordinal) || e.Name is "ToggleIndicatorLight" or "TogglePromptTone"))
+                        || e.Name.StartsWith("Moondrop", StringComparison.Ordinal) || e.Name is "ToggleIndicatorLight" or "TogglePromptTone"
+                            or "ToggleInEarDetection" or "ToggleChannelSwap" or "ToggleLdac" or "ToggleLc3" or "ToggleHiRes"
+                            or "BassCard" or "BassSwitch" or "BassLevelRow" or "SpatialCard" or "SpatialHost"))
                     {
                         bool visible = true;
                         for (DependencyObject? ancestor = element; ancestor is not null; ancestor = VisualTreeHelper.GetParent(ancestor))
@@ -147,13 +155,15 @@ internal static class UiSnapshot
             }
             await CaptureScenarioAsync("Moondrop-ExperimentalOff", sample, false);
             await CaptureScenarioAsync("Moondrop-ExperimentalOn", sample, true);
-            var pending = new[] { "gain", "key-function", "toggle:IndicatorLight", "toggle:PromptTone", "prompt-tone" }
+            var pending = new[] { "gain", "key-function", "toggle:IndicatorLight", "toggle:PromptTone", "prompt-tone",
+                "toggle:InEarDetection", "toggle:BassEngine", "toggle:ChannelSwap", "spatial" }
                 .Select(description => new PendingCommand(Guid.NewGuid(), description, DateTimeOffset.UtcNow)).ToImmutableList();
             await CaptureScenarioAsync("Moondrop-Pending", sample with { PendingCommands = pending }, true);
             await CaptureScenarioAsync("Moondrop-Disconnected", sample with { Connection = DeviceConnectionState.Disconnected }, true);
             await CaptureScenarioAsync("Moondrop-UnknownState", sample with
             {
-                Gain = null, KeyFunctions = null, PromptVolume = null, Toggles = ImmutableDictionary<DeviceToggle, Observed<bool>>.Empty,
+                Gain = null, KeyFunctions = null, PromptVolume = null, BassEngine = null, Spatial = null,
+                Toggles = ImmutableDictionary<DeviceToggle, Observed<bool>>.Empty,
             }, true);
             // Keep stale reported values: absent feature discovery must still hide the controls.
             await CaptureScenarioAsync("Moondrop-ExcludedFeatures", sample with { Profile = snapshotProfile.WithFeatures(new HashSet<int> { 0, 1, 5, 13 }) }, true);

@@ -249,8 +249,8 @@ public sealed partial class ControlsPage : Page
 
             foreach (var (toggle, sw, row) in _switches)
             {
-                bool moondropSetting = f.IsMoondrop && toggle.Toggle is DeviceToggle.IndicatorLight or DeviceToggle.PromptTone;
-                bool supported = !moondropSetting || f.Has(toggle.Toggle == DeviceToggle.IndicatorLight ? DeviceCapability.IndicatorLight : DeviceCapability.PromptTone);
+                bool moondropSetting = f.IsMoondrop && toggle.Toggle is not (DeviceToggle.DualDeviceConnection or DeviceToggle.HeadTracking);
+                bool supported = !moondropSetting || f.Has(EncoDeck.Protocol.Brands.Moondrop.MoondropProfile.ToggleCapability(toggle.Toggle));
                 row.Visibility = Show(!moondropSetting || (ready && toggle.IsKnown && f.HasSwitch(toggle.Toggle) && supported));
                 sw.IsOn = toggle.IsOn;
                 sw.IsEnabled = toggle.IsKnown && supported && !toggle.IsPending && !_moondropWrites.Contains($"toggle:{toggle.Toggle}")
@@ -491,9 +491,9 @@ public sealed partial class ControlsPage : Page
         if (_syncing || !IsLoaded || sender is not ToggleSwitch { Tag: DeviceToggleViewModel toggle } sw || !sw.IsEnabled) return;
         bool requested = sw.IsOn;
         string key = $"toggle:{toggle.Toggle}";
-        bool moondrop = Features.IsMoondrop && toggle.Toggle is DeviceToggle.IndicatorLight or DeviceToggle.PromptTone;
+        bool moondrop = Features.IsMoondrop && toggle.Toggle is not (DeviceToggle.DualDeviceConnection or DeviceToggle.HeadTracking);
         if (moondrop && (!Features.IsReady || !toggle.IsKnown || !Features.HasSwitch(toggle.Toggle)
-            || !Features.Has(toggle.Toggle == DeviceToggle.IndicatorLight ? DeviceCapability.IndicatorLight : DeviceCapability.PromptTone)
+            || !Features.Has(EncoDeck.Protocol.Brands.Moondrop.MoondropProfile.ToggleCapability(toggle.Toggle))
             || !_moondropWrites.Add(key))) return;
         Sync(); // the device decides; snap back until it confirms
         try { await ViewModel.SetToggleAsync(toggle.Toggle, requested); }

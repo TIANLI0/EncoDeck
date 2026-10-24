@@ -159,7 +159,7 @@ public sealed class FeaturesViewModel
     public bool IsHiResOn => Toggle(DeviceToggle.HiRes) == true;
 
     /// <summary>While Hi-Res is on the official page shows spatial audio as off.</summary>
-    public SpatialAudioMode? SpatialMode => State.Spatial is null ? null : IsHiResOn ? SpatialAudioMode.Off : State.Spatial.Value;
+    public SpatialAudioMode? SpatialMode => State.Spatial is null ? null : IsHiResOn && !IsMoondrop ? SpatialAudioMode.Off : State.Spatial.Value;
 
     public Task<CommandResult> SetSpatialAudioAsync(SpatialAudioMode mode) => Run(() => _commands.SetSpatialAudioAsync(mode));
 

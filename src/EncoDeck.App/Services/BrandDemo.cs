@@ -161,7 +161,7 @@ internal sealed class BrandDemo
             PromptVolume = Has(DeviceCapability.PromptVolume)
                 ? O(model is not null ? (model.PromptVolumeRange.Min + model.PromptVolumeRange.Max) / 2 : profile is MoondropProfile ? 40 : 5) : null,
             Gain = Has(DeviceCapability.Gain) ? O(1) : null,
-            BassEngine = Has(DeviceCapability.BassEngine) ? O(new BassEngineState(-5, 5, 0)) : null,
+            BassEngine = Has(DeviceCapability.BassEngine) ? O(profile is MoondropProfile ? new BassEngineState(0, 0, 0) : new BassEngineState(-5, 5, 0)) : null,
             KeyFunctions = Has(DeviceCapability.TouchCustomization) ? O(DemoKeys(profile, model)) : null,
             NoiseCycle = cycle != 0 ? O(new NoiseCycleState(cycle, cycle)) : null,
             HeadMotionType = toggles.Contains(DeviceToggle.HeadGestures) ? O(0) : null,

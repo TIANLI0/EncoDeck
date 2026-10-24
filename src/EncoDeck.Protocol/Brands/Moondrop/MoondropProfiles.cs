@@ -109,8 +109,11 @@ public sealed class MoondropProfile : IControllableProfile
     private readonly CapabilitySupport _noiseSupport;
     private readonly byte[]? _gainMap;
 
-    internal MoondropProfile(MoondropModel model, IReadOnlySet<int>? features = null)
+    private readonly IReadOnlySet<DeviceToggle> _codecs;
+
+    internal MoondropProfile(MoondropModel model, IReadOnlySet<int>? features = null, IReadOnlySet<DeviceToggle>? codecs = null)
     {
+        _codecs = codecs ?? new HashSet<DeviceToggle>();
         _model = model;
         _features = features is null ? null : new HashSet<int>(features);
         // Only catalogued mappings are meaningful; discovery cannot identify an unknown model's gain order.
@@ -142,16 +145,26 @@ public sealed class MoondropProfile : IControllableProfile
             .Set(DeviceCapability.IndicatorLight, DiscoveredSupport(19, model.Id == "pudding"), Evidence("GAIA LED GET/SET 1/2"))
             .Set(DeviceCapability.PromptTone, DiscoveredSupport(14, model.Id == "pudding"), Evidence("Complete three-byte VoiceConf read-modify-write"))
             .Set(DeviceCapability.Equalizer, CapabilitySupport.Unsupported, "Not implemented.")
-            .Set(DeviceCapability.SpatialAudio, CapabilitySupport.Unsupported, "Upstream command chain is not hardware-verified; not ported.")
-            .Set(DeviceCapability.HeadTracking, CapabilitySupport.Unsupported, "Upstream command chain is not hardware-verified; not ported.")
+            .Set(DeviceCapability.SpatialAudio, DiscoveredSupport(18, false), Evidence("GAIA SPATIAL_AUDIO GET/SET 1/2 from the official 2.25 protocol research"))
+            .Set(DeviceCapability.HeadTracking, DiscoveredSupport(18, false), Evidence("GAIA SPATIAL_AUDIO head-tracking GET/SET 3/4 from the official 2.25 protocol research"))
+            .Set(DeviceCapability.InEarDetection, DiscoveredSupport(17, false), Evidence("GAIA LIGHT_SENSOR GET/SET 1/2 from the official 2.25 protocol research"))
+            .Set(DeviceCapability.BassEngine, DiscoveredSupport(27, false), Evidence("GAIA DYBASS GET/SET 1/2 from the official 2.25 protocol research"))
+            .Set(DeviceCapability.ChannelSwap, DiscoveredSupport(30, false), Evidence("GAIA LR_CHANNEL GET/SET 1/2 from the official 2.25 protocol research"))
+            .Set(DeviceCapability.HiResCodec, CodecSupport(DeviceToggle.HiRes), Evidence("GAIA CODEC_TYPE LHDC GET/SET 5/6; enabled only after a valid LHDC response"))
+            .Set(DeviceCapability.Ldac, CodecSupport(DeviceToggle.Ldac), Evidence("GAIA CODEC_TYPE LDAC GET/SET 2/4; enabled only after a valid LDAC response"))
+            .Set(DeviceCapability.Lc3, CodecSupport(DeviceToggle.Lc3), Evidence("GAIA CODEC_TYPE LC3 GET/SET 1/3; enabled only after a valid LC3 response"))
             .Set(DeviceCapability.TouchCustomization, DiscoveredSupport(22, model.Id == "pudding"), Evidence("Five-byte TOUCHV2 both-ear configuration; action IDs 4/5 are inferred"))
             .Build();
         Toggles = features is null ? [] :
         [
-            .. features.Contains(16) ? new[] { DeviceToggle.HiRes } : [],
+            .. features.Contains(16) ? _codecs.ToArray() : [],
             .. features.Contains(20) ? new[] { DeviceToggle.DualDeviceConnection } : [],
             .. features.Contains(19) ? new[] { DeviceToggle.IndicatorLight } : [],
             .. features.Contains(14) ? new[] { DeviceToggle.PromptTone } : [],
+            .. features.Contains(17) ? new[] { DeviceToggle.InEarDetection } : [],
+            .. features.Contains(18) ? new[] { DeviceToggle.SpatialAudio, DeviceToggle.HeadTracking } : [],
+            .. features.Contains(27) ? new[] { DeviceToggle.BassEngine } : [],
+            .. features.Contains(30) ? new[] { DeviceToggle.ChannelSwap } : [],
         ];
         ProfileKey = ModelId + (features is null ? string.Empty : "/" + string.Join(',', features.Order()));
     }
@@ -174,6 +187,20 @@ public sealed class MoondropProfile : IControllableProfile
     /// <summary>Known EDGE channel, confirmed by Windows firmware query; never a channel scan.</summary>
     public uint? RfcommChannel => _model.Id == "edge" ? 1u : null;
     public IReadOnlyCollection<DeviceToggle> Toggles { get; }
+    public static DeviceCapability ToggleCapability(DeviceToggle toggle) => toggle switch
+    {
+        DeviceToggle.InEarDetection => DeviceCapability.InEarDetection,
+        DeviceToggle.BassEngine => DeviceCapability.BassEngine,
+        DeviceToggle.ChannelSwap => DeviceCapability.ChannelSwap,
+        DeviceToggle.SpatialAudio => DeviceCapability.SpatialAudio,
+        DeviceToggle.HeadTracking => DeviceCapability.HeadTracking,
+        DeviceToggle.IndicatorLight => DeviceCapability.IndicatorLight,
+        DeviceToggle.PromptTone => DeviceCapability.PromptTone,
+        DeviceToggle.Ldac => DeviceCapability.Ldac,
+        DeviceToggle.Lc3 => DeviceCapability.Lc3,
+        DeviceToggle.HiRes => DeviceCapability.HiResCodec,
+        _ => DeviceCapability.DualDeviceConnection,
+    };
     public byte? EncodeGain(int level) => _gainMap is not null && (uint)level < (uint)_gainMap.Length ? _gainMap[level] : null;
     public int? DecodeGain(byte value) => _gainMap is not null && Array.IndexOf(_gainMap, value) is var level && level >= 0 ? level : null;
     public bool HasFeature(int feature) => _features?.Contains(feature) == true;
@@ -195,8 +222,17 @@ public sealed class MoondropProfile : IControllableProfile
         : !_features.Contains(feature) ? CapabilitySupport.Unsupported
         : confirmed ? CapabilitySupport.Supported : CapabilitySupport.Experimental;
 
+    private CapabilitySupport CodecSupport(DeviceToggle codec) => codec == DeviceToggle.HiRes ? LhdcSupport : DiscoveredSupport(16, false);
+
     public MoondropProfile WithFeatures(IReadOnlySet<int> features) =>
-        _features is not null && _features.SetEquals(features) ? this : new(_model, features);
+        _features is not null && _features.SetEquals(features) ? this : new(_model, features, _codecs);
+
+    public MoondropProfile WithCodec(DeviceToggle codec)
+    {
+        if (codec is not (DeviceToggle.HiRes or DeviceToggle.Ldac or DeviceToggle.Lc3) || _codecs.Contains(codec)) return this;
+        var codecs = new HashSet<DeviceToggle>(_codecs) { codec };
+        return new(_model, _features, codecs);
+    }
 
     public NoiseControlState? DecodeNoise(byte value)
     {

@@ -198,6 +198,8 @@ public sealed partial class SoundPage : Page
         bool available = f.Has(DeviceCapability.BassEngine) && f.HasSwitch(DeviceToggle.BassEngine);
         BassCard.Visibility = Show(available);
         if (!available) return;
+        BassTitle.Text = Loc.Get(f.IsMoondrop ? "Moondrop_Bass_Title" : "Bass_Title.Text");
+        BassSummary.Text = Loc.Get(f.IsMoondrop ? "Moondrop_Bass_Summary" : "Bass_Summary.Text");
         bool? on = f.Toggle(DeviceToggle.BassEngine);
         BassSwitch.IsOn = on == true;
         BassSwitch.IsEnabled = ready && on is not null && !f.IsPending("toggle:BassEngine");
@@ -213,14 +215,16 @@ public sealed partial class SoundPage : Page
 
     private void SyncSpatial(FeaturesViewModel f, bool ready)
     {
-        bool available = f.Has(DeviceCapability.SpatialAudio) && f.Model is { SpatialTypes.Count: > 0 } && f.State.Spatial is not null;
+        bool available = f.Has(DeviceCapability.SpatialAudio) && (f.Model is { SpatialTypes.Count: > 0 } || f.IsMoondrop) && f.State.Spatial is not null;
         SpatialCard.Visibility = Show(available);
         if (!available) return;
 
         // Official buttons: the model's spatial types; "fixed" reads "on" with spatial V1, which has no head tracking.
-        var model = f.Model!;
-        var types = model.SpatialTypes.Where(t => t is 0 or 1 || (t == 2 && model.HasSpatialAudioV2)).Order().ToArray();
-        string signature = $"{string.Join(',', types)}/{model.HasSpatialAudioV2}";
+        var model = f.Model;
+        var types = f.IsMoondrop
+            ? new[] { 0, 1 }.Concat(f.Has(DeviceCapability.HeadTracking) ? new[] { 2 } : Array.Empty<int>()).ToArray()
+            : model!.SpatialTypes.Where(t => t is 0 or 1 || (t == 2 && model.HasSpatialAudioV2)).Order().ToArray();
+        string signature = $"{string.Join(',', types)}/{model?.HasSpatialAudioV2}";
         if (signature != _spatialSignature)
         {
             _spatialSignature = signature;
@@ -228,7 +232,7 @@ public sealed partial class SoundPage : Page
             SpatialHost.Children.Clear();
             foreach (int type in types)
             {
-                string label = Loc.Get(type switch { 0 => "Spatial_Off", 1 => model.HasSpatialAudioV2 ? "Spatial_Fixed" : "Spatial_On", _ => "Spatial_HeadTracking" });
+                string label = Loc.Get(type switch { 0 => "Spatial_Off", 1 => f.IsMoondrop || model?.HasSpatialAudioV2 == true ? "Spatial_Fixed" : "Spatial_On", _ => "Spatial_HeadTracking" });
                 var button = new RadioButton { Content = label, Tag = (SpatialAudioMode)type, GroupName = "Spatial" };
                 button.Click += OnSpatialClick;
                 _spatialButtons.Add(((SpatialAudioMode)type, button));
@@ -241,7 +245,7 @@ public sealed partial class SoundPage : Page
             button.IsChecked = f.SpatialMode == mode;
             button.IsEnabled = enabled;
         }
-        SpatialHiResNote.Visibility = Show(f.IsHiResOn);
+        SpatialHiResNote.Visibility = Show(f.IsHiResOn && !f.IsMoondrop);
     }
 
     /// <summary>Two columns when there is room; the side cards move under the EQ when narrow or alone.</summary>

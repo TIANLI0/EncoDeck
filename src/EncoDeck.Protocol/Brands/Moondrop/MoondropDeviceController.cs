@@ -170,13 +170,28 @@ public sealed partial class MoondropDeviceController : BrandControllerBase
             var noise = await RequestAsync(anc, anc == 2 ? 1 : 3, [], ct).ConfigureAwait(false);
             if (noise is not null) answered |= Apply(noise, StateSource.QueryResponse);
         }
+        if (_profile.HasFeature(16))
+        {
+            foreach (var toggle in new[] { DeviceToggle.HiRes, DeviceToggle.Ldac, DeviceToggle.Lc3 })
+            {
+                if (_profile.Toggles.Contains(toggle) && _profile.Capabilities.IsAvailable(MoondropProfile.ToggleCapability(toggle), Context.AllowExperimental())) continue;
+                var (feature, get, _) = ToggleCommand(toggle);
+                if (await RequestAsync(feature, get, [], ct).ConfigureAwait(false) is { Payload: [0 or 1] }
+                    && (toggle != DeviceToggle.HiRes || _profile.LhdcSupport is CapabilitySupport.Supported or CapabilitySupport.Experimental))
+                    _profile = _profile.WithCodec(toggle);
+            }
+            Store.TryUpdate(DeviceId, s => s with { Profile = _profile });
+        }
         foreach (var toggle in _profile.Toggles)
         {
             if (toggle == DeviceToggle.PromptTone) continue; // Read VoiceConf once below, not a separate switch command.
+            if (toggle is DeviceToggle.SpatialAudio or DeviceToggle.HeadTracking) continue;
+            if (toggle is DeviceToggle.Ldac or DeviceToggle.Lc3 && !_profile.Capabilities.IsAvailable(MoondropProfile.ToggleCapability(toggle), Context.AllowExperimental())) continue;
             var (feature, get, _) = ToggleCommand(toggle);
             var frame = await RequestAsync(feature, get, [], ct).ConfigureAwait(false);
             if (frame is not null) answered |= Apply(frame, StateSource.QueryResponse);
         }
+        await RefreshSpatialAsync(ct).ConfigureAwait(false);
         if (_profile.Capabilities.IsAvailable(DeviceCapability.PromptVolume, Context.AllowExperimental()))
         {
             var voice = await RequestAsync(14, 1, [], ct).ConfigureAwait(false);
@@ -231,13 +246,27 @@ public sealed partial class MoondropDeviceController : BrandControllerBase
         }
         DeviceToggle? toggle = (frame.Feature, frame.Command) switch
         {
+            (16, 1) => DeviceToggle.Lc3,
+            (16, 2) => DeviceToggle.Ldac,
             (16, 5) => DeviceToggle.HiRes,
+            (17, 1) => DeviceToggle.InEarDetection,
+            (18, 1) => DeviceToggle.SpatialAudio,
+            (18, 3) => DeviceToggle.HeadTracking,
             (20, 1) => DeviceToggle.DualDeviceConnection,
+            (27, 1) => DeviceToggle.BassEngine,
+            (30, 1) => DeviceToggle.ChannelSwap,
             _ => null,
         };
         if (toggle is { } t && p.Length == 1 && p[0] <= 1)
         {
-            Store.TryUpdate(DeviceId, s => s with { Toggles = s.Toggles.SetItem(t, Observed.From(p[0] == 1, Now, source)), LastUpdateSource = source });
+            Store.TryUpdate(DeviceId, s => s with
+            {
+                Toggles = s.Toggles.SetItem(t, Observed.From(p[0] == 1, Now, source)),
+                BassEngine = t == DeviceToggle.BassEngine ? Observed.From(new BassEngineState(0, 0, 0), Now, source) : s.BassEngine,
+                LastUpdateSource = source,
+            });
+            if (t is DeviceToggle.SpatialAudio or DeviceToggle.HeadTracking && Store.Current.Spatial is not null)
+                UpdateSpatial(source);
             return true;
         }
         if (frame.Feature == 14 && frame.Command == 1 && ValidVoice(p))
@@ -247,6 +276,13 @@ public sealed partial class MoondropDeviceController : BrandControllerBase
         }
         return false;
     }
+
+    private void UpdateSpatial(StateSource source = StateSource.QueryResponse) => Store.TryUpdate(DeviceId, s => s with
+    {
+        Spatial = s.Toggles.TryGetValue(DeviceToggle.SpatialAudio, out var spatial) && s.Toggles.TryGetValue(DeviceToggle.HeadTracking, out var tracking)
+            ? Observed.From(!spatial.Value ? SpatialAudioMode.Off : tracking.Value ? SpatialAudioMode.HeadTracking : SpatialAudioMode.Fixed, Now, source)
+            : null,
+    });
 
     public override Task<CommandResult> SetNoiseControlAsync(NoiseControlState target, CancellationToken cancellationToken)
     {
@@ -265,8 +301,15 @@ public sealed partial class MoondropDeviceController : BrandControllerBase
     private static (int Feature, int Get, int Set) ToggleCommand(DeviceToggle toggle) => toggle switch
     {
         DeviceToggle.HiRes => (16, 5, 6),
+        DeviceToggle.Ldac => (16, 2, 4),
+        DeviceToggle.Lc3 => (16, 1, 3),
         DeviceToggle.DualDeviceConnection => (20, 1, 2),
         DeviceToggle.IndicatorLight => (19, 1, 2),
+        DeviceToggle.InEarDetection => (17, 1, 2),
+        DeviceToggle.SpatialAudio => (18, 1, 2),
+        DeviceToggle.HeadTracking => (18, 3, 4),
+        DeviceToggle.BassEngine => (27, 1, 2),
+        DeviceToggle.ChannelSwap => (30, 1, 2),
         _ => throw new ArgumentOutOfRangeException(nameof(toggle)),
     };
 
@@ -275,12 +318,8 @@ public sealed partial class MoondropDeviceController : BrandControllerBase
         if (!_profile.Toggles.Contains(toggle)) return Task.FromResult(NotSupported(toggle.ToString()));
         if (toggle == DeviceToggle.PromptTone)
             return CanWrite(DeviceCapability.PromptTone, 14) ? WriteVoiceAsync(enabled, null, cancellationToken) : Task.FromResult(NotSupported("Prompt tone"));
-        var support = toggle switch
-        {
-            DeviceToggle.HiRes => _profile.LhdcSupport,
-            DeviceToggle.IndicatorLight => _profile.Capabilities.Get(DeviceCapability.IndicatorLight).Support,
-            _ => _profile.Capabilities.Get(DeviceCapability.DualDeviceConnection).Support,
-        };
+        var support = toggle == DeviceToggle.HiRes ? _profile.LhdcSupport
+            : _profile.Capabilities.Get(MoondropProfile.ToggleCapability(toggle)).Support;
         if (support != CapabilitySupport.Supported && !(support == CapabilitySupport.Experimental && Context.AllowExperimental()))
             return Task.FromResult(NotSupported(toggle.ToString()));
         return RunWriteAsync($"toggle:{toggle}", async ct =>

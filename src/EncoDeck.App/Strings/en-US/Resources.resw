@@ -599,6 +599,18 @@
   <data name="Cap_Gain" xml:space="preserve"><value>Gain</value></data>
   <data name="Cap_IndicatorLight" xml:space="preserve"><value>Indicator light</value></data>
   <data name="Cap_PromptTone" xml:space="preserve"><value>Prompt tones</value></data>
+  <data name="Cap_HiResCodec" xml:space="preserve"><value>LHDC</value></data>
+  <data name="Cap_Ldac" xml:space="preserve"><value>LDAC</value></data>
+  <data name="Cap_Lc3" xml:space="preserve"><value>LC3</value></data>
+  <data name="Cap_ChannelSwap" xml:space="preserve"><value>Left / right channel swap</value></data>
+  <data name="Toggle_Ldac" xml:space="preserve"><value>LDAC</value></data>
+  <data name="Toggle_Ldac_Description" xml:space="preserve"><value>Device-side LDAC switch. This does not install an LDAC encoder in Windows.</value></data>
+  <data name="Toggle_Lc3" xml:space="preserve"><value>LC3</value></data>
+  <data name="Toggle_Lc3_Description" xml:space="preserve"><value>Device-side LC3 codec switch. This does not change the Windows Bluetooth transport.</value></data>
+  <data name="Toggle_ChannelSwap" xml:space="preserve"><value>Swap left / right channels</value></data>
+  <data name="Toggle_ChannelSwap_Description" xml:space="preserve"><value>Swap the left and right audio channels on the device.</value></data>
+  <data name="Moondrop_Bass_Title" xml:space="preserve"><value>Dynamic bass</value></data>
+  <data name="Moondrop_Bass_Summary" xml:space="preserve"><value>Enhances low frequencies inside the earbuds.</value></data>
   <data name="Moondrop_Hold1" xml:space="preserve"><value>Touch and hold (1 second)</value></data>
   <data name="Moondrop_Hold3" xml:space="preserve"><value>Touch and hold (3 seconds)</value></data>
   <data name="Moondrop_Function_0" xml:space="preserve"><value>None</value></data>
