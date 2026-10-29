@@ -53,6 +53,11 @@ public interface IProtocolTrace
     void OnFrame(FrameDirection direction, OppoFrame frame, DateTimeOffset timestamp);
 
     void OnRawReceived(ReadOnlySpan<byte> data, DateTimeOffset timestamp);
+
+    /// <summary>A non-OPPO brand frame, summarized by its controller with identifiers already left out.</summary>
+    void OnBrandFrame(FrameDirection direction, string summary, DateTimeOffset timestamp)
+    {
+    }
 }
 
 public enum SessionCloseReason

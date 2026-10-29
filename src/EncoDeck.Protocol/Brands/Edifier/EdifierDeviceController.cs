@@ -8,6 +8,7 @@
 // 361d279, GPL-3.0-only) and BudsLink (https://github.com/maniacx/BudsLink, ba3160d, GPL-3.0).
 using EncoDeck.Core.Commands;
 using EncoDeck.Core.State;
+using EncoDeck.Protocol.Oppo;
 using EncoDeck.Protocol.Transport;
 using Microsoft.Extensions.Logging;
 
@@ -33,7 +34,7 @@ public sealed class EdifierDeviceController : BrandControllerBase
     private readonly CancellationTokenSource _pollStop = new();
     private Task? _pollTask;
     private readonly TaskCompletionSource _deferredSettings = new(TaskCreationOptions.RunContinuationsAsynchronously);
-    private readonly EdifierProfile _profile;
+    private EdifierProfile _profile;
     private EdifierFeatures _confirmed;
     private bool _version2;
     private bool _xor;
@@ -96,6 +97,10 @@ public sealed class EdifierDeviceController : BrandControllerBase
             battery = await RefreshBatteryAsync(cancellationToken).ConfigureAwait(false);
         }
         bool noise = CanQueryNoise && await RefreshNoiseAsync(cancellationToken).ConfigureAwait(false) is not null;
+        if (!battery && !noise && Spec.Framing == EdifierFraming.V1)
+        {
+            battery = await TryBesFramingAsync(cancellationToken).ConfigureAwait(false);
+        }
         if (!battery && !noise)
         {
             // An open channel that answers nothing is not speaking this protocol.
@@ -104,6 +109,31 @@ public sealed class EdifierDeviceController : BrandControllerBase
         }
         await QuerySettingsAsync(cancellationToken).ConfigureAwait(false);
         _pollTask ??= Task.Run(() => PollAsync(_pollStop.Token), CancellationToken.None);
+        return true;
+    }
+
+    /// <summary>
+    /// A v1 headset that answered nothing may be a later edition on BES v2 framing sold under the
+    /// same name (W820NB 三金标版 answers neither v1 query). Only the read-only battery query is sent;
+    /// on an answer the session continues with battery alone, because the v1 noise layout and
+    /// settings are not known to carry over to v2 firmware.
+    /// </summary>
+    private async Task<bool> TryBesFramingAsync(CancellationToken ct)
+    {
+        lock (_gate)
+        {
+            _profile = _profile.WithSpec(EdifierSpec.BesFallback(Spec));
+            _confirmed = EdifierFeatures.None;
+            _version2 = true;
+            _xor = false;
+            _xorKnown = false;
+            _decoder = new EdifierFrameDecoder(version2: true);
+        }
+        if (!await RefreshBatteryAsync(ct).ConfigureAwait(false)) return false;
+        bool xor;
+        lock (_gate) xor = _xor;
+        Logger.LogInformation("EDIFIER headset answered BES v2 framing ({Payloads} payloads); offering battery only", xor ? "XOR" : "plaintext");
+        Store.TryUpdate(DeviceId, s => s with { Profile = CurrentProfile, NoiseControl = null });
         return true;
     }
 
@@ -147,11 +177,23 @@ public sealed class EdifierDeviceController : BrandControllerBase
     protected override void OnReceived(ReadOnlySpan<byte> data)
     {
         IReadOnlyList<EdifierFrame> frames;
-        lock (_gate) frames = _decoder.Feed(data);
+        bool version2;
+        lock (_gate)
+        {
+            frames = _decoder.Feed(data);
+            version2 = _version2;
+        }
+        if (frames.Count == 0 && Context.Trace is { } trace)
+        {
+            // Only the head bytes: enough to tell another framing from a partial frame.
+            trace.OnBrandFrame(FrameDirection.Received,
+                $"EDIFIER no complete frame in {data.Length} bytes, head {Convert.ToHexString(data[..Math.Min(3, data.Length)])}", Now);
+        }
         foreach (var raw in frames)
         {
             Touch();
             var frame = Decrypt(raw);
+            TraceFrame(FrameDirection.Received, frame.Command, frame.Payload, version2);
             TaskCompletionSource<EdifierFrame>? waiter = null;
             lock (_gate)
             {
@@ -190,6 +232,19 @@ public sealed class EdifierDeviceController : BrandControllerBase
                     _xorKnown = true;
                 }
                 else if ((peer ^ EdifierConstants.PayloadXor) is 1 or 2 or 3)
+                {
+                    _xor = _xorKnown = true;
+                }
+            }
+            // A headset's battery answer decides the same way: a percentage never has the top bit
+            // set in plaintext and always has it once XORed with 0xA5.
+            if (!_xorKnown && !Spec.StateBattery && frame.Command == EdifierConstants.QueryBattery && frame.Payload is [var percent, ..])
+            {
+                if (percent <= 100)
+                {
+                    _xorKnown = true;
+                }
+                else if ((percent ^ EdifierConstants.PayloadXor) <= 100)
                 {
                     _xor = _xorKnown = true;
                 }
@@ -506,6 +561,7 @@ public sealed class EdifierDeviceController : BrandControllerBase
         try
         {
             byte[] request = version2 ? EdifierFrameCodec.EncodeV2(command, payload, xor: xor) : EdifierFrameCodec.Encode(command, payload);
+            TraceFrame(FrameDirection.Sent, command, payload, version2);
             if (!await WriteAsync(request, cancellationToken).ConfigureAwait(false)) return null;
             return await waiter.Task.WaitAsync(RequestTimeout, Context.Time, cancellationToken).ConfigureAwait(false);
         }
@@ -517,6 +573,23 @@ public sealed class EdifierDeviceController : BrandControllerBase
         {
             lock (_gate) _waiters.RemoveAll(w => w.Waiter == waiter);
         }
+    }
+
+    /// <summary>Commands whose payloads are levels and settings, never names or addresses.</summary>
+    private static readonly HashSet<byte> TracedPayloads =
+    [
+        EdifierConstants.QueryBattery, EdifierConstants.QueryTwsState, EdifierConstants.QueryNoiseMode, EdifierConstants.SetNoiseMode,
+        EdifierConstants.QueryGameMode, EdifierConstants.SetGameMode, EdifierConstants.QueryPowerOffTimer, EdifierConstants.SetPowerOffTimer,
+        EdifierConstants.DisablePowerOffTimer, EdifierConstants.QueryKeyControl, EdifierConstants.SetKeyControl,
+        EdifierConstants.SetSoundEffect, EdifierConstants.QuerySoundEffect, EdifierConstants.QueryInEarSwitch, EdifierConstants.SetInEarSwitch,
+    ];
+
+    /// <summary>Raw protocol log: plaintext payloads of known commands; only the length of anything else.</summary>
+    private void TraceFrame(FrameDirection direction, byte command, byte[] payload, bool version2)
+    {
+        if (Context.Trace is not { } trace) return;
+        string body = TracedPayloads.Contains(command) ? Convert.ToHexString(payload) : $"<{payload.Length} bytes>";
+        trace.OnBrandFrame(direction, $"EDIFIER {(version2 ? "v2" : "v1")} {command:X2} {body}", Now);
     }
 
     private async Task PollAsync(CancellationToken cancellationToken)

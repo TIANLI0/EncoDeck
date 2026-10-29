@@ -25,4 +25,10 @@ internal sealed class RawProtocolLog(ILogger logger, Func<bool> enabled) : IProt
     {
         // Raw chunks are not logged: they could contain unredacted sensitive frames.
     }
+
+    public void OnBrandFrame(FrameDirection direction, string summary, DateTimeOffset timestamp)
+    {
+        if (!enabled()) return;
+        logger.LogInformation("{Direction} {Frame}", direction == FrameDirection.Sent ? "TX" : "RX", summary);
+    }
 }
