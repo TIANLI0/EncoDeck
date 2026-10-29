@@ -23,34 +23,34 @@
     },
     {
       "id": "a2dpwb",
-      "version": "2.0.2-beta.10-r1",
-      "tag": "a2dpwb-v2.0.2-beta.10-r1",
+      "version": "2.0.2-beta.11-r1",
+      "tag": "a2dpwb-v2.0.2-beta.11-r1",
       "interface": 1,
       "minApp": "1.11.0",
       "source": {
         "repository": "https://github.com/SeiyaFunaokaJP/A2DP-Windows-Bridge",
-        "commit": "720762d49c40440de4c49e8160105c416951543b",
-        "release": "v2.0.2-beta.10"
+        "commit": "c5be02894be99467f9aca5badef9616cdcc84033",
+        "release": "v2.0.2-beta.11"
       },
       "packages": [
         {
           "architecture": "x64",
-          "file": "A2DPWB-2.0.2-beta.10-win64-portable.zip",
-          "size": 11728642,
-          "sha256": "d17f0ec6f16d75ea611d65341e3fa7385620b99ab39cea6b4cdb32803f63b276",
-          "root": "A2DPWB-2.0.2-beta.10",
+          "file": "A2DPWB-2.0.2-beta.11-win64-portable.zip",
+          "size": 11735076,
+          "sha256": "11ae538df8777eeec4981bd74d2bff865c14ae6bf49757395ec6febd9a847168",
+          "root": "A2DPWB-2.0.2-beta.11",
           "mirrors": [
-            "https://github.com/SeiyaFunaokaJP/A2DP-Windows-Bridge/releases/download/v2.0.2-beta.10/A2DPWB-2.0.2-beta.10-win64-portable.zip"
+            "https://github.com/SeiyaFunaokaJP/A2DP-Windows-Bridge/releases/download/v2.0.2-beta.11/A2DPWB-2.0.2-beta.11-win64-portable.zip"
           ]
         },
         {
           "architecture": "arm64",
-          "file": "A2DPWB-2.0.2-beta.10-arm64-portable.zip",
-          "size": 10988838,
-          "sha256": "4d1e79a5902f607b89d995ff4c766e28c37b54a588695df3a0c4b512e95c0c63",
-          "root": "A2DPWB-2.0.2-beta.10",
+          "file": "A2DPWB-2.0.2-beta.11-arm64-portable.zip",
+          "size": 10995193,
+          "sha256": "b3e0d9deab5cd211ca3b92eb58eea04556d2eb30bfa3b9ecd6907e713a59e629",
+          "root": "A2DPWB-2.0.2-beta.11",
           "mirrors": [
-            "https://github.com/SeiyaFunaokaJP/A2DP-Windows-Bridge/releases/download/v2.0.2-beta.10/A2DPWB-2.0.2-beta.10-arm64-portable.zip"
+            "https://github.com/SeiyaFunaokaJP/A2DP-Windows-Bridge/releases/download/v2.0.2-beta.11/A2DPWB-2.0.2-beta.11-arm64-portable.zip"
           ]
         }
       ]
