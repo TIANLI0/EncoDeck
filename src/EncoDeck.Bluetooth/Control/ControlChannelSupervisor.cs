@@ -49,6 +49,7 @@ public sealed class ControlChannelSupervisor : IAsyncDisposable
     private Task? _loop;
     private IDeviceController? _controller;
     private Guid? _preferredSonyService;
+    private bool _xiaomiAvoidGatt;
 
     public ControlChannelSupervisor(
         DeviceIdentity identity,
@@ -223,6 +224,7 @@ public sealed class ControlChannelSupervisor : IAsyncDisposable
                 exhausted = true;
                 continue;
             }
+            _logger.LogInformation("Control channel attempt {Attempt} failed; retrying in {Delay} ms", attempt, (int)delay.TotalMilliseconds);
             SetConnection(DeviceConnectionState.Reconnecting);
             await WaitAsync(CurrentWake(), delay, ct).ConfigureAwait(false);
         }
@@ -245,9 +247,10 @@ public sealed class ControlChannelSupervisor : IAsyncDisposable
         {
             var services = _profile.ControlServiceUuids;
             // A single LE earbud can answer MMA over GATT without a Classic control link.
-            // Avoid paging stale SPP endpoints before trying the already-connected LE identity.
+            // Avoid paging stale SPP endpoints before trying the already-connected LE identity,
+            // unless the last handshake over MMA GATT failed: then SPP goes first and GATT stays the fallback.
             if (_profile.Brand == "xiaomi" && _link.IsLeAudio)
-                services = services.OrderBy(uuid => uuid == XiaomiProtocol.MmaGattServiceUuid ? 0 : 1).ToArray();
+                services = services.OrderBy(uuid => (uuid == XiaomiProtocol.MmaGattServiceUuid) == _xiaomiAvoidGatt ? 1 : 0).ToArray();
             if (_profile.Brand == "sony" && _preferredSonyService is { } preferred)
                 services = services.OrderBy(uuid => uuid == preferred ? 0 : 1).ToArray();
             open = await _connector.OpenAsync(_identity.DeviceId, services, ct).ConfigureAwait(false);
@@ -297,7 +300,7 @@ public sealed class ControlChannelSupervisor : IAsyncDisposable
 
             if (!initialized)
             {
-                AdvanceSonyService(open.ServiceUuid);
+                AdvanceService(open.ServiceUuid);
                 SetError(closed.IsCompleted
                     ? "The control channel closed during the handshake."
                     : "The earbuds did not answer the control handshake.");
@@ -307,13 +310,14 @@ public sealed class ControlChannelSupervisor : IAsyncDisposable
             if (!_link.IsConnected || ct.IsCancellationRequested || Volatile.Read(ref _transportChanged) != 0) return ServeOutcome.EndedByLinkOrUser;
             if (closed.IsCompleted)
             {
-                AdvanceSonyService(open.ServiceUuid);
+                AdvanceService(open.ServiceUuid);
                 SetError("The control channel closed during the handshake.");
                 return ServeOutcome.Failed;
             }
 
             lock (_gate) _controller = controller;
             if (_profile.Brand == "sony") _preferredSonyService = open.ServiceUuid;
+            _xiaomiAvoidGatt = false;
             SetConnection(DeviceConnectionState.ControlReady);
             _store.TryUpdate(_identity.DeviceId, s => s with { LastError = null });
 
@@ -339,7 +343,7 @@ public sealed class ControlChannelSupervisor : IAsyncDisposable
         }
         catch (Exception ex)
         {
-            if (_controller is null) AdvanceSonyService(open.ServiceUuid);
+            if (_controller is null) AdvanceService(open.ServiceUuid);
             _logger.LogWarning(ex, "Initializing or serving the control channel failed");
             SetError("The control handshake failed.");
             return ServeOutcome.Failed;
@@ -352,8 +356,18 @@ public sealed class ControlChannelSupervisor : IAsyncDisposable
         }
     }
 
-    private void AdvanceSonyService(Guid? failed)
+    /// <summary>After a failed handshake, prefers another control service for the next attempt.</summary>
+    private void AdvanceService(Guid? failed)
     {
+        if (_profile.Brand == "xiaomi")
+        {
+            // A write the LE identity never acknowledged can keep its GATT bearer busy for the ATT timeout;
+            // a Classic SPP link, when one is up, does not share it. Alternates while neither answers.
+            _xiaomiAvoidGatt = failed == XiaomiProtocol.MmaGattServiceUuid;
+            if (_link.IsLeAudio)
+                _logger.LogInformation("Xiaomi handshake failed on {Service}; next attempt tries {Next} first", failed, _xiaomiAvoidGatt ? "SPP" : "MMA GATT");
+            return;
+        }
         if (_profile.Brand != "sony" || failed is not { } uuid || !SonyAkgProfiles.IsControlService(uuid)) return;
         _preferredSonyService = _profile.ControlServiceUuids.FirstOrDefault(candidate => candidate != uuid);
         _logger.LogInformation("Sony handshake failed on {Service}; next attempt prefers {NextService}", uuid, _preferredSonyService);

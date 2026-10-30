@@ -32,24 +32,42 @@ internal sealed class StreamGattByteChannel : IDuplexByteChannel
     private readonly GattCharacteristic _write;
     private readonly GattWriteOption _writeOption;
     private readonly Channel<byte[]> _incoming = Channel.CreateUnbounded<byte[]>();
+    private readonly ulong? _stallKey;
+    private readonly LeTarget _target;
+    private readonly ILogger _logger;
     private byte[]? _pending;
     private int _offset;
     private int _disposed;
+    private int _answered;
 
-    private StreamGattByteChannel(BluetoothLEDevice device, GattDeviceService service, GattCharacteristic notify, GattCharacteristic write, string name)
+    private StreamGattByteChannel(BluetoothLEDevice device, GattDeviceService service, GattCharacteristic notify, GattCharacteristic write, GattStreamEndpoint endpoint,
+        LeTarget target, ulong? stallKey, ILogger logger)
     {
         _device = device;
         _service = service;
         _notify = notify;
         _write = write;
-        Description = name;
-        _writeOption = write.CharacteristicProperties.HasFlag(GattCharacteristicProperties.Write)
-            ? GattWriteOption.WriteWithResponse : GattWriteOption.WriteWithoutResponse;
+        _target = target;
+        _stallKey = stallKey;
+        _logger = logger;
+        Description = endpoint.Name;
+        _writeOption = ChooseWriteOption(write.CharacteristicProperties, endpoint.PreferUnacknowledgedWrites);
         notify.ValueChanged += OnValueChanged;
         device.ConnectionStatusChanged += OnConnectionStatusChanged;
     }
 
     public string Description { get; }
+
+    /// <summary>
+    /// Acknowledged writes when the characteristic declares them, unless the endpoint prefers
+    /// unacknowledged writes and the characteristic also allows those.
+    /// </summary>
+    internal static GattWriteOption ChooseWriteOption(GattCharacteristicProperties properties, bool preferUnacknowledged)
+    {
+        bool acknowledged = properties.HasFlag(GattCharacteristicProperties.Write);
+        bool unacknowledged = properties.HasFlag(GattCharacteristicProperties.WriteWithoutResponse);
+        return acknowledged && !(preferUnacknowledged && unacknowledged) ? GattWriteOption.WriteWithResponse : GattWriteOption.WriteWithoutResponse;
+    }
 
     /// <summary>
     /// Opens the endpoint at the selected headset's address; endpoints that allow it then fall back to
@@ -59,7 +77,7 @@ internal sealed class StreamGattByteChannel : IDuplexByteChannel
         endpoint.BondedLeIdentities
             ? OpenOnBondedLeAsync(address, name, endpoint, logger, cancellationToken)
             : LeCompanionResolver.OpenAsync(address, name, endpoint, LeCompanionCache.Shared,
-                (target, expectedName, ct) => OpenAtAsync(address, target, expectedName, endpoint, ct), ScanAsync, logger, cancellationToken);
+                (target, expectedName, ct) => OpenAtAsync(address, target, expectedName, endpoint, null, logger, ct), ScanAsync, logger, cancellationToken);
 
     /// <summary>
     /// Opens <paramref name="endpoint"/> on a connected LE Audio identity of these earbuds: the one at the
@@ -93,18 +111,27 @@ internal sealed class StreamGattByteChannel : IDuplexByteChannel
             return ChannelOpenResult.Failed(ChannelOpenStatus.ConnectFailed, $"{endpoint.Name}: 0x{ex.HResult:X8}");
         }
         ChannelOpenResult? failure = null;
-        foreach (var target in connected)
+        // An identity whose last write stalled keeps its ATT bearer busy until the ATT timeout: try it last.
+        var stalled = GattWriteStallRegistry.Shared.RecentlyStalled(address, Environment.TickCount64);
+        var ordered = GattWriteStallRegistry.Order(connected, stalled);
+        logger.LogInformation("{Endpoint}: {Count} connected LE Audio identities{Stalled}", endpoint.Name, ordered.Count,
+            stalled is not null && ordered.Contains(stalled) ? $", {Describe(stalled)} last (write stalled recently)" : "");
+        foreach (var target in ordered)
         {
-            var result = await OpenAtAsync(address, target, null, endpoint, cancellationToken).ConfigureAwait(false);
+            var result = await OpenAtAsync(address, target, null, endpoint, address, logger, cancellationToken).ConfigureAwait(false);
             if (result.Status == ChannelOpenStatus.Opened) return result;
-            logger.LogInformation("{Endpoint} on an LE Audio identity failed: {Detail}", endpoint.Name, result.Detail);
+            logger.LogInformation("{Endpoint} on LE identity {Identity} failed: {Detail}", endpoint.Name, Describe(target), result.Detail);
             failure = result;
         }
         return failure ?? ChannelOpenResult.Failed(ChannelOpenStatus.DeviceUnreachable, $"{endpoint.Name}: no LE Audio link is up.");
     }
 
-    /// <summary>Opens <paramref name="endpoint"/> at the classic address (<paramref name="target"/> null) or at an LE companion.</summary>
-    private static async Task<ChannelOpenResult> OpenAtAsync(ulong address, LeTarget? target, string? expectedName, GattStreamEndpoint endpoint, CancellationToken cancellationToken)
+    /// <summary>
+    /// Opens <paramref name="endpoint"/> at the classic address (<paramref name="target"/> null) or at an LE companion.
+    /// With <paramref name="stallKey"/>, a stalled write is remembered for that earbuds' next attempt.
+    /// </summary>
+    private static async Task<ChannelOpenResult> OpenAtAsync(ulong address, LeTarget? target, string? expectedName, GattStreamEndpoint endpoint, ulong? stallKey,
+        ILogger logger, CancellationToken cancellationToken)
     {
         BluetoothLEDevice? device = null;
         GattDeviceService? service = null;
@@ -159,7 +186,8 @@ internal sealed class StreamGattByteChannel : IDuplexByteChannel
             var subscription = notify.CharacteristicProperties.HasFlag(GattCharacteristicProperties.Notify)
                 ? GattClientCharacteristicConfigurationDescriptorValue.Notify
                 : GattClientCharacteristicConfigurationDescriptorValue.Indicate;
-            channel = new StreamGattByteChannel(device, service, notify, write, endpoint.Name);
+            var identity = target ?? new LeTarget(address, false);
+            channel = new StreamGattByteChannel(device, service, notify, write, endpoint, identity, stallKey, logger);
             device = null;
             service = null;
             var status = await notify.WriteClientCharacteristicConfigurationDescriptorAsync(subscription).AsTask(timeout.Token).ConfigureAwait(false);
@@ -167,6 +195,8 @@ internal sealed class StreamGattByteChannel : IDuplexByteChannel
                 return ChannelOpenResult.Failed(ChannelOpenStatus.ConnectFailed, $"{endpoint.Name} subscription: {status}");
             if (channel._device.ConnectionStatus != BluetoothConnectionStatus.Connected)
                 return ChannelOpenResult.Failed(ChannelOpenStatus.DeviceUnreachable, $"{endpoint.Name}: disconnected during subscription.");
+            logger.LogInformation("{Endpoint} opened on LE identity {Identity}: write {WriteOption} (properties {WriteProperties}), notify {NotifyProperties}, max PDU {MaxPdu}",
+                endpoint.Name, Describe(identity), channel._writeOption, write.CharacteristicProperties, notify.CharacteristicProperties, channel.MaxPduSize());
             var result = new ChannelOpenResult(ChannelOpenStatus.Opened, channel, endpoint.Service, null);
             channel = null;
             return result;
@@ -247,9 +277,14 @@ internal sealed class StreamGattByteChannel : IDuplexByteChannel
         }
     }
 
+    private static string Describe(LeTarget target) =>
+        $"{new EncoDeck.Core.Privacy.BluetoothAddress(target.Address)} ({(target.IsRandom ? "random" : "public")})";
+
     private void OnValueChanged(GattCharacteristic sender, GattValueChangedEventArgs args)
     {
-        if (args.CharacteristicValue.Length > 0) _incoming.Writer.TryWrite(args.CharacteristicValue.ToArray());
+        if (args.CharacteristicValue.Length == 0) return;
+        if (_stallKey is { } key && Interlocked.Exchange(ref _answered, 1) == 0) GattWriteStallRegistry.Shared.MarkHealthy(key, _target);
+        _incoming.Writer.TryWrite(args.CharacteristicValue.ToArray());
     }
 
     private void OnConnectionStatusChanged(BluetoothLEDevice sender, object args)
@@ -285,21 +320,38 @@ internal sealed class StreamGattByteChannel : IDuplexByteChannel
             var buffer = MemoryMarshal.TryGetArray(part, out var segment)
                 ? segment.Array!.AsBuffer(segment.Offset, segment.Count)
                 : part.ToArray().AsBuffer();
-            var result = await _write.WriteValueAsync(buffer, _writeOption).AsTask(cancellationToken).ConfigureAwait(false);
-            if (result != GattCommunicationStatus.Success) throw new IOException($"{Description} write: {result}");
+            GattWriteResult result;
+            try
+            {
+                result = await _write.WriteValueWithResultAsync(buffer, _writeOption).AsTask(cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                // The abandoned request may still occupy this identity's ATT bearer: the next attempt tries another identity first.
+                if (_stallKey is { } key) GattWriteStallRegistry.Shared.MarkStalled(key, _target, Environment.TickCount64);
+                _logger.LogWarning("{Endpoint} write ({WriteOption}, {Length} bytes) on LE identity {Identity} did not complete",
+                    Description, _writeOption, part.Length, Describe(_target));
+                throw;
+            }
+            if (result.Status != GattCommunicationStatus.Success)
+                throw new IOException(result.ProtocolError is { } error
+                    ? $"{Description} write: {result.Status}, ATT error 0x{error:X2}"
+                    : $"{Description} write: {result.Status}");
         }
     }
 
     /// <summary>Negotiated ATT MTU minus the 3-byte header, so a frame stays in one write where the MTU allows.</summary>
-    private int UnacknowledgedPayload()
+    private int UnacknowledgedPayload() => MaxPduSize() is { } pdu ? Math.Max(MinimumAttPayload, pdu - 3) : MinimumAttPayload;
+
+    private int? MaxPduSize()
     {
         try
         {
-            return Math.Max(MinimumAttPayload, _service.Session.MaxPduSize - 3);
+            return _service.Session.MaxPduSize;
         }
         catch (Exception ex) when (ex is COMException or ObjectDisposedException or InvalidOperationException)
         {
-            return MinimumAttPayload;
+            return null;
         }
     }
 

@@ -63,11 +63,13 @@ public class ControlChannelSupervisorTests
         public ChannelOpenStatus? FailWith { get; set; }
         public FakeOppoDevice? LastDevice { get; private set; }
         public IReadOnlyList<Guid> LastServices { get; private set; } = [];
+        public System.Collections.Concurrent.ConcurrentQueue<IReadOnlyList<Guid>> History { get; } = new();
 
         public Task<ChannelOpenResult> OpenAsync(string deviceId, IReadOnlyList<Guid> serviceUuids, CancellationToken cancellationToken)
         {
             Interlocked.Increment(ref Attempts);
             LastServices = serviceUuids;
+            History.Enqueue(serviceUuids);
             if (FailWith is { } status) return Task.FromResult(ChannelOpenResult.Failed(status, "fake failure"));
             LastDevice = new FakeOppoDevice();
             return Task.FromResult(new ChannelOpenResult(ChannelOpenStatus.Opened, LastDevice.Channel, serviceUuids[0], null));
@@ -82,9 +84,9 @@ public class ControlChannelSupervisorTests
         return (supervisor, store);
     }
 
-    private sealed class StartupProfile(Func<Task<bool>> initialize, bool throwOnCreate = false) : IControllableProfile
+    private sealed class StartupProfile(Func<Task<bool>> initialize, bool throwOnCreate = false, IControllableProfile? inner = null) : IControllableProfile
     {
-        private readonly OppoDeviceProfile _inner = new(OppoModels.EncoX4);
+        private readonly IControllableProfile _inner = inner ?? new OppoDeviceProfile(OppoModels.EncoX4);
         public string Brand => _inner.Brand;
         public bool IsGeneric => false;
         public string ModelId => _inner.ModelId;
@@ -128,6 +130,53 @@ public class ControlChannelSupervisorTests
         Assert.Equal(leAudio ? protocolServices[2] : protocolServices[0], connector.LastServices[0]);
         Assert.Equal(protocolServices.Order(), connector.LastServices.Order());
         Assert.Equal(1, connector.Attempts);
+    }
+
+    [Fact]
+    public async Task Xiaomi_HandshakeFailureOverLeGatt_NextAttemptTriesSppFirst_ThenAlternates()
+    {
+        var link = new FakeLink(true);
+        link.SetLeAudio(true);
+        var connector = new FakeConnector();
+        var redmi = EncoDeck.Protocol.Brands.Xiaomi.XiaomiDeviceProfile.Redmi;
+        // The fake connector opens the first service it is offered; every handshake stalls.
+        var profile = new StartupProfile(() => throw new IOException("Xiaomi control write timed out"), inner: redmi);
+        var (supervisor, store) = Create(link, connector, profile);
+        await using var _ = supervisor;
+        supervisor.Start();
+        await WaitFor(store, DeviceConnectionState.ControlUnavailable);
+
+        var mma = EncoDeck.Protocol.Brands.Xiaomi.XiaomiProtocol.MmaGattServiceUuid;
+        var spp = EncoDeck.Protocol.Brands.Xiaomi.XiaomiProtocol.FastConnectSppUuid;
+        var firsts = connector.History.Select(services => services[0]).ToArray();
+        Assert.Equal([mma, spp, mma, spp], firsts);
+        // Every attempt still offers all services, so GATT stays a fallback behind SPP.
+        Assert.All(connector.History, services => Assert.Equal(redmi.ControlServiceUuids.Order(), services.Order()));
+        Assert.Equal(spp, connector.History.ElementAt(1)[0]);
+        Assert.Equal(mma, connector.History.ElementAt(1)[^1]);
+    }
+
+    [Fact]
+    public async Task Xiaomi_SuccessfulHandshake_RestoresLeGattFirst()
+    {
+        var link = new FakeLink(true);
+        link.SetLeAudio(true);
+        var connector = new FakeConnector();
+        int calls = 0;
+        var redmi = EncoDeck.Protocol.Brands.Xiaomi.XiaomiDeviceProfile.Redmi;
+        var profile = new StartupProfile(() => Interlocked.Increment(ref calls) == 1
+            ? throw new IOException("Xiaomi control write timed out") : Task.FromResult(true), inner: redmi);
+        var (supervisor, store) = Create(link, connector, profile);
+        await using var _ = supervisor;
+        supervisor.Start();
+        await WaitFor(store, DeviceConnectionState.ControlReady);
+        supervisor.RequestReconnect();
+        await OppoDeviceControllerTests.WaitUntil(() => connector.Attempts >= 3, 3000);
+        await WaitFor(store, DeviceConnectionState.ControlReady);
+
+        var mma = EncoDeck.Protocol.Brands.Xiaomi.XiaomiProtocol.MmaGattServiceUuid;
+        var spp = EncoDeck.Protocol.Brands.Xiaomi.XiaomiProtocol.FastConnectSppUuid;
+        Assert.Equal([mma, spp, mma], connector.History.Take(3).Select(services => services[0]).ToArray());
     }
 
     [Fact]

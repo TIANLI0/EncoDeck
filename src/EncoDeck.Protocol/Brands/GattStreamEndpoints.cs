@@ -17,7 +17,12 @@ namespace EncoDeck.Protocol.Brands;
 /// LE Audio earbuds carry the service on each earbud's bonded LE identity: the connected identities
 /// are tried first, so one earbud worn alone is reached even when it is not the one at the public address.
 /// </param>
-public sealed record GattStreamEndpoint(Guid Service, Guid? Write, Guid? Notify, string Name, bool NameMatchedLeFallback = false, bool BondedLeIdentities = false);
+/// <param name="PreferUnacknowledgedWrites">
+/// Write without response whenever the write characteristic allows it, even if it also declares
+/// acknowledged writes. For firmware that never answers ATT write requests on its control characteristic.
+/// </param>
+public sealed record GattStreamEndpoint(Guid Service, Guid? Write, Guid? Notify, string Name, bool NameMatchedLeFallback = false, bool BondedLeIdentities = false,
+    bool PreferUnacknowledgedWrites = false);
 
 /// <summary>
 /// Byte-stream GATT services opened by the shared notify/write channel. Sony's MDR GATT service is
@@ -30,7 +35,8 @@ public static class GattStreamEndpoints
     [
         new(AkgBleUuids.BesService, AkgBleUuids.BesWrite, AkgBleUuids.BesNotify, "AKG BES GATT", NameMatchedLeFallback: true),
         new(AkgBleUuids.RaceService, AkgBleUuids.RaceWrite, AkgBleUuids.RaceNotify, "Airoha RACE GATT", NameMatchedLeFallback: true),
-        new(Xiaomi.XiaomiProtocol.MmaGattServiceUuid, Xiaomi.XiaomiProtocol.MmaGattWriteUuid, Xiaomi.XiaomiProtocol.MmaGattNotifyUuid, "Xiaomi MMA GATT", BondedLeIdentities: true),
+        new(Xiaomi.XiaomiProtocol.MmaGattServiceUuid, Xiaomi.XiaomiProtocol.MmaGattWriteUuid, Xiaomi.XiaomiProtocol.MmaGattNotifyUuid, "Xiaomi MMA GATT", BondedLeIdentities: true,
+            PreferUnacknowledgedWrites: true),
     ];
 
     public static GattStreamEndpoint? Find(Guid service) => All.FirstOrDefault(e => e.Service == service);
