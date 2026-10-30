@@ -20,7 +20,7 @@
     <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/TIANLI0/EncoDeck</RepositoryUrl>
 
-    <VersionPrefix>1.13.0</VersionPrefix>
+    <VersionPrefix>1.14.0</VersionPrefix>
     <VersionSuffix></VersionSuffix>
 
     <!-- Single source of truth for the Windows TFM used by every Windows-specific project. -->

@@ -2,6 +2,13 @@
 
 本文件记录 EncoDeck 每个版本的用户可见变化，格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。每个版本按“新增 / 改进 / 修复 / 移除”分类。
 
+## [1.14.0-beta.1] - 2026-10-31
+
+### 新增
+
+- 实验室页新增“LE Audio 左右声道校准”（实验性）：解决部分 Intel 蓝牙电脑在 LE Audio 下开始播放时，左耳比右耳晚约 7.5 ms（一个音频帧）、声音偏向右侧的问题。
+
+
 ## [1.13.0] - 2026-10-30 · realme 降噪与 EQ
 
 ### 新增
