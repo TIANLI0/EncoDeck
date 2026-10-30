@@ -19,6 +19,8 @@ public static class OppoModels
     {
         ModelId = "oppo-enco-x4",
         SupportsLeAudioPairing = true,
+        // Verified on fw 130: 0x0404 01 01 … answers 01 over the LE control channel once in LE mode.
+        RejectsNoiseChangeOnLeAudio = true,
         DisplayName = "OPPO Enco X4",
         ImageKey = "enco-x4",
         ProductIds = [0x06EC10],

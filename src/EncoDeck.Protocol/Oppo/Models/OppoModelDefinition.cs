@@ -57,6 +57,9 @@ public sealed record OppoModelDefinition
 {
     /// <summary>Offers experimental standard LE pairing for this exact model; does not assert host audio support.</summary>
     public bool SupportsLeAudioPairing { get; init; }
+
+    /// <summary>The earbuds answer status 01 to noise-mode changes once settled on LE Audio; set only where verified.</summary>
+    public bool RejectsNoiseChangeOnLeAudio { get; init; }
     public required string ModelId { get; init; }
 
     public required string DisplayName { get; init; }

@@ -788,7 +788,7 @@
   <data name="Connection_WaitingForLeAudio" xml:space="preserve"><value>LC3 を待機中 · ケースのボタンを長押しして再接続</value></data>
   <data name="LeAudio_Title.Text" xml:space="preserve"><value>LE Audio（LC3）接続（試験的）</value></data>
   <data name="LeAudio_Summary.Text" xml:space="preserve"><value>クラシック Bluetooth の A2DP ではなく、LE Audio と LC3 コーデックで Windows がこのイヤホンに接続できるようにします。PC の Bluetooth が LE Audio に対応している必要があります。</value></data>
-  <data name="LeAudio_NoiseNote.Text" xml:space="preserve"><value>LE Audio に切り替えると、EncoDeck からノイズコントロールを変更できなくなります。イヤホン本体で変更してください。</value></data>
+  <data name="LeAudio_NoiseNote.Text" xml:space="preserve"><value>Enco X4 は LE Audio に切り替えると、PC からのノイズコントロール変更を受け付けません。イヤホン本体で変更してください。</value></data>
   <data name="LeAudio_Switch" xml:space="preserve"><value>LE Audio に切り替え</value></data>
   <data name="LeAudio_Restore" xml:space="preserve"><value>クラシック Bluetooth に戻す</value></data>
   <data name="LeAudio_StatusLe" xml:space="preserve"><value>左右両方のイヤホンが LE でペアリング済みです。実際のオーディオ接続は Windows が管理します。</value></data>

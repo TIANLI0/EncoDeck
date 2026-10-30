@@ -78,6 +78,7 @@ public sealed partial class LeAudioSettings : UserControl
         }
         Visibility = state.LeAudioSwitch is not null || _bond?.PrimaryBonded == true
             || state.Profile is OppoDeviceProfile { Definition.SupportsLeAudioPairing: true } ? Visibility.Visible : Visibility.Collapsed;
+        NoiseNote.Visibility = state.Profile is OppoDeviceProfile { Definition.RejectsNoiseChangeOnLeAudio: true } ? Visibility.Visible : Visibility.Collapsed;
         Sync();
     }
 

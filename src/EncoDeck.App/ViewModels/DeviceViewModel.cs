@@ -513,7 +513,8 @@ public sealed partial class DeviceViewModel : ObservableObject
     private void ApplyNoise(DeviceState state, IDeviceProfile? profile)
     {
         IsNoiseAvailable = IsReady && profile is not null && profile.Capabilities.IsAvailable(DeviceCapability.NoiseCancellation, allowExperimental: false);
-        CanSetNoise = IsNoiseAvailable && !state.IsLeAudio;
+        // Only models verified to refuse noise changes over LE Audio (the X4) are greyed out there.
+        CanSetNoise = IsNoiseAvailable && !(state.IsLeAudio && profile is OppoDeviceProfile { Definition.RejectsNoiseChangeOnLeAudio: true });
         IsNoisePending = state.IsPending("noise-control");
         var noise = state.NoiseControl?.Value;
         IsOffSelected = noise?.Mode == NoiseControlMode.Off;

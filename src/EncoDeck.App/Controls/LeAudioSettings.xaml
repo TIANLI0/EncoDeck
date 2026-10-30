@@ -13,7 +13,7 @@
     <Border Style="{StaticResource CodecBadgeStyle}"><TextBlock Text="LC3" Style="{StaticResource CodecBadgeTextStyle}" /></Border>
    </local:WrapPanel>
    <TextBlock x:Uid="LeAudio_Summary" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" />
-   <TextBlock x:Uid="LeAudio_NoiseNote" TextWrapping="Wrap" />
+   <TextBlock x:Name="NoiseNote" x:Uid="LeAudio_NoiseNote" TextWrapping="Wrap" Visibility="Collapsed" />
    <TextBlock x:Name="Status" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" Visibility="Collapsed" />
    <InfoBar x:Name="Notice" IsOpen="False" Visibility="Collapsed" />
    <!-- The current step while an operation runs. -->

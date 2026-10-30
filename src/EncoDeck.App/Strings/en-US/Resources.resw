@@ -788,7 +788,7 @@
   <data name="Connection_WaitingForLeAudio" xml:space="preserve"><value>Waiting for LC3 · hold the case button to reconnect</value></data>
   <data name="LeAudio_Title.Text" xml:space="preserve"><value>LE Audio (LC3) connection (experimental)</value></data>
   <data name="LeAudio_Summary.Text" xml:space="preserve"><value>Lets Windows connect these earbuds over LE Audio with the LC3 codec instead of Classic Bluetooth A2DP. Your PC's Bluetooth must support LE Audio.</value></data>
-  <data name="LeAudio_NoiseNote.Text" xml:space="preserve"><value>After switching to LE Audio, noise control cannot be changed from EncoDeck. Change it on the earbuds instead.</value></data>
+  <data name="LeAudio_NoiseNote.Text" xml:space="preserve"><value>Once on LE Audio, the Enco X4 does not accept noise control changes from the PC. Change it on the earbuds instead.</value></data>
   <data name="LeAudio_Switch" xml:space="preserve"><value>Switch to LE Audio</value></data>
   <data name="LeAudio_Restore" xml:space="preserve"><value>Restore Classic Bluetooth</value></data>
   <data name="LeAudio_StatusLe" xml:space="preserve"><value>Both earbuds have LE bonds; Windows manages the actual audio connection.</value></data>

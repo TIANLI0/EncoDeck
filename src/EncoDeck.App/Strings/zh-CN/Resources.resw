@@ -788,7 +788,7 @@
   <data name="Connection_WaitingForLeAudio" xml:space="preserve"><value>等待 LC3 连接 · 长按充电盒按键可恢复</value></data>
   <data name="LeAudio_Title.Text" xml:space="preserve"><value>LE Audio（LC3）连接（实验性）</value></data>
   <data name="LeAudio_Summary.Text" xml:space="preserve"><value>让 Windows 通过 LE Audio 使用 LC3 编码连接这副耳机，取代传统蓝牙的 A2DP。电脑的蓝牙需支持 LE Audio。</value></data>
-  <data name="LeAudio_NoiseNote.Text" xml:space="preserve"><value>切换到 LE Audio 后，不支持通过 EncoDeck 切换降噪，请在耳机上手动切换降噪。</value></data>
+  <data name="LeAudio_NoiseNote.Text" xml:space="preserve"><value>Enco X4 切换到 LE Audio 后不接受来自电脑的降噪切换，请在耳机上手动切换降噪。</value></data>
   <data name="LeAudio_Switch" xml:space="preserve"><value>切换到 LE Audio</value></data>
   <data name="LeAudio_Restore" xml:space="preserve"><value>恢复传统蓝牙</value></data>
   <data name="LeAudio_StatusLe" xml:space="preserve"><value>左右耳均已完成 LE 配对；实际音频连接由 Windows 管理。</value></data>
