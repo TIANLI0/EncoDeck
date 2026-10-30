@@ -194,6 +194,7 @@
                         <controls:WrapPanel Style="{StaticResource LinkRowStyle}">
                             <HyperlinkButton Content="OppoPodsWindows" NavigateUri="https://github.com/3295074384/OppoPodsWindows" />
                             <HyperlinkButton Content="OppoPodsManager" NavigateUri="https://github.com/Zhaoyi-ya/OppoPodsManager" />
+                            <HyperlinkButton Content="QuickBuds" NavigateUri="https://github.com/spizganed/QuickBuds" />
                             <HyperlinkButton Content="OppoPods" NavigateUri="https://github.com/Leaf-lsgtky/OppoPods" />
                             <HyperlinkButton Content="HeyBuds" NavigateUri="https://github.com/abaichuan1017/HeyBuds" />
                         </controls:WrapPanel>

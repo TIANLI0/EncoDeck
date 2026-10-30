@@ -43,9 +43,16 @@
 | OPPO Enco Air4、OPPO Enco Buds3 Pro+、OPPO Enco Air4s | 电量、充电状态、降噪、通透、预设 EQ、空间音频、游戏模式、手势设置、双设备连接、查找耳机、固件信息 |
 | OPPO Enco Buds3、OPPO Enco Air4（新声版）、OPPO Enco R5、OPPO Enco xiapu OF | 电量、充电状态、预设 EQ、空间音频、游戏模式、手势设置、双设备连接、查找耳机、提示音量、固件信息 |
 | OPPO Enco Air5、OPPO Enco ohm DO、OPPO Enco ohm EX、OPPO Enco ohm | 电量、充电状态、降噪、通透、降噪档位、预设 EQ、自定义 EQ、空间音频、游戏模式、佩戴检测开关、手势设置、双设备连接、查找耳机、贴合度检测、提示音量、固件信息 |
-| realme Buds Wireless 6 Neo、realme Buds Wireless 6、realme Buds Air 3S、realme Buds T300、realme Buds N1 Pro、realme Buds T310、realme Buds N1、realme Buds T200、realme Buds Clip、realme TechLife Buds、realme Buds T500 | 电量、充电状态、查找耳机、固件信息 |
+| realme Buds Wireless 6 Neo、realme Buds Wireless 6、realme Buds Air 3S、realme Buds N1 Pro、realme Buds N1、realme TechLife Buds、realme Buds T500 | 电量、充电状态、查找耳机、固件信息 |
+| realme Buds T300、realme Buds T200 | 电量、充电状态、降噪、通透、预设 EQ、查找耳机、固件信息 |
+| realme Buds T310 | 电量、充电状态、降噪、通透、降噪档位、预设 EQ、查找耳机、固件信息 |
+| realme Buds Clip | 电量、充电状态、预设 EQ、查找耳机、固件信息 |
 | OnePlus Buds N | 电量、充电状态、预设 EQ、自定义 EQ、手势设置、查找耳机、固件信息 |
-| realme Buds Air 5 Pro、realme Buds Air 5、realme Buds Air6 Pro、realme Buds Air6、realme Buds Air7、realme Buds Air7 Pro、realme Buds T500 Pro、realme Buds Air8、realme Buds Air8 Pro、realme Buds T500 Pro Harry Potter Edition | 电量、充电状态、佩戴检测开关、查找耳机、固件信息 |
+| realme Buds Air6 Pro、realme Buds Air6、realme Buds Air7、realme Buds Air7 Pro、realme Buds T500 Pro、realme Buds Air8 | 电量、充电状态、降噪、通透、降噪档位、预设 EQ、佩戴检测开关、查找耳机、固件信息 |
+| realme Buds Air 5 Pro、realme Buds Air8 Pro | 电量、充电状态、降噪、通透、降噪档位、佩戴检测开关、查找耳机、固件信息 |
+| realme Buds Air 5、realme Buds T500 Pro Harry Potter Edition | 电量、充电状态、佩戴检测开关、查找耳机、固件信息 |
+
+realme 耳机的降噪与预设 EQ 按 [QuickBuds](https://github.com/spizganed/QuickBuds) 和 Gadgetbridge 记录的协议实现，上表只列出有用户在真机上确认过的型号。其他 realme 型号（如 Buds Wireless 3、T200x、T500 Pro Harry Potter Edition、TechLife Buds T500 Pro）的降噪和 EQ 暂列为实验功能，等待用户反馈。写入前会检查耳机上报的能力，写入后读回确认。
 
 ### Enco X4 验证状态
 

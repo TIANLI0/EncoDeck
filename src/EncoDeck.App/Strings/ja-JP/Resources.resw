@@ -76,6 +76,9 @@
   <data name="Eq_DynaudioOriginal" xml:space="preserve"><value>Dynaudio オリジナルサウンド</value></data>
   <data name="Eq_DynaudioHiRes" xml:space="preserve"><value>Dynaudio ハイレゾ</value></data>
   <data name="Eq_PureVocals" xml:space="preserve"><value>クリアボーカル</value></data>
+  <data name="Eq_RealmePureRaw" xml:space="preserve"><value>ピュアロー</value></data>
+  <data name="Eq_RealmeDeepBass" xml:space="preserve"><value>ディープベース</value></data>
+  <data name="Eq_RealmePureBass" xml:space="preserve"><value>ピュアベース</value></data>
   <data name="Eq_CrispHighs" xml:space="preserve"><value>クリアな高音</value></data>
   <data name="Eq_ThunderingBass" xml:space="preserve"><value>迫力の低音</value></data>
   <data name="Eq_UnknownPreset" xml:space="preserve"><value>プリセット {0}</value></data>

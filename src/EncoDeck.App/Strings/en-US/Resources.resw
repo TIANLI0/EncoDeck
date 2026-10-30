@@ -76,6 +76,9 @@
   <data name="Eq_DynaudioOriginal" xml:space="preserve"><value>Dynaudio original sound</value></data>
   <data name="Eq_DynaudioHiRes" xml:space="preserve"><value>Dynaudio high-resolution</value></data>
   <data name="Eq_PureVocals" xml:space="preserve"><value>Pure vocals</value></data>
+  <data name="Eq_RealmePureRaw" xml:space="preserve"><value>Pure Raw</value></data>
+  <data name="Eq_RealmeDeepBass" xml:space="preserve"><value>Deep Bass</value></data>
+  <data name="Eq_RealmePureBass" xml:space="preserve"><value>Pure Bass</value></data>
   <data name="Eq_CrispHighs" xml:space="preserve"><value>Crisp highs</value></data>
   <data name="Eq_ThunderingBass" xml:space="preserve"><value>Thundering bass</value></data>
   <data name="Eq_UnknownPreset" xml:space="preserve"><value>Preset {0}</value></data>

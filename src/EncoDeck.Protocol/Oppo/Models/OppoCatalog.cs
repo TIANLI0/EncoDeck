@@ -36,7 +36,8 @@ internal static partial class OppoCatalog
     /// <summary>Config actions whose row edits the long-press noise cycle.</summary>
     private static readonly HashSet<int> NoiseCycleActions = [11, 20, 25, 27];
 
-    private static readonly Lazy<OppoModelDefinition[]> LazyDefinitions = new(() => [.. Models.Concat(SupplementModels).Select(ToDefinition)]);
+    private static readonly Lazy<OppoModelDefinition[]> LazyDefinitions = new(() =>
+        [.. Models.Concat(SupplementModels).Concat(RealmeExtraModels).Select(WithRealmeFacts).Select(ToDefinition)]);
 
     // Lazy: the generated Models list lives in another part of this class, whose static
     // initializers may run after this one.
@@ -60,6 +61,7 @@ internal static partial class OppoCatalog
 
         var (presets, presetFirmware) = Equalizer(model);
         if (presets.Count > 0) Offer(DeviceCapability.Equalizer, "EQ presets, 0x0406 + 0x010F.");
+        ApplyRealmeConfidence(model, capabilities, noiseModes.Count > 0, presets.Count > 0);
 
         OppoCustomEqualizerSpec? customEq = null;
         if (model.Flag("customEqualizer") == 1)
@@ -336,6 +338,11 @@ internal static partial class OppoCatalog
         28 => ("Eq_PureVocals", "Pure vocals"),
         46 => ("Eq_CrispHighs", "Crisp highs"),
         29 => ("Eq_ThunderingBass", "Thundering bass"),
+        // realme built-ins (see OppoCatalog.Realme.cs).
+        RealmeEqPureRaw => ("Eq_RealmePureRaw", "Pure Raw"),
+        RealmeEqDeepBass => ("Eq_RealmeDeepBass", "Deep Bass"),
+        RealmeEqPureVoice => ("Eq_PureVocals", "Pure vocals"),
+        RealmeEqPureBass => ("Eq_RealmePureBass", "Pure Bass"),
         >= 5 and <= 22 or >= 25 and <= 27 or >= 30 and <= 35 or 40 or 41 => ($"Eq_Mode{modeType}", $"Preset {modeType}"),
         _ => null,
     };

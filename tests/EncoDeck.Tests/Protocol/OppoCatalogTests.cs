@@ -26,7 +26,7 @@ public class OppoCatalogTests
     public void Catalog_HasEveryOfficialModel()
     {
         Assert.Equal(85, OppoCatalog.Models.Count);
-        Assert.Equal(135, OppoModels.All.Count);
+        Assert.Equal(136, OppoModels.All.Count);
         Assert.Equal(OppoModels.All.Count, OppoModels.All.SelectMany(m => m.ProductIds).Distinct().Count());
         Assert.Same(OppoModels.EncoX4, OppoModels.FindByProductId(0x06EC10));
         Assert.All(OppoModels.All, m => Assert.False(m.IsGeneric));

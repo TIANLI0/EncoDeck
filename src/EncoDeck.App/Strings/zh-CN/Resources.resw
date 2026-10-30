@@ -76,6 +76,9 @@
   <data name="Eq_DynaudioOriginal" xml:space="preserve"><value>丹拿原声</value></data>
   <data name="Eq_DynaudioHiRes" xml:space="preserve"><value>丹拿高解析</value></data>
   <data name="Eq_PureVocals" xml:space="preserve"><value>纯享人声</value></data>
+  <data name="Eq_RealmePureRaw" xml:space="preserve"><value>纯净原声</value></data>
+  <data name="Eq_RealmeDeepBass" xml:space="preserve"><value>深沉低音</value></data>
+  <data name="Eq_RealmePureBass" xml:space="preserve"><value>纯净低音</value></data>
   <data name="Eq_CrispHighs" xml:space="preserve"><value>清亮高音</value></data>
   <data name="Eq_ThunderingBass" xml:space="preserve"><value>澎湃低音</value></data>
   <data name="Eq_UnknownPreset" xml:space="preserve"><value>音效 {0}</value></data>
