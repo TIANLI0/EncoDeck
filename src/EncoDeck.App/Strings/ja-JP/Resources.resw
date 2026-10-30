@@ -801,6 +801,29 @@
   <data name="LeAudio_MicOff.Header" xml:space="preserve"><value>ヘッドセットのマイクを無効化</value></data>
   <data name="LeAudio_MicOffNote" xml:space="preserve"><value>アプリがヘッドセットのマイクを開くと、Windows は LE Audio を双方向通話構成に切り替え、再生音質が大きく低下します。無効にすると、アプリは他のマイクしか使用できず、イヤホンはメディア品質の再生を維持します。再ペアリング後は再度オンにしてください。</value></data>
   <data name="LeAudio_MicFailed" xml:space="preserve"><value>ヘッドセットのマイクを変更できませんでした: {0}</value></data>
+  <data name="LeAudioSync_Title.Text" xml:space="preserve"><value>LE Audio 左右チャンネルの調整（試験的）</value></data>
+  <data name="LeAudioSync_Summary.Text" xml:space="preserve"><value>Intel の Bluetooth を使う一部の PC では、LE Audio のオーディオリンクを確立するたびに一定の確率で左のイヤホンが右より約 7.5 ms（1 オーディオフレーム）遅れ、音が右に寄って聞こえます。リンク確立後はずれが変わらないため、EncoDeck がリンクを保ち続け、一度耳で確認できるようにします。ずれていればそろうまでリンクを作り直します。</value></data>
+  <data name="LeAudioSync_Enable.Header" xml:space="preserve"><value>LE Audio リンクを保ち、左右を調整する</value></data>
+  <data name="LeAudioSync_Notes.Text" xml:space="preserve"><value>オンの間、EncoDeck はイヤホンの LE Audio 出力を無音で再生し続け、あとから起動したプログラムも調整済みのリンクを使います。バッテリーの消費が少し増え、スマートフォンへの切り替えに影響することがあります。リンクを作り直す前に、再生中のほかのプログラムを一時停止してください。</value></data>
+  <data name="LeAudioSync_Help.Header" xml:space="preserve"><value>しくみと制限</value></data>
+  <data name="LeAudioSync_HelpHow.Text" xml:space="preserve"><value>Windows は LE Audio リンクを確立するたびに左右がそろうかどうかが決まり、リンクが閉じるまで変わりません。「左右がそろっているか確認」は、同じリンクで左右まったく同じクリック音を再生します。そろっていれば頭の真ん中で聞こえ、1 フレームずれていると片側に寄るか 2 回に聞こえます。その場合は「片側に寄る／2 回に聞こえる」をクリックすると、EncoDeck がリンクを作り直してもう一度再生します。通常 1～2 回でそろいます。</value></data>
+  <data name="LeAudioSync_HelpLimits.Text" xml:space="preserve"><value>イヤホンが再接続されたときや、プログラムがイヤホンのマイクを使ったとき（通話、ゲームのボイスチャット）は Windows がリンクを作り直すため、もう一度確認するよう表示します。Intel の Bluetooth で、LE Audio が Intel スマート・サウンド・テクノロジー（SST）経由で動作する PC 専用です。</value></data>
+  <data name="LeAudioSync_Check" xml:space="preserve"><value>左右がそろっているか確認</value></data>
+  <data name="LeAudioSync_CheckPrompt" xml:space="preserve"><value>テスト音（左右まったく同じクリック音）を再生しています。頭の真ん中で聞こえますか？</value></data>
+  <data name="LeAudioSync_Centered" xml:space="preserve"><value>真ん中で聞こえる</value></data>
+  <data name="LeAudioSync_Offset" xml:space="preserve"><value>片側に寄る／2 回に聞こえる</value></data>
+  <data name="LeAudioSync_Support_Checking" xml:space="preserve"><value>この PC が対応しているか確認しています…</value></data>
+  <data name="LeAudioSync_Support_Supported" xml:space="preserve"><value></value></data>
+  <data name="LeAudioSync_Support_NoRadio" xml:space="preserve"><value>Bluetooth アダプターが見つかりません。</value></data>
+  <data name="LeAudioSync_Support_NotIntel" xml:space="preserve"><value>この PC の Bluetooth は Intel 製ではないため、この機能は使えません。</value></data>
+  <data name="LeAudioSync_Support_NoIntelOffload" xml:space="preserve"><value>この PC の LE Audio は Intel スマート・サウンド・テクノロジー（SST）経由で動作していないため、この機能は使えません。</value></data>
+  <data name="LeAudioSync_Status_WaitingForDevice" xml:space="preserve"><value>LE Audio イヤホン（左右とも接続）を待っています。</value></data>
+  <data name="LeAudioSync_Status_NeedsCheck" xml:space="preserve"><value>LE Audio リンクを保っていますが、左右がそろっているかはまだ確認していません。</value></data>
+  <data name="LeAudioSync_Status_Checking" xml:space="preserve"><value>テスト音を再生しています…</value></data>
+  <data name="LeAudioSync_Status_Aligned" xml:space="preserve"><value>左右はそろっています。リンクを保っています。</value></data>
+  <data name="LeAudioSync_Status_Rebuilding" xml:space="preserve"><value>オーディオリンクを作り直しています（{0} 回目）…</value></data>
+  <data name="LeAudioSync_Status_WaitingForIdle" xml:space="preserve"><value>ほかのプログラムが再生中です。一時停止するとリンクを作り直します。</value></data>
+  <data name="LeAudioSync_Status_MicrophoneInUse" xml:space="preserve"><value>プログラムがイヤホンのマイクを使っているため、Windows が通話用のリンクに切り替えました。マイクが閉じたらもう一度確認してください。</value></data>
   <data name="LeAudio_Endpoint_Disabled" xml:space="preserve"><value>クラシック A2DP のレンダリングエンドポイントを無効にしました。サウンド設定で LE Audio の「スピーカー」エンドポイントを選択してください。</value></data>
   <data name="LeAudio_Endpoint_AlreadyLeAudioOnly" xml:space="preserve"><value>クラシック A2DP エンドポイントは既に無効になっています。</value></data>
   <data name="LeAudio_Endpoint_NoClassicEndpoint" xml:space="preserve"><value>無効にできるクラシック A2DP エンドポイントが見つかりませんでした。</value></data>

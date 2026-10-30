@@ -37,6 +37,7 @@ public sealed class AppHost : IAsyncDisposable
             settings, Path.Combine(paths.UpdatesDirectory, "last-check.txt"), loggers.CreateLogger<UpdateManager>());
         StoreUpdates = new StoreUpdateService(loggers.CreateLogger<StoreUpdateService>());
         Bridge = new A2dpBridgeCompanion(Path.Combine(paths.Root, "Components"), store, settings, loggers.CreateLogger<A2dpBridgeCompanion>());
+        LeAudioSync = new LeAudioSyncCompanion(store, settings, loggers.CreateLogger<LeAudioSyncCompanion>());
         if (devices is DeviceManager manager)
         {
             manager.BridgeConnector = new A2dpBridgeChannelConnector(() => Bridge.Monitor, loggers.CreateLogger<A2dpBridgeChannelConnector>());
@@ -81,6 +82,9 @@ public sealed class AppHost : IAsyncDisposable
 
     /// <summary>A2DP Windows Bridge: the optional component, its core and the "connected through the bridge" state.</summary>
     public A2dpBridgeCompanion Bridge { get; internal set; }
+
+    /// <summary>Labs: keeps LE Audio earbuds' left and right channels aligned on Intel offload PCs.</summary>
+    public LeAudioSyncCompanion LeAudioSync { get; }
 
     public StartupRegistration Startup { get; } = new();
 
@@ -140,6 +144,7 @@ public sealed class AppHost : IAsyncDisposable
         ResourceSync.Start();
         Devices.Start();
         Bridge.Start();
+        LeAudioSync.Start();
         // The Store updates the MSIX build; GitHub Releases are for the installer build only.
         if (!PackageIdentity.IsPackaged) Updates.Start();
     }
@@ -148,6 +153,7 @@ public sealed class AppHost : IAsyncDisposable
     {
         await Devices.DisposeAsync();
         await Bridge.DisposeAsync();
+        await LeAudioSync.DisposeAsync();
         await ResourceSync.DisposeAsync();
         await Updates.DisposeAsync();
         ResourceClient.Dispose();

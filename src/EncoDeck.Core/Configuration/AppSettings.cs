@@ -104,6 +104,9 @@ public sealed record AppSettings
     /// <summary>Start the A2DP Windows Bridge core (in the background) when EncoDeck starts, if it is installed and not running.</summary>
     public bool A2dpBridgeAutoStart { get; init; }
 
+    /// <summary>Labs: hold the LE Audio link and let the user check (and rebuild) its left/right alignment.</summary>
+    public bool LeAudioSyncGuard { get; init; }
+
     /// <summary>The main window's last size and position, or null for the default (centered).</summary>
     public WindowBounds? MainWindowBounds { get; init; }
 

@@ -196,6 +196,16 @@ public sealed class WindowsAudioEndpointPlatform : IAudioEndpointPlatform
     [DllImport("cfgmgr32.dll", CharSet = CharSet.Unicode)]
     private static extern int CM_Get_DevNode_PropertyW(uint devInst, ref DevPropKey key, out uint propertyType, IntPtr buffer, ref uint size, uint flags);
 
+    /// <summary>
+    /// The MMDevice endpoint id that IMMDeviceEnumerator::GetDevice takes ({0.0.0.…}.{guid} for render,
+    /// {0.0.1.…}.{guid} for capture) from an SWD\MMDEVAPI instance id.
+    /// </summary>
+    public static string ToMmDeviceId(string instanceId)
+    {
+        int index = instanceId.IndexOf("{0.0.", StringComparison.OrdinalIgnoreCase);
+        return index >= 0 ? instanceId[index..] : instanceId;
+    }
+
     private static string ToAudioEndpointId(string instanceId)
     {
         int index = instanceId.IndexOf("{0.0.0.", StringComparison.OrdinalIgnoreCase);

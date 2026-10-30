@@ -34,6 +34,8 @@ internal static class ProbeApp
                 "le-br-switch" => await WriteCommands.SetLeBrSwitchAsync(options, ct),
                 "monitor" => await MonitorCommand.RunAsync(options, ct),
                 "le-audio" => await LeAudioCommand.RunAsync(options, ct),
+                "le-sync" => await LeSyncCommand.RunAsync(options, ct),
+                "le-sync-selftest" => await LeSyncCommand.SelfTestAsync(options, ct),
                 "multipoint-off" => await LeAudioCommand.DisableMultipointCommandAsync(options, ct),
                 "render-model" => await RenderModelCommand.RunAsync(options, ct),
                 "bridge" => await BridgeCommand.RunAsync(options, ct),
@@ -99,6 +101,12 @@ internal static class ProbeApp
                        [--pair --confirm-write]  Confirm multipoint off, then wait for pairing mode and replace this PC's bonds.
                        [--legacy-pairing]  With --pair, use explicit addresses without Windows set discovery for comparison.
                        [--restore --confirm-write]  Remove this PC's LE Audio pairings (pair again in Windows Settings).
+              le-sync [--seconds N]       Hold the active LE Audio link like the Labs left/right calibration and
+                      [--resync-file <path>]  print its status; creating the file rebuilds the link, creating
+                      [--check-file <path>]   the check file plays the check clicks. Default 60 s.
+                      [--render <endpoint id>]  Use this render endpoint instead of the active LE Audio one.
+              le-sync-selftest [--seconds N]  Research, run elevated: turn on Intel link statistics and print the
+                                              per-CIS reports while audio plays, then restore the controller.
               monitor [--seconds N]       Run the app's device runtime headlessly, print state changes
                                           and finally every feature value the session start read.
                       [--set-anc a,b --confirm-write]  Also run commands (off|anc|transparency|adaptive|smart|deep|medium|light|less|standard|more).

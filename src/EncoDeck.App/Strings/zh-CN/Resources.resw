@@ -801,6 +801,29 @@
   <data name="LeAudio_MicOff.Header" xml:space="preserve"><value>禁用耳机麦克风</value></data>
   <data name="LeAudio_MicOffNote" xml:space="preserve"><value>应用打开耳机麦克风时，Windows 会把 LE Audio 切到双向通话配置，播放音质明显下降。禁用后应用只能使用其他麦克风，耳机播放保持媒体音质。重新配对后需要再次开启。</value></data>
   <data name="LeAudio_MicFailed" xml:space="preserve"><value>无法更改耳机麦克风：{0}</value></data>
+  <data name="LeAudioSync_Title.Text" xml:space="preserve"><value>LE Audio 左右声道校准（实验性）</value></data>
+  <data name="LeAudioSync_Summary.Text" xml:space="preserve"><value>部分使用 Intel 蓝牙的电脑在 LE Audio 下，每次建立音频链路时都有一定概率左耳比右耳晚约 7.5 ms（一个音频帧），声音偏向右侧、人声不在正中。链路建立后偏差就不再变化，所以 EncoDeck 会一直保持这条链路，并让你用耳朵检查一次：不对就重新建立，直到左右对齐。</value></data>
+  <data name="LeAudioSync_Enable.Header" xml:space="preserve"><value>保持 LE Audio 链路并校准左右声道</value></data>
+  <data name="LeAudioSync_Notes.Text" xml:space="preserve"><value>开启后，EncoDeck 会让耳机的 LE Audio 输出一直保持播放（静音），之后打开的程序都沿用这条已校准的链路；耳机和电脑会多耗一点电，也可能影响手机抢占连接。重新建立链路前需要先暂停其他正在播放的程序。</value></data>
+  <data name="LeAudioSync_Help.Header" xml:space="preserve"><value>工作原理与限制</value></data>
+  <data name="LeAudioSync_HelpHow.Text" xml:space="preserve"><value>Windows 每次建立 LE Audio 链路时就决定了左右是否对齐，之后只要链路不断开就不会再变。“检查左右是否对齐”会在同一条链路上播放双耳完全相同的咔哒声：对齐时声音在头部正中间；错开一帧时会明显偏向一侧，或听成两声。偏了就点“偏向一侧或听成两声”，EncoDeck 会重新建立链路并再次播放，通常一两次就能对齐。</value></data>
+  <data name="LeAudioSync_HelpLimits.Text" xml:space="preserve"><value>耳机断开重连，或有程序使用耳机麦克风（通话、游戏语音）时，Windows 会重新建立链路，卡片会提示重新检查。仅支持使用 Intel 蓝牙、并通过 Intel 智音技术（SST）运行 LE Audio 的电脑。</value></data>
+  <data name="LeAudioSync_Check" xml:space="preserve"><value>检查左右是否对齐</value></data>
+  <data name="LeAudioSync_CheckPrompt" xml:space="preserve"><value>正在播放测试音（双耳完全相同的咔哒声）。声音在头部正中间吗？</value></data>
+  <data name="LeAudioSync_Centered" xml:space="preserve"><value>在正中间</value></data>
+  <data name="LeAudioSync_Offset" xml:space="preserve"><value>偏向一侧或听成两声</value></data>
+  <data name="LeAudioSync_Support_Checking" xml:space="preserve"><value>正在检查这台电脑是否支持…</value></data>
+  <data name="LeAudioSync_Support_Supported" xml:space="preserve"><value></value></data>
+  <data name="LeAudioSync_Support_NoRadio" xml:space="preserve"><value>没有找到蓝牙适配器。</value></data>
+  <data name="LeAudioSync_Support_NotIntel" xml:space="preserve"><value>这台电脑的蓝牙不是 Intel 的，无法使用此功能。</value></data>
+  <data name="LeAudioSync_Support_NoIntelOffload" xml:space="preserve"><value>这台电脑的 LE Audio 没有通过 Intel 智音技术（SST）运行，无法使用此功能。</value></data>
+  <data name="LeAudioSync_Status_WaitingForDevice" xml:space="preserve"><value>等待 LE Audio 耳机（两只都连接）。</value></data>
+  <data name="LeAudioSync_Status_NeedsCheck" xml:space="preserve"><value>已保持 LE Audio 链路，但还没有检查左右是否对齐。</value></data>
+  <data name="LeAudioSync_Status_Checking" xml:space="preserve"><value>正在播放测试音…</value></data>
+  <data name="LeAudioSync_Status_Aligned" xml:space="preserve"><value>左右已对齐，链路保持中。</value></data>
+  <data name="LeAudioSync_Status_Rebuilding" xml:space="preserve"><value>正在重新建立音频链路（第 {0} 次）…</value></data>
+  <data name="LeAudioSync_Status_WaitingForIdle" xml:space="preserve"><value>其他程序正在播放。暂停它们之后会自动重新建立链路。</value></data>
+  <data name="LeAudioSync_Status_MicrophoneInUse" xml:space="preserve"><value>有程序在使用耳机麦克风，Windows 改用了通话链路；麦克风关闭后需要重新检查。</value></data>
   <data name="LeAudio_Endpoint_Disabled" xml:space="preserve"><value>已禁用经典 A2DP 渲染端点；请在声音设置中选择 LE Audio 的“扬声器”。</value></data>
   <data name="LeAudio_Endpoint_AlreadyLeAudioOnly" xml:space="preserve"><value>经典 A2DP 端点已经处于禁用状态。</value></data>
   <data name="LeAudio_Endpoint_NoClassicEndpoint" xml:space="preserve"><value>没有找到可禁用的经典 A2DP 端点。</value></data>

@@ -11,6 +11,7 @@
             <TextBlock x:Uid="Labs_Summary" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}"
                        Text="Experimental audio features. They change Windows Bluetooth or audio settings and are not guaranteed to work on every device." />
             <controls:LeAudioSettings />
+            <controls:LeAudioSyncSettings />
             <controls:LhdcSettings />
             <controls:A2dpBridgeSettings />
         </StackPanel>

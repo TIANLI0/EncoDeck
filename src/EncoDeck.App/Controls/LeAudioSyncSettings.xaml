@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl x:Class="EncoDeck.App.Controls.LeAudioSyncSettings"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:local="using:EncoDeck.App.Controls">
+ <!-- Same layout as the other labs cards: title, summary, switch, requirement, status, message bar, actions, notes, help. -->
+ <Border Style="{StaticResource CardStyle}">
+  <StackPanel Spacing="10">
+   <TextBlock x:Uid="LeAudioSync_Title" Style="{StaticResource BodyStrongTextBlockStyle}" />
+   <TextBlock x:Uid="LeAudioSync_Summary" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" />
+   <ToggleSwitch x:Name="Enable" x:Uid="LeAudioSync_Enable" Toggled="OnToggled" IsEnabled="False" />
+   <!-- Why the switch is unavailable on this PC. -->
+   <TextBlock x:Name="Requirement" TextWrapping="Wrap" Visibility="Collapsed" />
+   <TextBlock x:Name="Status" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" Visibility="Collapsed" />
+   <InfoBar x:Name="Notice" IsOpen="False" Visibility="Collapsed" />
+   <!-- While the check clicks play: the question and its two answers. -->
+   <TextBlock x:Name="CheckPrompt" TextWrapping="Wrap" Visibility="Collapsed" AutomationProperties.LiveSetting="Assertive" />
+   <local:WrapPanel HorizontalSpacing="8" VerticalSpacing="8">
+    <Button x:Name="Check" Click="OnCheck" Style="{StaticResource AccentButtonStyle}" Visibility="Collapsed" />
+    <Button x:Name="Centered" Click="OnCentered" Style="{StaticResource AccentButtonStyle}" Visibility="Collapsed" />
+    <Button x:Name="Offset" Click="OnOffset" Visibility="Collapsed" />
+   </local:WrapPanel>
+   <TextBlock x:Uid="LeAudioSync_Notes" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" />
+   <Expander x:Uid="LeAudioSync_Help" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+    <StackPanel Spacing="10">
+     <TextBlock x:Uid="LeAudioSync_HelpHow" TextWrapping="Wrap" />
+     <TextBlock x:Uid="LeAudioSync_HelpLimits" TextWrapping="Wrap" />
+     <HyperlinkButton x:Uid="LeAudio_Guide" NavigateUri="https://github.com/TIANLI0/EncoDeck/blob/main/docs/LE_AUDIO.md" Padding="0" />
+    </StackPanel>
+   </Expander>
+  </StackPanel>
+ </Border>
+</UserControl>

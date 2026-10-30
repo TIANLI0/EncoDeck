@@ -801,6 +801,29 @@
   <data name="LeAudio_MicOff.Header" xml:space="preserve"><value>Disable headset microphone</value></data>
   <data name="LeAudio_MicOffNote" xml:space="preserve"><value>When an app opens the headset microphone, Windows switches LE Audio to a two-way call configuration and playback quality drops noticeably. While disabled, apps can only use other microphones and the earbuds keep media-quality playback. Turn it on again after re-pairing.</value></data>
   <data name="LeAudio_MicFailed" xml:space="preserve"><value>Could not change the headset microphone: {0}</value></data>
+  <data name="LeAudioSync_Title.Text" xml:space="preserve"><value>LE Audio left/right calibration (experimental)</value></data>
+  <data name="LeAudioSync_Summary.Text" xml:space="preserve"><value>On some PCs with Intel Bluetooth, every time the LE Audio link is set up there is a chance the left earbud plays about 7.5 ms (one audio frame) behind the right, which pulls the sound to the right. Once the link is up the offset no longer changes, so EncoDeck keeps the link open and lets you check it by ear once; if it is off, rebuild it until left and right line up.</value></data>
+  <data name="LeAudioSync_Enable.Header" xml:space="preserve"><value>Keep the LE Audio link and calibrate left/right</value></data>
+  <data name="LeAudioSync_Notes.Text" xml:space="preserve"><value>While this is on, EncoDeck keeps the earbuds' LE Audio output playing (silence), and programs started later use the calibrated link. It uses a little more battery and can make it harder for a phone to take over the earbuds. Pause other programs that are playing before rebuilding the link.</value></data>
+  <data name="LeAudioSync_Help.Header" xml:space="preserve"><value>How it works and limits</value></data>
+  <data name="LeAudioSync_HelpHow.Text" xml:space="preserve"><value>Windows decides whether left and right are aligned each time it sets up the LE Audio link, and it stays that way until the link closes. Check left/right alignment plays identical clicks in both ears on that same link: aligned, they sound in the middle of your head; one frame apart, they are clearly pulled to one side or heard twice. If so, click Off to one side or doubled: EncoDeck rebuilds the link and plays the clicks again. One or two tries usually do it.</value></data>
+  <data name="LeAudioSync_HelpLimits.Text" xml:space="preserve"><value>When the earbuds reconnect, or a program uses the earbud microphone (calls, game voice chat), Windows sets up a new link and the card asks for another check. Only for PCs with Intel Bluetooth that run LE Audio through Intel Smart Sound Technology (SST).</value></data>
+  <data name="LeAudioSync_Check" xml:space="preserve"><value>Check left/right alignment</value></data>
+  <data name="LeAudioSync_CheckPrompt" xml:space="preserve"><value>Playing the test (identical clicks in both ears). Do they sound in the middle of your head?</value></data>
+  <data name="LeAudioSync_Centered" xml:space="preserve"><value>In the middle</value></data>
+  <data name="LeAudioSync_Offset" xml:space="preserve"><value>Off to one side or doubled</value></data>
+  <data name="LeAudioSync_Support_Checking" xml:space="preserve"><value>Checking whether this PC is supported…</value></data>
+  <data name="LeAudioSync_Support_Supported" xml:space="preserve"><value></value></data>
+  <data name="LeAudioSync_Support_NoRadio" xml:space="preserve"><value>No Bluetooth adapter found.</value></data>
+  <data name="LeAudioSync_Support_NotIntel" xml:space="preserve"><value>This PC's Bluetooth is not Intel's, so this feature is not available.</value></data>
+  <data name="LeAudioSync_Support_NoIntelOffload" xml:space="preserve"><value>LE Audio on this PC does not run through Intel Smart Sound Technology (SST), so this feature is not available.</value></data>
+  <data name="LeAudioSync_Status_WaitingForDevice" xml:space="preserve"><value>Waiting for LE Audio earbuds (both connected).</value></data>
+  <data name="LeAudioSync_Status_NeedsCheck" xml:space="preserve"><value>The LE Audio link is held, but its left/right alignment has not been checked.</value></data>
+  <data name="LeAudioSync_Status_Checking" xml:space="preserve"><value>Playing the test…</value></data>
+  <data name="LeAudioSync_Status_Aligned" xml:space="preserve"><value>Left and right are aligned; the link is held.</value></data>
+  <data name="LeAudioSync_Status_Rebuilding" xml:space="preserve"><value>Rebuilding the audio link (attempt {0})…</value></data>
+  <data name="LeAudioSync_Status_WaitingForIdle" xml:space="preserve"><value>Other programs are playing. The link is rebuilt once you pause them.</value></data>
+  <data name="LeAudioSync_Status_MicrophoneInUse" xml:space="preserve"><value>A program is using the earbud microphone, so Windows switched to its call link. Check again after the microphone closes.</value></data>
   <data name="LeAudio_Endpoint_Disabled" xml:space="preserve"><value>The Classic A2DP render endpoint was disabled. Choose the LE Audio "Speakers" endpoint in Sound settings.</value></data>
   <data name="LeAudio_Endpoint_AlreadyLeAudioOnly" xml:space="preserve"><value>The Classic A2DP endpoint is already disabled.</value></data>
   <data name="LeAudio_Endpoint_NoClassicEndpoint" xml:space="preserve"><value>No Classic A2DP endpoint was found to disable.</value></data>

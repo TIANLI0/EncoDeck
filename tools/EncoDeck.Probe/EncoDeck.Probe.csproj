@@ -7,6 +7,7 @@
     <RootNamespace>EncoDeck.Probe</RootNamespace>
     <AssemblyName>EncoDeck.Probe</AssemblyName>
     <InvariantGlobalization>false</InvariantGlobalization>
+      <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\EncoDeck.Core\EncoDeck.Core.csproj" />
