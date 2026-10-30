@@ -2,6 +2,21 @@
 
 本文件记录 EncoDeck 每个版本的用户可见变化，格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。每个版本按“新增 / 改进 / 修复 / 移除”分类。
 
+## [1.13.0] - 2026-10-30 · realme 降噪与 EQ
+
+### 新增
+
+- realme Buds T500 Pro 支持切换降噪模式（关闭、通透、降噪，以及智能 / 深度 / 中度 / 轻度档位）和四种预设 EQ（[#14](https://github.com/TIANLI0/EncoDeck/issues/14)）。其他已有用户确认的 realme 型号（Buds Air6 / Air7 / Air8 系列、T200、T300、T310 等）同样提供降噪与预设 EQ，尚未确认的型号暂列为实验功能。写入前检查耳机上报的能力，写入后读回确认。协议参考 [QuickBuds](https://github.com/spizganed/QuickBuds) 与 Gadgetbridge。
+
+### 改进
+
+- LE Audio（LC3）连接时只在 Enco X4 上将降噪控件置灰：X4 实测在 LE Audio 下不接受来自电脑的降噪切换，其他耳机（包括小米 / Redmi 等其他品牌）照常可以切换降噪；实验室页的相关提示也只在 X4 上显示。
+- AKG N5 / N9 Hybrid 的实验性降噪改为按 Airoha RACE 规范解析降噪状态，并按芯片型号选择环境声档位；开启实验性功能后可切换关闭、降噪与环境声，写入前先读取、写入后回读确认。耳机未应答或应答无法识别时，设备能力列表会说明降噪不可用的原因，不再只显示电量。开启“原始协议日志”后记录 AKG 的收发帧。感谢 kalicyh/Raito 与 HellzYeahh/earshot 的公开研究。
+
+### 修复
+
+- 修复 REDMI Buds 8 Pro 等小米耳机在 LE Audio 下重连后控制通道一直停在“正在连接”、需在 Windows 中删除并重新配对的问题（[#15](https://github.com/TIANLI0/EncoDeck/issues/15)）：控制写入在耳机支持时改用无响应写入；写入卡住时，下次先尝试另一只耳机的 LE 连接和经典蓝牙控制通道。诊断日志新增所用连接、写入方式和重试间隔。
+
 ## [1.12.0] - 2026-10-29 · 经 A2DP Bridge 控制耳机与日语界面
 
 ### 新增
