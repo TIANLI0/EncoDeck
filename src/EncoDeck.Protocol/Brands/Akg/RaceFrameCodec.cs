@@ -4,7 +4,10 @@ using System.Runtime.InteropServices;
 
 namespace EncoDeck.Protocol.Brands.Akg;
 
-/// <summary>Airoha RACE stream framing from AKG Headphones 3.5.20, RacePacket.</summary>
+/// <summary>
+/// Airoha RACE stream framing: <c>05 type length(u16 LE, id + payload) id(u16 LE) payload</c>; type 5A
+/// command, 5B response, 5C command without response, 5D indication.
+/// </summary>
 public sealed class RaceFrameCodec
 {
     private readonly List<byte> _buffer = [];
@@ -28,7 +31,7 @@ public sealed class RaceFrameCodec
             {
                 var span = CollectionsMarshal.AsSpan(_buffer);
                 int length = BinaryPrimitives.ReadUInt16LittleEndian(span[2..]);
-                if (span[0] != 5 || span[1] is not (0x5A or 0x5B or 0x5D) || length is < 2 or > 4092)
+                if (span[0] != 5 || span[1] is not (0x5A or 0x5B or 0x5C or 0x5D) || length is < 2 or > 4092)
                 { _buffer.RemoveAt(0); continue; }
                 if (_buffer.Count < length + 4) break;
                 packets.Add(new(BinaryPrimitives.ReadUInt16LittleEndian(span[4..]), span[1], span.Slice(6, length - 2).ToArray()));
