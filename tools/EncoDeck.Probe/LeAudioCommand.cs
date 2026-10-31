@@ -150,7 +150,7 @@ internal static class LeAudioCommand
             var identity = new DeviceIdentity(device.DeviceId, device.Name, device.Address);
             var registry = new DeviceProfileRegistry(BuiltInProfiles.Create());
             if (registry.Match(identity) is not IControllableProfile profile) return null;
-            var link = await BluetoothLinkMonitor.CreateAsync(device.DeviceId, profile.Form == DeviceForm.Headphones, ct);
+            var link = await BluetoothLinkMonitor.CreateAsync(device.DeviceId, profile.Form == DeviceForm.Headphones, profile.ManagesLeAudioLink, ct);
             if (link is null) return null;
             var store = new DeviceStateStore();
             store.Reset(DeviceState.Empty with { Device = identity, Profile = profile });
