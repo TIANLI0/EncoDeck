@@ -27,10 +27,6 @@
     <Button x:Name="Cancel" Click="OnCancel" Visibility="Collapsed" />
     <HyperlinkButton x:Name="OpenBluetooth" x:Uid="LeAudio_OpenBluetooth" NavigateUri="ms-settings:bluetooth" />
    </local:WrapPanel>
-   <StackPanel x:Name="MicPanel" Spacing="2" Visibility="Collapsed">
-    <ToggleSwitch x:Name="MicOff" x:Uid="LeAudio_MicOff" Toggled="OnMicToggled" />
-    <TextBlock x:Uid="LeAudio_MicOffNote" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" />
-   </StackPanel>
    <TextBlock x:Uid="LeAudio_Disclaimer" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" />
    <Expander x:Uid="LeAudio_Help" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
     <StackPanel Spacing="10">

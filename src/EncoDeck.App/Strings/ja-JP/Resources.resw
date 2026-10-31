@@ -798,8 +798,6 @@
   <data name="LeAudio_StatusEndpointUnknown" xml:space="preserve"><value>Windows のオーディオエンドポイントの状態を確認できませんでした。ACL/GATT の準備完了は両耳再生を保証するものではありません。</value></data>
   <data name="LeAudio_DisableClassic" xml:space="preserve"><value>クラシックのオーディオエンドポイントを無効化</value></data>
   <data name="LeAudio_EnableClassic" xml:space="preserve"><value>クラシックのオーディオエンドポイントを復元</value></data>
-  <data name="LeAudio_MicOff.Header" xml:space="preserve"><value>ヘッドセットのマイクを無効化</value></data>
-  <data name="LeAudio_MicOffNote" xml:space="preserve"><value>アプリがヘッドセットのマイクを開くと、Windows は LE Audio を双方向通話構成に切り替え、再生音質が大きく低下します。無効にすると、アプリは他のマイクしか使用できず、イヤホンはメディア品質の再生を維持します。再ペアリング後は再度オンにしてください。</value></data>
   <data name="LeAudio_MicFailed" xml:space="preserve"><value>ヘッドセットのマイクを変更できませんでした: {0}</value></data>
   <data name="LeAudioSync_Title.Text" xml:space="preserve"><value>LE Audio 左右チャンネルの調整（試験的）</value></data>
   <data name="LeAudioSync_Summary.Text" xml:space="preserve"><value>Intel の Bluetooth を使う一部の PC では、LE Audio のオーディオリンクを確立するたびに一定の確率で左のイヤホンが右より約 7.5 ms（1 オーディオフレーム）遅れ、音が右に寄って聞こえます。リンク確立後はずれが変わらないため、EncoDeck がリンクを保ち続け、一度耳で確認できるようにします。ずれていればそろうまでリンクを作り直します。</value></data>
@@ -830,6 +828,10 @@
   <data name="LeAudioCodec_PresetDefault" xml:space="preserve"><value>Windows の既定（変更しない）</value></data>
   <data name="LeAudioCodec_PresetFormat" xml:space="preserve"><value>{0} kbps · {1} ms</value></data>
   <data name="LeAudioCodec_Latency" xml:space="preserve"><value>遅延：LC3 の符号化は約 {0} ms。リンクの伝送は Windows が決め、上限はゲーム中 {1} ms、それ以外は {2} ms です。さらにイヤホン側に {3} ms の再生バッファーがあります。ビットレートはパケットの大きさを変えるだけで、遅延にはほとんど影響しません。</value></data>
+  <data name="LeAudioCodec_NoCall.Header" xml:space="preserve"><value>通話モードに切り替えない（イヤホンのマイクを無効化）</value></data>
+  <data name="LeAudioCodec_NoCallNote.Text" xml:space="preserve"><value>ゲームのボイスチャットや通話アプリの音も他の音と同じ高音質リンクで再生され、イヤホンが通話構成（音質の急低下、マイク チャンネル）に切り替わらなくなります。イヤホンのマイクも無効になり、プログラムからは見えなくなります。音声には別のマイクを使ってください。オンにした後、イヤホンを充電ケースに戻して取り出す（一度再接続する）と有効になります。</value></data>
+  <data name="LeAudioCodec_NoCallName" xml:space="preserve"><value>通話モードなし</value></data>
+  <data name="LeAudioCodec_Result_NoCallReconnect" xml:space="preserve"><value>「通話モードに切り替えない」は、イヤホンを充電ケースに戻して取り出した（一度再接続した）後に有効になります。</value></data>
   <data name="LeAudioCodec_Result_SymbolsUnavailable" xml:space="preserve"><value>この PC の Windows Bluetooth オーディオ コンポーネントの公開シンボルを Microsoft のシンボル サーバーからダウンロードできませんでした（インターネット接続が必要、約 12 MB）。しばらくしてからもう一度お試しください。</value></data>
   <data name="LeAudioCodec_Mode.Header" xml:space="preserve"><value>伝送方式</value></data>
   <data name="LeAudioCodec_Mode_Auto" xml:space="preserve"><value>自動（Windows が決定：ゲーム中は遅延優先、それ以外は安定性優先）</value></data>

@@ -111,6 +111,7 @@ internal static class ProbeApp
               le-hook [status]            Labs LE Audio bitrate: support, applied preset and the hook's log.
               le-hook apply --preset <id> Elevated: what the card's Apply does (48_1..48_5, or default).
                       [--mode auto|low|high]  Transport: Windows' choice, latency first or reliability first.
+                      [--no-call]             Calls and game chat do not switch the earbuds to a call link.
               monitor [--seconds N]       Run the app's device runtime headlessly, print state changes
                                           and finally every feature value the session start read.
                       [--set-anc a,b --confirm-write]  Also run commands (off|anc|transparency|adaptive|smart|deep|medium|light|less|standard|more).

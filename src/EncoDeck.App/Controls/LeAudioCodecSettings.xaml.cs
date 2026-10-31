@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 using System.Globalization;
 using EncoDeck.App.Services;
+using EncoDeck.Bluetooth.LeAudio;
 using EncoDeck.Platform.LeAudioCodec;
 using EncoDeck.Platform.LeAudioSync;
 using Microsoft.UI.Xaml;
@@ -85,10 +86,12 @@ public sealed partial class LeAudioCodecSettings : UserControl
         {
             Preset.SelectedItem = Preset.Items.OfType<ComboBoxItem>().FirstOrDefault(i => Equals(i.Tag, applied.Preset));
             Mode.SelectedItem = Mode.Items.OfType<ComboBoxItem>().FirstOrDefault(i => Equals(i.Tag, applied.Mode));
+            NoCall.IsOn = applied.NoCallMode;
         }
-        Preset.IsEnabled = Mode.IsEnabled = Apply.IsEnabled = !_busy;
+        Preset.IsEnabled = Mode.IsEnabled = NoCall.IsEnabled = Apply.IsEnabled = !_busy;
 
-        string choice = $"{LeAudioCodecText.Preset(applied.Preset)} · {Loc.Get($"LeAudioCodec_ModeName_{applied.Mode}")}";
+        string choice = $"{LeAudioCodecText.Preset(applied.Preset)} · {Loc.Get($"LeAudioCodec_ModeName_{applied.Mode}")}"
+            + (applied.NoCallMode ? $" · {Loc.Get("LeAudioCodec_NoCallName")}" : "");
         Status.Text = Codec.Pending ? Loc.Get("LeAudioCodec_Status_Pending")
             : applied.IsWindowsDefault ? Loc.Get("LeAudioCodec_Status_Default")
             : Loc.Format(applied.Active ? "LeAudioCodec_Status_Active" : "LeAudioCodec_Status_Lost", choice);
@@ -97,17 +100,34 @@ public sealed partial class LeAudioCodecSettings : UserControl
             : Loc.Get("LeAudioCodec_LinkUnknown");
     }
 
+    /// <summary>Enables or disables the earbuds' LE Audio microphone endpoint; returns an error text, or null.</summary>
+    private static async Task<string?> SetMicrophoneAsync(bool enabled)
+    {
+        if (LeAudio.LeAudioAddress is not { } address) return null;
+        try
+        {
+            var result = await LeAudioMicrophone.SetEnabledAsync(address, enabled);
+            return result.Success ? null : result.Detail ?? "";
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            return ex.Message;
+        }
+    }
+
     private async void OnApply(object sender, RoutedEventArgs e)
     {
         if (_busy || SelectedPreset is not { } preset) return;
         LeAudioLatencyMode mode = SelectedMode;
+        bool noCall = NoCall.IsOn;
+        bool hadNoCall = LeAudioCodecHook.ReadApplied() is { NoCallMode: true, Active: true };
         _busy = true;
         Apply.Content = Loc.Get("LeAudioCodec_Applying");
         CardNotice.Hide(Notice);
         Refresh(selectApplied: false);
         try
         {
-            int result = await LeAudioCodecCompanion.ApplyAsync(preset, mode);
+            int result = await LeAudioCodecCompanion.ApplyAsync(preset, mode, noCall);
             if (result == LeAudioCodecHook.Result.Ok)
             {
                 // Confirmed (card and notification) once Windows sets up the next LE Audio stream with it.
@@ -118,7 +138,12 @@ public sealed partial class LeAudioCodecSettings : UserControl
                 bool rebuild = App.Instance.Host.Settings.Current.LeAudioSyncGuard
                     && sync.Status.State is LeAudioSyncState.NeedsCheck or LeAudioSyncState.Aligned or LeAudioSyncState.Checking;
                 if (rebuild) sync.ReportOffset();
-                CardNotice.Show(Notice, InfoBarSeverity.Success, Loc.Get(rebuild ? "LeAudioCodec_Result_OkRebuilt" : "LeAudioCodec_Result_Ok"));
+                string message = Loc.Get(rebuild ? "LeAudioCodec_Result_OkRebuilt" : "LeAudioCodec_Result_Ok");
+                // Without the call link the earbud microphone has no use: disable it so programs do not find it.
+                if (noCall != hadNoCall && await SetMicrophoneAsync(enabled: !noCall) is { } error)
+                    message += " " + Loc.Format("LeAudio_MicFailed", error);
+                if (noCall && !hadNoCall) message += " " + Loc.Get("LeAudioCodec_Result_NoCallReconnect");
+                CardNotice.Show(Notice, InfoBarSeverity.Success, message);
             }
             else
             {

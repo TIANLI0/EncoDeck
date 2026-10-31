@@ -798,8 +798,6 @@
   <data name="LeAudio_StatusEndpointUnknown" xml:space="preserve"><value>The Windows audio endpoint state could not be confirmed; ACL/GATT readiness does not prove dual-ear playback.</value></data>
   <data name="LeAudio_DisableClassic" xml:space="preserve"><value>Disable Classic audio endpoint</value></data>
   <data name="LeAudio_EnableClassic" xml:space="preserve"><value>Restore Classic audio endpoint</value></data>
-  <data name="LeAudio_MicOff.Header" xml:space="preserve"><value>Disable headset microphone</value></data>
-  <data name="LeAudio_MicOffNote" xml:space="preserve"><value>When an app opens the headset microphone, Windows switches LE Audio to a two-way call configuration and playback quality drops noticeably. While disabled, apps can only use other microphones and the earbuds keep media-quality playback. Turn it on again after re-pairing.</value></data>
   <data name="LeAudio_MicFailed" xml:space="preserve"><value>Could not change the headset microphone: {0}</value></data>
   <data name="LeAudioSync_Title.Text" xml:space="preserve"><value>LE Audio left/right calibration (experimental)</value></data>
   <data name="LeAudioSync_Summary.Text" xml:space="preserve"><value>On some PCs with Intel Bluetooth, every time the LE Audio link is set up there is a chance the left earbud plays about 7.5 ms (one audio frame) behind the right, which pulls the sound to the right. Once the link is up the offset no longer changes, so EncoDeck keeps the link open and lets you check it by ear once; if it is off, rebuild it until left and right line up.</value></data>
@@ -830,6 +828,10 @@
   <data name="LeAudioCodec_PresetDefault" xml:space="preserve"><value>Windows default (no change)</value></data>
   <data name="LeAudioCodec_PresetFormat" xml:space="preserve"><value>{0} kbps · {1} ms</value></data>
   <data name="LeAudioCodec_Latency" xml:space="preserve"><value>Latency: LC3 coding takes about {0} ms; the link transport is up to Windows, at most {1} ms while a game plays and {2} ms otherwise; the earbuds add a {3} ms playback buffer. The bitrate only changes the packet size and has almost no effect on latency.</value></data>
+  <data name="LeAudioCodec_NoCall.Header" xml:space="preserve"><value>Never switch to call mode (disables the earbud microphone)</value></data>
+  <data name="LeAudioCodec_NoCallNote.Text" xml:space="preserve"><value>Game chat and call apps play over the high-quality link like any other sound, and no longer switch the earbuds to a call setup (sharp quality drop, microphone channel). The earbud microphone is disabled too, so programs cannot find it; use another microphone for voice. After turning this on, put the earbuds back in the case and take them out (reconnect once) for it to take effect.</value></data>
+  <data name="LeAudioCodec_NoCallName" xml:space="preserve"><value>no call mode</value></data>
+  <data name="LeAudioCodec_Result_NoCallReconnect" xml:space="preserve"><value>"Never switch to call mode" takes effect after the earbuds are put back in the case and taken out (reconnected once).</value></data>
   <data name="LeAudioCodec_Result_SymbolsUnavailable" xml:space="preserve"><value>Could not download the public symbols of this PC's Windows Bluetooth audio component from Microsoft's symbol server (needs internet access, about 12 MB). Try again later.</value></data>
   <data name="LeAudioCodec_Mode.Header" xml:space="preserve"><value>Transport</value></data>
   <data name="LeAudioCodec_Mode_Auto" xml:space="preserve"><value>Automatic (Windows decides: latency first while a game plays, reliability first otherwise)</value></data>

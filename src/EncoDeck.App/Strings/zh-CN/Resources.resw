@@ -798,8 +798,6 @@
   <data name="LeAudio_StatusEndpointUnknown" xml:space="preserve"><value>无法确认 Windows 的音频端点状态；不要把 ACL/GATT 就绪当作双耳播放成功。</value></data>
   <data name="LeAudio_DisableClassic" xml:space="preserve"><value>禁用经典音频端点</value></data>
   <data name="LeAudio_EnableClassic" xml:space="preserve"><value>恢复经典音频端点</value></data>
-  <data name="LeAudio_MicOff.Header" xml:space="preserve"><value>禁用耳机麦克风</value></data>
-  <data name="LeAudio_MicOffNote" xml:space="preserve"><value>应用打开耳机麦克风时，Windows 会把 LE Audio 切到双向通话配置，播放音质明显下降。禁用后应用只能使用其他麦克风，耳机播放保持媒体音质。重新配对后需要再次开启。</value></data>
   <data name="LeAudio_MicFailed" xml:space="preserve"><value>无法更改耳机麦克风：{0}</value></data>
   <data name="LeAudioSync_Title.Text" xml:space="preserve"><value>LE Audio 左右声道校准（实验性）</value></data>
   <data name="LeAudioSync_Summary.Text" xml:space="preserve"><value>部分使用 Intel 蓝牙的电脑在 LE Audio 下，每次建立音频链路时都有一定概率左耳比右耳晚约 7.5 ms（一个音频帧），声音偏向右侧、人声不在正中。链路建立后偏差就不再变化，所以 EncoDeck 会一直保持这条链路，并让你用耳朵检查一次：不对就重新建立，直到左右对齐。</value></data>
@@ -830,6 +828,10 @@
   <data name="LeAudioCodec_PresetDefault" xml:space="preserve"><value>Windows 默认（不修改）</value></data>
   <data name="LeAudioCodec_PresetFormat" xml:space="preserve"><value>{0} kbps · {1} ms</value></data>
   <data name="LeAudioCodec_Latency" xml:space="preserve"><value>延迟：LC3 编码约 {0} ms；链路传输由 Windows 决定，上限为游戏时 {1} ms、平时 {2} ms；耳机另有 {3} ms 播放缓冲。码率只改变每个包的大小，对延迟几乎没有影响。</value></data>
+  <data name="LeAudioCodec_NoCall.Header" xml:space="preserve"><value>不切换到通话模式（禁用耳机麦克风）</value></data>
+  <data name="LeAudioCodec_NoCallNote.Text" xml:space="preserve"><value>游戏语音、通话软件的声音会和其他声音一样走高音质链路，不会再把耳机切到通话配置（音质骤降、带麦克风通道）。同时禁用耳机麦克风，程序也找不到它；需要语音时请用其他麦克风。打开后要把耳机放回充电盒再取出（重新连接一次）才生效。</value></data>
+  <data name="LeAudioCodec_NoCallName" xml:space="preserve"><value>不切换到通话模式</value></data>
+  <data name="LeAudioCodec_Result_NoCallReconnect" xml:space="preserve"><value>“不切换到通话模式”需要把耳机放回充电盒再取出（重新连接一次）后生效。</value></data>
   <data name="LeAudioCodec_Result_SymbolsUnavailable" xml:space="preserve"><value>无法从微软符号服务器下载这台电脑的 Windows 蓝牙音频组件的公开符号（需要联网，约 12 MB），稍后再试。</value></data>
   <data name="LeAudioCodec_Mode.Header" xml:space="preserve"><value>传输方式</value></data>
   <data name="LeAudioCodec_Mode_Auto" xml:space="preserve"><value>自动（Windows 决定：玩游戏时延迟优先，其余时候抗干扰优先）</value></data>

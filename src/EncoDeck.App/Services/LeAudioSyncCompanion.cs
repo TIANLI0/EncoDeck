@@ -54,6 +54,12 @@ public sealed class LeAudioSyncCompanion : IAsyncDisposable
         get { lock (_gate) return _target is not null; }
     }
 
+    /// <summary>Bluetooth address of those LE Audio earbuds (the primary), while <see cref="LeAudioConnected"/>.</summary>
+    public ulong? LeAudioAddress
+    {
+        get { lock (_gate) return _target; }
+    }
+
     /// <summary>Raised on a background thread when <see cref="Support"/>, <see cref="LeAudioConnected"/> or the guard's status changes.</summary>
     public event EventHandler? Changed;
 

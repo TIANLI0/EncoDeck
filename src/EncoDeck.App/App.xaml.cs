@@ -87,7 +87,8 @@ public partial class App : Application
         {
             Environment.Exit(LeAudioCodecCompanion.RunElevatedApply(
                 codec + 1 < commandLine.Length ? commandLine[codec + 1] : null,
-                codec + 2 < commandLine.Length ? commandLine[codec + 2] : null));
+                codec + 2 < commandLine.Length ? commandLine[codec + 2] : null,
+                codec + 3 < commandLine.Length ? commandLine[codec + 3] : null));
             return;
         }
         // The MSIX StartupTask launches without arguments; treat it like the Run entry's --background.
