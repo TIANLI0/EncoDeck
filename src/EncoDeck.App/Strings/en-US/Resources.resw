@@ -1085,4 +1085,16 @@ Afterwards Windows lists two entries with the same name (one is the other earbud
   <data name="Codec_ReportedDescription" xml:space="preserve"><value>Audio codec: {0}</value></data>
   <data name="Codec_BridgeDescription" xml:space="preserve"><value>A2DP Bridge is sending {0} audio to these earbuds.</value></data>
   <data name="Codec_LeAudioDescription" xml:space="preserve"><value>The LE link is connected. Audio streaming and the LC3 codec have not been verified.</value></data>
+  <data name="Codec_WindowsDescription" xml:space="preserve"><value>Audio codec Windows logged: {0}</value></data>
+  <data name="WindowsCodec_Title.Text" xml:space="preserve"><value>Audio codec from Windows</value></data>
+  <data name="WindowsCodec_Summary.Text" xml:space="preserve"><value>The codec the earbuds report is not necessarily the one the PC uses. Authorize once and Windows logs the codec of every Bluetooth audio (A2DP) stream; the home page then shows that instead. No further prompts, and it works in the Store version too. The cost is tiny: one Windows trace session that starts with the PC and writes a circular file of at most 1 MB.</value></data>
+  <data name="WindowsCodec_Status_Off" xml:space="preserve"><value>Not authorized: the home page shows the codec the earbuds report.</value></data>
+  <data name="WindowsCodec_Status_Waiting" xml:space="preserve"><value>Authorized, nothing logged yet: it is logged automatically when possible.</value></data>
+  <data name="WindowsCodec_Status_On" xml:space="preserve"><value>Authorized: the home page shows the codec Windows logged.</value></data>
+  <data name="WindowsCodec_Authorize" xml:space="preserve"><value>Authorize (administrator)</value></data>
+  <data name="WindowsCodec_Remove" xml:space="preserve"><value>Remove authorization</value></data>
+  <data name="WindowsCodec_Result_Declined" xml:space="preserve"><value>The administrator prompt was declined.</value></data>
+  <data name="WindowsCodec_Result_NotApplied" xml:space="preserve"><value>That did not complete; please try again. The log file is in {0}.</value></data>
+  <data name="WindowsCodec_Result_Failed" xml:space="preserve"><value>That did not complete: {0}</value></data>
+  <data name="WindowsCodec_Notes.Text" xml:space="preserve"><value>Windows logs the codec when a stream ends (a pause, switching the output device, or disconnecting), and it is remembered per pair of earbuds, so new earbuds show it after they have played and stopped once. LE Audio earbuds do not use this. Uninstalling the EncoDeck installer version removes the authorization too; for the Store version, select "Remove authorization" before uninstalling.</value></data>
 </root>

@@ -11,6 +11,7 @@ public enum CodecDisplayKind
     BridgeStream,
     UnknownBridgeStream,
     LeLink,
+    WindowsStream,
 }
 
 /// <summary>One source for the audio badge on every surface; a device report is not a verified PC stream.</summary>
@@ -28,6 +29,9 @@ public sealed record CodecDisplay(CodecDisplayKind Kind, string? Codec = null)
 
         if (!state.Connection.IsLinkUp()) return new(CodecDisplayKind.None);
         if (state.IsLeAudio) return new(CodecDisplayKind.LeLink);
+        // Windows' own log of its A2DP streams, once authorized, replaces the earbuds' report (also while none is logged).
+        if (state.WindowsCodecLogged)
+            return state.WindowsCodec is { Length: > 0 } codec ? new(CodecDisplayKind.WindowsStream, codec) : new(CodecDisplayKind.None);
         if (state.Connection != DeviceConnectionState.ControlReady) return new(CodecDisplayKind.None);
 
         bool air5s = state.ProductId is 0x06C810 or 0x06E810;

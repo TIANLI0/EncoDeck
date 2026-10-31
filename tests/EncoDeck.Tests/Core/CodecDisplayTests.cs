@@ -99,6 +99,21 @@ public class CodecDisplayTests
     }
 
     [Fact]
+    public void WindowsLog_ReplacesTheDeviceReport()
+    {
+        var state = Ready with { Codec = O(AudioCodec.Ldac), WindowsCodecLogged = true, WindowsCodec = "AAC" };
+        Assert.Equal(new CodecDisplay(CodecDisplayKind.WindowsStream, "AAC"), CodecDisplay.Resolve(state));
+        // Windows' log does not need EncoDeck's control channel.
+        Assert.Equal(CodecDisplayKind.WindowsStream, CodecDisplay.Resolve(state with { Connection = DeviceConnectionState.AudioConnected }).Kind);
+        // Nothing logged for this device yet: no badge rather than the earbuds' report.
+        Assert.Equal(CodecDisplayKind.None, CodecDisplay.Resolve(state with { WindowsCodec = null }).Kind);
+        // A streaming bridge and an LE link still come first.
+        Assert.Equal(CodecDisplayKind.BridgeStream, CodecDisplay.Resolve(state with { Bridge = new(true, "LDAC", 0, 0, "p") }).Kind);
+        Assert.Equal(CodecDisplayKind.LeLink, CodecDisplay.Resolve(state with { IsLeAudio = true }).Kind);
+        Assert.Equal(CodecDisplayKind.None, CodecDisplay.Resolve(state with { Connection = DeviceConnectionState.Disconnected }).Kind);
+    }
+
+    [Fact]
     public void NoSelectedDevice_OrUsbReceiver_DoesNotGetABluetoothBadge()
     {
         Assert.Equal(CodecDisplayKind.None, CodecDisplay.Resolve(Ready with { Device = null, Bridge = new(true, "AAC", 0, 0, "old") }).Kind);

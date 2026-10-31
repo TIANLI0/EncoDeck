@@ -341,7 +341,7 @@ public sealed partial class DeviceViewModel : ObservableObject
         CodecLabel = codecDisplay.Kind switch
         {
             // The "A2DP Bridge" tag beside a bridge stream already names its source.
-            CodecDisplayKind.DeviceReport or CodecDisplayKind.BridgeStream => codecDisplay.Codec!,
+            CodecDisplayKind.DeviceReport or CodecDisplayKind.BridgeStream or CodecDisplayKind.WindowsStream => codecDisplay.Codec!,
             CodecDisplayKind.LeLink => "LE Audio",
             // An unknown codec shows no tag at all (the diagnostics still record why).
             _ => string.Empty,
@@ -350,6 +350,7 @@ public sealed partial class DeviceViewModel : ObservableObject
         {
             CodecDisplayKind.DeviceReport => Loc.Format("Codec_ReportedDescription", codecDisplay.Codec),
             CodecDisplayKind.BridgeStream => Loc.Format("Codec_BridgeDescription", codecDisplay.Codec),
+            CodecDisplayKind.WindowsStream => Loc.Format("Codec_WindowsDescription", codecDisplay.Codec),
             CodecDisplayKind.LeLink => Loc.Get("Codec_LeAudioDescription"),
             _ => string.Empty,
         };

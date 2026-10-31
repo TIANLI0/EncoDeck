@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl x:Class="EncoDeck.App.Controls.WindowsCodecSettings"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:local="using:EncoDeck.App.Controls">
+ <!-- Same layout as the other labs cards: title, summary, status, message bar, actions, notes. Authorizing once lets
+      Windows log the A2DP codec it streams with; the home page then shows that instead of the earbuds' report. -->
+ <Border Style="{StaticResource CardStyle}">
+  <StackPanel Spacing="10">
+   <TextBlock x:Uid="WindowsCodec_Title" Style="{StaticResource BodyStrongTextBlockStyle}" />
+   <TextBlock x:Uid="WindowsCodec_Summary" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" />
+   <TextBlock x:Name="Status" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+   <InfoBar x:Name="Notice" IsOpen="False" Visibility="Collapsed" />
+   <local:WrapPanel HorizontalSpacing="8" VerticalSpacing="8">
+    <Button x:Name="Authorize" Click="OnAuthorize" Style="{StaticResource AccentButtonStyle}" />
+    <Button x:Name="Remove" Click="OnRemove" />
+   </local:WrapPanel>
+   <TextBlock x:Uid="WindowsCodec_Notes" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" />
+  </StackPanel>
+ </Border>
+</UserControl>
