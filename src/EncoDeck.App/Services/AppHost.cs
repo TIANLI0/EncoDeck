@@ -124,6 +124,7 @@ public sealed class AppHost : IAsyncDisposable
         var store = new DeviceStateStore();
         var cache = new DeviceStateCache(paths.DeviceCacheFile, store, loggers.CreateLogger<DeviceStateCache>());
         var registry = new DeviceProfileRegistry(BuiltInProfiles.Create());
+        EncoDeck.Bluetooth.LeAudio.LeAudioOnlyDevices.Configure(Path.Combine(paths.Root, "le-audio-devices.json"));
         var devices = new DeviceManager(
             registry,
             store,

@@ -32,7 +32,8 @@ public sealed class BluetoothLinkMonitor : ILinkStateSource
 
     private readonly bool _singleUnit;
 
-    private BluetoothLinkMonitor(BluetoothDevice device, ImmutableArray<BluetoothLEDevice> leDevices, bool singleUnit)
+    /// <param name="device">The Classic device; null for earbuds kept on LE Audio alone (<see cref="LeAudioOnlyDevices"/>).</param>
+    private BluetoothLinkMonitor(BluetoothDevice? device, ImmutableArray<BluetoothLEDevice> leDevices, bool singleUnit)
     {
         _device = device;
         _leDevices = leDevices;
@@ -40,7 +41,7 @@ public sealed class BluetoothLinkMonitor : ILinkStateSource
         _connected = Evaluate();
         _leAudio = EvaluateLe();
         _leLinks = EvaluateLinks();
-        _device.ConnectionStatusChanged += OnConnectionStatusChanged;
+        if (_device is not null) _device.ConnectionStatusChanged += OnConnectionStatusChanged;
         foreach (var le in leDevices) le.ConnectionStatusChanged += OnConnectionStatusChanged;
         _ = MaintainAsync(leDevices);
         // Only the primary bonded so far (e.g. the LE Audio switch is still pairing the other earbud).
@@ -68,6 +69,13 @@ public sealed class BluetoothLinkMonitor : ILinkStateSource
     /// </param>
     public static async Task<BluetoothLinkMonitor?> CreateAsync(string deviceId, bool singleUnit, CancellationToken cancellationToken)
     {
+        // Never open the Classic device of LE-only earbuds: only their LE bonds carry links.
+        if (LeAudioOnlyDevices.Find(deviceId) is { } leOnly)
+        {
+            var bonds = await BondedLeIdentitiesAsync(leOnly.Address, cancellationToken).ConfigureAwait(false);
+            if (!bonds.IsDefaultOrEmpty) return new BluetoothLinkMonitor(null, bonds, singleUnit);
+        }
+
         BluetoothDevice? device;
         try
         {

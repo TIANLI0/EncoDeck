@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 using System.Text.RegularExpressions;
+using EncoDeck.Bluetooth.LeAudio;
 using EncoDeck.Core.Devices;
 using EncoDeck.Core.Privacy;
 using Microsoft.Extensions.Logging;
@@ -23,6 +24,8 @@ public sealed record PairedDevice(DeviceIdentity Identity, bool IsConnected, int
 /// (push notifications from Windows — no polling). Earbuds on LE Audio keep their Classic link
 /// down, so a second watcher follows bonded LE identities: a Classic device counts as connected
 /// when its LE identity (same public address) or the other earbud of the pair is connected.
+/// Earbuds whose Classic pairing EncoDeck removed for LE Audio (<see cref="LeAudioOnlyDevices"/>) are listed
+/// under their former Classic identity for as long as the primary's LE bond exists.
 /// </summary>
 public sealed partial class PairedDeviceWatcher : IDisposable
 {
@@ -38,6 +41,7 @@ public sealed partial class PairedDeviceWatcher : IDisposable
     private readonly Dictionary<string, LeBond> _leBonds = new(StringComparer.Ordinal);
     private DeviceWatcher? _watcher;
     private DeviceWatcher? _leWatcher;
+    private bool _leEnumerated;
 
     public PairedDeviceWatcher(ILogger<PairedDeviceWatcher>? logger = null)
     {
@@ -50,12 +54,20 @@ public sealed partial class PairedDeviceWatcher : IDisposable
         {
             lock (_gate)
             {
-                return _devices.Values
+                return _devices.Values.Concat(LeOnlyDevices())
                     .Select(d => d.IsConnected || !LeConnected(d.Identity) ? d : d with { IsConnected = true })
                     .OrderBy(d => d.Identity.Name, StringComparer.CurrentCulture).ToList();
             }
         }
     }
+
+    /// <summary>Remembered LE-only earbuds whose primary LE bond exists and that have no Classic pairing again.</summary>
+    private IEnumerable<PairedDevice> LeOnlyDevices() =>
+        LeAudioOnlyDevices.All
+            .Where(d => _leBonds.Values.Any(b => b.Address == d.Address)
+                && !_devices.Values.Any(c => c.Identity.Address.Value == d.Address
+                    || string.Equals(c.Identity.DeviceId, d.DeviceId, StringComparison.OrdinalIgnoreCase)))
+            .Select(d => new PairedDevice(new DeviceIdentity(d.DeviceId, d.Name, new BluetoothAddress(d.Address)), false, PairedDevice.AudioVideoMajorClass));
 
     /// <summary>The device's own LE identity or, for earbuds, the other bonded earbud (same name, same first four address bytes).</summary>
     private bool LeConnected(DeviceIdentity identity)
@@ -89,6 +101,7 @@ public sealed partial class PairedDeviceWatcher : IDisposable
         _watcher.Removed += OnRemoved;
         _watcher.EnumerationCompleted += OnEnumerationCompleted;
         _watcher.Start();
+        LeAudioOnlyDevices.Changed += OnLeOnlyChanged;
 
         try
         {
@@ -97,6 +110,7 @@ public sealed partial class PairedDeviceWatcher : IDisposable
             _leWatcher.Added += OnLeAdded;
             _leWatcher.Updated += OnLeUpdated;
             _leWatcher.Removed += OnLeRemoved;
+            _leWatcher.EnumerationCompleted += OnLeEnumerationCompleted;
             _leWatcher.Start();
         }
         catch (Exception ex) when (ex is ArgumentException or System.Runtime.InteropServices.COMException)
@@ -107,13 +121,22 @@ public sealed partial class PairedDeviceWatcher : IDisposable
         }
     }
 
+    private void OnLeOnlyChanged(object? sender, EventArgs e) => Changed?.Invoke(this, EventArgs.Empty);
+
+    private void OnLeEnumerationCompleted(DeviceWatcher sender, object args)
+    {
+        lock (_gate) _leEnumerated = true;
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
+
     private void OnLeAdded(DeviceWatcher sender, DeviceInformation info)
     {
         var address = ParseAddress(info.Properties.TryGetValue(AddressKey, out var a) ? a as string : null) ?? ParseAddressFromId(info.Id);
         if (address is null) return;
         bool connected = info.Properties.TryGetValue(IsConnectedKey, out var c) && c is true;
         lock (_gate) _leBonds[info.Id] = new LeBond(address.Value, info.Name, connected);
-        if (connected) Changed?.Invoke(this, EventArgs.Empty);
+        // A remembered LE-only primary appears or goes with its bond.
+        if (connected || LeAudioOnlyDevices.Find(address.Value) is not null) Changed?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnLeUpdated(DeviceWatcher sender, DeviceInformationUpdate update)
@@ -132,9 +155,10 @@ public sealed partial class PairedDeviceWatcher : IDisposable
 
     private void OnLeRemoved(DeviceWatcher sender, DeviceInformationUpdate update)
     {
-        bool wasConnected;
-        lock (_gate) wasConnected = _leBonds.Remove(update.Id, out var removed) && removed.IsConnected;
-        if (wasConnected) Changed?.Invoke(this, EventArgs.Empty);
+        bool changed;
+        lock (_gate) changed = _leBonds.Remove(update.Id, out var removed)
+            && (removed.IsConnected || LeAudioOnlyDevices.Find(removed.Address) is not null);
+        if (changed) Changed?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnAdded(DeviceWatcher sender, DeviceInformation info)
@@ -143,7 +167,15 @@ public sealed partial class PairedDeviceWatcher : IDisposable
         bool connected = info.Properties.TryGetValue(IsConnectedKey, out var c) && c is true;
         int? major = info.Properties.TryGetValue(CodMajorKey, out var m) && m is not null ? Convert.ToInt32(m, System.Globalization.CultureInfo.InvariantCulture) : null;
         var device = new PairedDevice(new DeviceIdentity(info.Id, info.Name, new BluetoothAddress(address ?? 0)), connected, major);
-        lock (_gate) _devices[info.Id] = device;
+        bool backOnClassic;
+        lock (_gate)
+        {
+            _devices[info.Id] = device;
+            // Paired over Classic again after its LE bonds were removed outside EncoDeck: no longer LE-only.
+            backOnClassic = _leEnumerated && address is { } value && LeAudioOnlyDevices.Find(value) is not null
+                && !_leBonds.Values.Any(b => b.Address == value || (b.Address >> 16 == value >> 16 && b.Name == info.Name));
+        }
+        if (backOnClassic) LeAudioOnlyDevices.Remove(address!.Value);
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
@@ -194,12 +226,14 @@ public sealed partial class PairedDeviceWatcher : IDisposable
 
     public void Dispose()
     {
+        LeAudioOnlyDevices.Changed -= OnLeOnlyChanged;
         var leWatcher = Interlocked.Exchange(ref _leWatcher, null);
         if (leWatcher is not null)
         {
             leWatcher.Added -= OnLeAdded;
             leWatcher.Updated -= OnLeUpdated;
             leWatcher.Removed -= OnLeRemoved;
+            leWatcher.EnumerationCompleted -= OnLeEnumerationCompleted;
             if (leWatcher.Status is DeviceWatcherStatus.Started or DeviceWatcherStatus.EnumerationCompleted) leWatcher.Stop();
         }
         var watcher = Interlocked.Exchange(ref _watcher, null);

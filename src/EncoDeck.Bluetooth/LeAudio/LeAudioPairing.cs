@@ -119,7 +119,7 @@ public static class LeAudioPairing
         using var le = await OpenLeAsync(primary, cancellationToken).ConfigureAwait(false);
         using var classic = await OpenClassicAsync(primary, cancellationToken).ConfigureAwait(false);
         bool primaryBonded = await LeAudioLink.IsBondedAsync(primary, cancellationToken).ConfigureAwait(false);
-        var secondary = await FindSecondaryBondsAsync(primary, classic?.Name ?? le?.Name, cancellationToken).ConfigureAwait(false);
+        var secondary = await FindSecondaryBondsAsync(primary, PairName(primary, classic, le), cancellationToken).ConfigureAwait(false);
         LeAudioEndpointInspection? endpoints = null;
         try
         {
@@ -318,6 +318,16 @@ public static class LeAudioPairing
         bool bothConnected = await WaitForBothLinksAsync(primary, secondary, cancellationToken).ConfigureAwait(false);
         Log($"LE pair complete: both bonded=true; both ACL connected={bothConnected}; audio streaming unverified");
 
+        // Before the audio endpoints: the derived Classic pairing would otherwise connect A2DP first.
+        try
+        {
+            await RemoveClassicPairingAsync(primary, Log, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException and not OutOfMemoryException)
+        {
+            Log($"Classic pairing removal failed: 0x{ex.HResult:X8}");
+        }
+
         LeAudioEndpointResult endpointResult = new(LeAudioEndpointOutcome.BlockedLeLinks);
         if (bothConnected)
         {
@@ -325,10 +335,10 @@ public static class LeAudioPairing
             {
                 // Audio PnP enumeration can finish after both ACL links. Inspect without changing
                 // endpoints while waiting, then call the existing guarded suppression only once.
-                Log("Waiting up to 20 seconds for the LE Audio render endpoint");
+                Log("Waiting up to 30 seconds for the LE Audio render endpoint");
                 var endpointDeadline = System.Diagnostics.Stopwatch.StartNew();
                 while (!(await LeAudioClassicAudioEndpoint.InspectAsync(primary, cancellationToken).ConfigureAwait(false)).LeAudioRenderPresent
-                    && endpointDeadline.Elapsed < TimeSpan.FromSeconds(20))
+                    && endpointDeadline.Elapsed < TimeSpan.FromSeconds(30))
                 {
                     await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
                 }
@@ -479,6 +489,7 @@ public static class LeAudioPairing
         progress?.Report(LeAudioPairingStage.WaitingForCleanup);
         await WaitForNodesRemovedAsync(primary, "BTHLE", cancellationToken, secondaryAddress).ConfigureAwait(false);
         LeAudioLink.ClearPreferred(primary);
+        LeAudioOnlyDevices.Remove(primary);
         return new(LeAudioPairingOutcome.Removed);
     }
 
@@ -516,7 +527,7 @@ public static class LeAudioPairing
     {
         using var le = await OpenLeAsync(primary, cancellationToken).ConfigureAwait(false);
         using var classic = await OpenClassicAsync(primary, cancellationToken).ConfigureAwait(false);
-        var secondaries = await FindSecondaryBondsAsync(primary, classic?.Name ?? le?.Name, cancellationToken).ConfigureAwait(false);
+        var secondaries = await FindSecondaryBondsAsync(primary, PairName(primary, classic, le), cancellationToken).ConfigureAwait(false);
         try
         {
             foreach (var secondary in secondaries)
@@ -527,6 +538,55 @@ public static class LeAudioPairing
         }
         finally { foreach (var secondary in secondaries) secondary.Dispose(); }
     }
+
+    /// <summary>
+    /// Removes the Classic pairing Windows derived from the LE bond (CTKD) and remembers the earbuds as LE-only
+    /// (<see cref="LeAudioOnlyDevices"/>). With that pairing Windows and the earbuds keep bringing a Classic link up
+    /// next to LC3: A2DP takes the audio before the LE Audio endpoint appears, or the LE links drop (Enco X4).
+    /// Only runs while the primary and another earbud hold LE bonds; removing the Classic entry keeps both
+    /// (verified on the X4). Returns false when nothing was removed.
+    /// </summary>
+    public static async Task<bool> RemoveClassicPairingAsync(ulong primary, Action<string>? log, CancellationToken cancellationToken)
+    {
+        void Log(string message)
+        {
+            LeAudioPairing.Log(message);
+            log?.Invoke(message);
+        }
+        using var classic = await OpenClassicAsync(primary, cancellationToken).ConfigureAwait(false);
+        if (classic is null) return false;
+        // Already LE-only and Windows has not derived the Classic pairing again: nothing to do.
+        if (!classic.DeviceInformation.Pairing.IsPaired && LeAudioOnlyDevices.Find(primary) is not null) return false;
+        if (!await LeAudioLink.IsBondedAsync(primary, cancellationToken).ConfigureAwait(false)) return false;
+        string? name = PairName(primary, classic, null);
+        var secondaries = await FindSecondaryBondsAsync(primary, name, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (secondaries.Count == 0)
+            {
+                Log("Classic pairing kept: the other earbud has no LE bond yet");
+                return false;
+            }
+            name ??= secondaries[0].Name;
+        }
+        finally { foreach (var secondary in secondaries) secondary.Dispose(); }
+
+        // Remember first: the device must stay known while its Classic entry disappears.
+        LeAudioOnlyDevices.Record(new LeAudioOnlyDevice(primary, name, classic.DeviceInformation.Id));
+        if (!classic.DeviceInformation.Pairing.IsPaired) return false;
+        await UnpairAsync(classic.DeviceInformation.Pairing, cancellationToken).ConfigureAwait(false);
+        bool leKept = await LeAudioLink.IsBondedAsync(primary, cancellationToken).ConfigureAwait(false);
+        Log($"Classic (CTKD) pairing removed; LE bond kept={leKept}");
+        return true;
+    }
+
+    /// <summary>
+    /// The earbuds' name: the Classic pairing's, else the remembered one of LE-only earbuds (an unpaired Classic
+    /// device reports an empty name), else the LE identity's.
+    /// </summary>
+    private static string? PairName(ulong primary, BluetoothDevice? classic, BluetoothLEDevice? le) =>
+        !string.IsNullOrEmpty(classic?.Name) ? classic.Name
+        : LeAudioOnlyDevices.Find(primary)?.Name ?? (string.IsNullOrEmpty(le?.Name) ? null : le.Name);
 
     private const string AepContainerId = "System.Devices.Aep.ContainerId";
 

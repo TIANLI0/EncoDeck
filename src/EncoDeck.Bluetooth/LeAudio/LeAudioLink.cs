@@ -21,6 +21,9 @@ public static class LeAudioLink
 
     internal static bool IsPairingChanging(ulong address) => PairingChanges.ContainsKey(address);
 
+    /// <summary>A switch to or from LE Audio is running for these earbuds (it handles their pairings itself).</summary>
+    internal static bool IsPairingOperationRunning(ulong address) => PairingOperations.ContainsKey(address);
+
     internal static IDisposable BeginPairingOperation(ulong address)
     {
         if (!PairingOperations.TryAdd(address, 0)) throw new InvalidOperationException("A pairing operation is already in progress for these earbuds.");

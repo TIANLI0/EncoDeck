@@ -2,6 +2,13 @@
 
 本文件记录 EncoDeck 每个版本的用户可见变化，格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。每个版本按“新增 / 改进 / 修复 / 移除”分类。
 
+## [Unreleased]
+
+### 修复
+
+- Enco X4 / X3 切换到 LE Audio 后不再走传统蓝牙：双耳 LE 配对完成后删除 Windows 自动生成的传统蓝牙配对，只保留 LE 配对。此前传统链路会在 LC3 旁边反复建立，经典 A2DP 可能抢在 LE Audio 端点出现之前接管声音（切换显示失败、需要多试几次），或者 LE 链路被反复打断、控制通道不停重连。之后再次出现的传统配对也会自动删除；EncoDeck 按原来的设备身份继续识别耳机，设置不丢失。
+- 切换到 LE Audio 时等待 LE Audio 播放端点的时间由 20 秒延长到 30 秒，Intel 智音技术适配器注册端点较慢时不再误报失败。
+
 ## [1.14.0-beta.3] - 2026-10-31
 
 ### 新增
