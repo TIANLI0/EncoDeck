@@ -2,7 +2,7 @@
 
 本文件记录 EncoDeck 每个版本的用户可见变化，格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。每个版本按“新增 / 改进 / 修复 / 移除”分类。
 
-## [Unreleased]
+## [1.14.0-beta.4] - 2026-10-31
 
 ### 修复
 
