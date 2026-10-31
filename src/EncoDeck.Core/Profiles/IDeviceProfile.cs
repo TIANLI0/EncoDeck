@@ -60,6 +60,13 @@ public interface IDeviceProfile
     /// <summary>RFCOMM service UUIDs to try for the control channel, in order.</summary>
     IReadOnlyList<Guid> ControlServiceUuids { get; }
 
+    /// <summary>
+    /// Whether a connected LE bond at the earbuds' address counts as LE Audio, and EncoDeck keeps that LE link up.
+    /// False for earbuds controlled over Classic alone whose LE Audio Windows decides (EarFun): their LE link can be
+    /// up next to A2DP, so only an active LE Audio output proves LE Audio, and keeping the link up would push it.
+    /// </summary>
+    bool ManagesLeAudioLink => true;
+
     /// <summary>Returns a match score (0 = not this model). Higher wins.</summary>
     int MatchScore(DeviceIdentity identity);
 }

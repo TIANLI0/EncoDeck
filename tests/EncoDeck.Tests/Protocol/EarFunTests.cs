@@ -41,8 +41,10 @@ public class EarFunTests
         var profile = Assert.IsType<EarFunProfile>(registry.Match(new("dev", name, new BluetoothAddress(1))));
         Assert.Equal(id, profile.ModelId);
         Assert.Equal("earfun", profile.Brand);
-        Assert.Empty(profile.NoiseControlOptions);
+        Assert.Equal(EarFunSettings.NoiseModes(profile.Model).Count, profile.NoiseControlOptions.Count);
         Assert.Empty(profile.EqualizerPresets);
+        // Classic SPP control: a connected LE bond is not LE Audio, and EncoDeck must not keep it up (issue 16).
+        Assert.False(profile.ManagesLeAudioLink);
     }
 
     [Fact]
@@ -180,18 +182,17 @@ public class EarFunTests
     [Theory]
     [InlineData(true, "TW700")]
     [InlineData(false, "TW230")]
-    public async Task StartupReadsBatteryAndOnlyConfirmedExperimentalControlsBecomeAvailable(bool gaia, string model)
+    public async Task StartupReadsBatteryAndModelControlsWorkWithoutExperimentalFeatures(bool gaia, string model)
     {
-        var device = new Device(gaia); var (controller, store) = Create(device, model); await using var owner = controller;
+        var device = new Device(gaia); var (controller, store) = Create(device, model, () => false); await using var owner = controller;
         Assert.True(await controller.InitializeAsync(Ct));
         await Wait(() => store.Current.KeyFunctions is not null);
         Assert.Equal(gaia ? 82 : 80, store.Current.Battery.Left!.Value.Level);
         Assert.Equal(gaia ? 74 : 70, store.Current.Battery.Right!.Value.Level);
         Assert.Equal(gaia ? 65 : 50, store.Current.Battery.Case!.Value.Level);
         Assert.True(store.Current.Battery.Case.Value.IsCharging);
-        Assert.Equal(CapabilitySupport.Experimental, store.Current.Profile!.Capabilities.Get(DeviceCapability.NoiseCancellation).Support);
-        Assert.False(store.Current.Profile.Capabilities.IsAvailable(DeviceCapability.NoiseCancellation, false));
-        Assert.True(store.Current.Profile.Capabilities.IsAvailable(DeviceCapability.NoiseCancellation, true));
+        Assert.Equal(CapabilitySupport.Supported, store.Current.Profile!.Capabilities.Get(DeviceCapability.NoiseCancellation).Support);
+        Assert.True(store.Current.Profile.Capabilities.IsAvailable(DeviceCapability.NoiseCancellation, false));
         Assert.Null(store.Current.Equalizer);
         Assert.True((await controller.SetNoiseControlAsync(new(NoiseControlMode.NoiseCancellation), Ct)).IsSuccess);
         Assert.Equal(NoiseControlMode.NoiseCancellation, store.Current.NoiseControl!.Value.Mode);
@@ -221,15 +222,10 @@ public class EarFunTests
     }
 
     [Fact]
-    public async Task Tw700WearFlagsAndExperimentalSwitchAreEnforcedAtCommandTime()
+    public async Task Tw700WearFlagsAreWrittenAndReadBack()
     {
-        bool allow = false;
-        var device = new Device(true); var (controller, store) = Create(device, "TW700", () => allow); await using var owner = controller;
+        var device = new Device(true); var (controller, store) = Create(device, "TW700"); await using var owner = controller;
         Assert.True(await controller.InitializeAsync(Ct)); await Wait(() => store.Current.KeyFunctions is not null);
-        int before = device.Written.Count;
-        Assert.Equal(CommandStatus.Unsupported, (await controller.SetToggleAsync(DeviceToggle.InEarDetection, false, Ct)).Status);
-        Assert.Equal(before, device.Written.Count);
-        allow = true;
         Assert.True((await controller.SetToggleAsync(DeviceToggle.InEarDetection, false, Ct)).IsSuccess);
         Assert.Equal(new byte[] { 15 }, device.Values[0x034A]);
         Assert.False(store.Current.Toggles[DeviceToggle.InEarDetection].Value);
@@ -279,7 +275,7 @@ public class EarFunTests
     }
 
     [Fact]
-    public async Task SilentOptionalSettingsDoNotBlockBasicConnectionOrExposeWrites()
+    public async Task SilentOptionalSettingsDoNotBlockBasicConnectionOrInventValues()
     {
         var device = new Device(true);
         foreach (ushort command in device.Values.Keys.Where(c => c is not (0x0309 or 0x0306)).ToArray()) device.Values.Remove(command);
@@ -287,8 +283,31 @@ public class EarFunTests
         Assert.True(await controller.InitializeAsync(Ct));
         Assert.False(controller.Closed.IsCompleted);
         Assert.Equal(82, store.Current.Battery.Left!.Value.Level);
-        Assert.Empty(store.Current.Profile!.NoiseControlOptions);
+        Assert.NotEmpty(store.Current.Profile!.NoiseControlOptions);
+        Assert.Null(store.Current.NoiseControl);
+        Assert.True((await controller.RefreshAsync(Ct)).IsSuccess);
+    }
+
+    [Fact]
+    public async Task FeaturesTheModelLacksAreNeverWritten()
+    {
+        var device = new Device(true); var (controller, _) = Create(device, "TW101S"); await using var owner = controller;
+        Assert.True(await controller.InitializeAsync(Ct));
+        int before = device.Written.Count;
         Assert.Equal(CommandStatus.Unsupported, (await controller.SetNoiseControlAsync(new(NoiseControlMode.NoiseCancellation), Ct)).Status);
+        Assert.Equal(CommandStatus.Unsupported, (await controller.SetToggleAsync(DeviceToggle.DualDeviceConnection, true, Ct)).Status);
+        Assert.Equal(before, device.Written.Count);
+    }
+
+    [Fact]
+    public async Task GaiaValuesWithTrailingBytesAreAccepted()
+    {
+        var device = new Device(true); var (controller, store) = Create(device, "TW700"); await using var owner = controller;
+        Assert.True(await controller.InitializeAsync(Ct)); await Wait(() => store.Current.KeyFunctions is not null);
+        device.Push(0x0315, [1, 0]);
+        device.Push(0x0307, [55, 0, 0]);
+        await Wait(() => store.Current.Battery.Right?.Value.Level == 55);
+        Assert.Equal(NoiseControlMode.NoiseCancellation, store.Current.NoiseControl!.Value.Mode);
     }
 
     [Fact]

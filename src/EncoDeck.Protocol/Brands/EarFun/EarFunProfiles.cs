@@ -57,10 +57,13 @@ public static class EarFunProfiles
     }
 }
 
-/// <summary>Readback gates controls. Writes remain experimental until EncoDeck hardware validation.</summary>
+/// <summary>
+/// Features follow the model definition, like every other brand; readback supplies the current values and confirms
+/// each write. <paramref name="observed"/> lists the settings these earbuds answered, which refresh polls.
+/// </summary>
 public sealed class EarFunProfile(EarFunModel model, IReadOnlySet<ushort>? observed = null) : IControllableProfile, IBrandGestureProfile
 {
-    private const string Evidence = "EarKit protocol port; not hardware verified by EncoDeck.";
+    private const string Evidence = "EarKit protocol port, by model.";
     public EarFunModel Model => model;
     public string Brand => "earfun";
     public bool IsGeneric => false;
@@ -69,6 +72,8 @@ public sealed class EarFunProfile(EarFunModel model, IReadOnlySet<ushort>? obser
     public string ImageKey => ModelId;
     public DeviceForm Form => model.Headphones ? DeviceForm.Headphones : DeviceForm.Earbuds;
     public IReadOnlyList<Guid> ControlServiceUuids => [new("00001101-0000-1000-8000-00805f9b34fb")];
+    // Controlled over Classic SPP; Windows alone decides whether audio uses LE Audio (issue 16).
+    public bool ManagesLeAudioLink => false;
     public bool Confirmed(ushort command) => observed?.Contains(command) == true;
     public IReadOnlyList<BrandGestureSlot> GestureSlots => EarFunGestures.Slots(model);
     public IDeviceCapabilities Capabilities
@@ -78,29 +83,23 @@ public sealed class EarFunProfile(EarFunModel model, IReadOnlySet<ushort>? obser
             var b = DeviceCapabilities.CreateBuilder()
                 .Set(DeviceCapability.BatteryLevel, CapabilitySupport.Supported, Evidence)
                 .Set(DeviceCapability.FirmwareInformation, CapabilitySupport.Supported, Evidence);
-            foreach (var (capability, feature, setting) in new[] {
-                (DeviceCapability.NoiseCancellation, "noise", EarFunSetting.Noise),
-                (DeviceCapability.GamingMode, "game", EarFunSetting.Game),
-                (DeviceCapability.DualDeviceConnection, "dual", EarFunSetting.Dual),
-                (DeviceCapability.InEarDetection, "ear", EarFunSetting.Wear),
-                (DeviceCapability.PromptVolume, "prompt", EarFunSetting.Prompt),
-                (DeviceCapability.FindMyEarbuds, "find", EarFunSetting.Find),
-                (DeviceCapability.SpatialAudio, "spatial", EarFunSetting.Spatial) })
-                b.Set(capability, !model.Has(feature) ? CapabilitySupport.Unsupported
-                    : Confirmed(EarFunSettings.Command(model, setting).Read) ? CapabilitySupport.Experimental : CapabilitySupport.Unknown, Evidence);
-            b.Set(DeviceCapability.TouchCustomization, !model.Has("keys") ? CapabilitySupport.Unsupported
-                : Confirmed(EarFunGestures.Read(model)) ? CapabilitySupport.Experimental : CapabilitySupport.Unknown, Evidence);
+            foreach (var (capability, feature) in new[] {
+                (DeviceCapability.NoiseCancellation, "noise"), (DeviceCapability.GamingMode, "game"),
+                (DeviceCapability.DualDeviceConnection, "dual"), (DeviceCapability.InEarDetection, "ear"),
+                (DeviceCapability.PromptVolume, "prompt"), (DeviceCapability.FindMyEarbuds, "find"),
+                (DeviceCapability.SpatialAudio, "spatial"), (DeviceCapability.TouchCustomization, "keys") })
+                b.Set(capability, model.Has(feature) ? CapabilitySupport.Supported : CapabilitySupport.Unsupported, Evidence);
             return b.Build();
         }
     }
     public IReadOnlyCollection<DeviceToggle> Toggles =>
     [
-        .. model.Has("game") && Confirmed(EarFunSettings.Command(model, EarFunSetting.Game).Read) ? new[] { DeviceToggle.GamingMode } : [],
-        .. model.Has("dual") && Confirmed(EarFunSettings.Command(model, EarFunSetting.Dual).Read) ? new[] { DeviceToggle.DualDeviceConnection } : [],
-        .. model.Has("ear") && Confirmed(EarFunSettings.Command(model, EarFunSetting.Wear).Read) ? new[] { DeviceToggle.InEarDetection } : [],
+        .. model.Has("game") ? new[] { DeviceToggle.GamingMode } : [],
+        .. model.Has("dual") ? new[] { DeviceToggle.DualDeviceConnection } : [],
+        .. model.Has("ear") ? new[] { DeviceToggle.InEarDetection } : [],
     ];
-    public IReadOnlyList<NoiseControlOption> NoiseControlOptions => !model.Has("noise") || !Confirmed(EarFunSettings.Command(model, EarFunSetting.Noise).Read) ? [] :
-        [.. EarFunSettings.NoiseModes(model).Select(p => new NoiseControlOption(p.State.Mode, p.State.LevelId, p.Label, p.Key, CapabilitySupport.Experimental))];
+    public IReadOnlyList<NoiseControlOption> NoiseControlOptions =>
+        [.. EarFunSettings.NoiseModes(model).Select(p => new NoiseControlOption(p.State.Mode, p.State.LevelId, p.Label, p.Key, CapabilitySupport.Supported))];
     // EarKit has EQ writes, but no device EQ readback. Never advertise saved host values as confirmed device EQ.
     public IReadOnlyList<EqualizerPreset> EqualizerPresets => [];
     public int MatchScore(DeviceIdentity identity) => EarFunProfiles.Named(identity.Name) == model ? 100 : 0;

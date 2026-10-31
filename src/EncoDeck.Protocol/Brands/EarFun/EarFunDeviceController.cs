@@ -116,7 +116,8 @@ internal sealed class EarFunDeviceController(IDuplexByteChannel channel, Control
             Store.TryUpdate(DeviceId, s => s with { IsFindingEarbuds = p[0] != 0 || p[1] != 0 });
             return true;
         }
-        if (p.Length != 1) return false;
+        // EarKit reads only the first value byte; later bytes must not hide a reported setting.
+        if (p.Length < 1) return false;
         byte value = p[0];
         switch (pair)
         {
@@ -201,13 +202,18 @@ internal sealed class EarFunDeviceController(IDuplexByteChannel channel, Control
     private Task<CommandResult> Change(EarFunSetting setting, byte[] payload, Func<byte[], bool> matches, CancellationToken ct, bool stopping = false) => Serialized(async token =>
     {
         var commands = EarFunSettings.Command(Model, setting);
-        if (commands.Write == 0 || (!stopping && (!Context.AllowExperimental() || !_profile.Confirmed(commands.Read)))) return NotSupported("Unconfirmed or experimental EarFun setting");
+        if (commands.Write == 0 || (!stopping && !Model.Has(Feature(setting)))) return NotSupported("EarFun setting");
         if (await Request(commands.Write, payload, token).ConfigureAwait(false) is not { } ack) return TimedOut;
         if (ack.Type != 0 || (!Model.Gaia && ack.Payload.Length != 0 && !ack.Payload.SequenceEqual(new byte[] { 0 })))
             return new(CommandStatus.Rejected, "EarFun rejected the setting.");
         var readback = await Read(setting, token).ConfigureAwait(false);
         return readback is null ? TimedOut : matches(readback) ? CommandResult.Ok : new(CommandStatus.Rejected, "EarFun did not confirm the requested value.");
     }, ct);
+
+    private static string Feature(EarFunSetting setting) => setting switch
+    {
+        EarFunSetting.Wear => "ear", EarFunSetting.AutoOff => "autooff", _ => setting.ToString().ToLowerInvariant(),
+    };
 
     public override Task<CommandResult> RefreshAsync(CancellationToken cancellationToken) => Serialized(async ct =>
     {
@@ -220,43 +226,43 @@ internal sealed class EarFunDeviceController(IDuplexByteChannel channel, Control
     public override Task<CommandResult> SetNoiseControlAsync(NoiseControlState target, CancellationToken cancellationToken)
     {
         var option = EarFunSettings.NoiseModes(Model).FirstOrDefault(p => p.State == target);
-        return option.State is null ? Task.FromResult(NotSupported("Noise mode")) : Change(EarFunSetting.Noise, [option.Value], p => p.SequenceEqual(new[] { option.Value }), cancellationToken);
+        return option.State is null ? Task.FromResult(NotSupported("Noise mode")) : Change(EarFunSetting.Noise, [option.Value], p => p[0] == option.Value, cancellationToken);
     }
     public override Task<CommandResult> SetToggleAsync(DeviceToggle toggle, bool enabled, CancellationToken cancellationToken)
     {
         EarFunSetting? setting = toggle switch { DeviceToggle.GamingMode => EarFunSetting.Game, DeviceToggle.DualDeviceConnection => EarFunSetting.Dual, DeviceToggle.InEarDetection => EarFunSetting.Wear, _ => null };
         if (setting is null) return Task.FromResult(NotSupported("Toggle"));
         byte value = setting == EarFunSetting.Wear ? (byte)(enabled ? 0 : Model.Tw700 ? 15 : 1) : (byte)(enabled ? Model.Gaia ? 1 : 2 : Model.Gaia ? 0 : 1);
-        return Change(setting.Value, [value], p => setting == EarFunSetting.Wear && Model.Tw700 ? p.Length == 1 && ((p[0] & 15) != 15) == enabled : p.SequenceEqual(new[] { value }), cancellationToken);
+        return Change(setting.Value, [value], p => setting == EarFunSetting.Wear && Model.Tw700 ? ((p[0] & 15) != 15) == enabled : p[0] == value, cancellationToken);
     }
     public override Task<CommandResult> SetSpatialAudioAsync(SpatialAudioMode mode, CancellationToken cancellationToken = default) =>
-        mode is not (SpatialAudioMode.Off or SpatialAudioMode.Fixed) ? Task.FromResult(NotSupported("Head tracking")) : Change(EarFunSetting.Spatial, [mode == SpatialAudioMode.Off ? (byte)1 : (byte)2], p => p.SequenceEqual(new byte[] { mode == SpatialAudioMode.Off ? (byte)1 : (byte)2 }), cancellationToken);
+        mode is not (SpatialAudioMode.Off or SpatialAudioMode.Fixed) ? Task.FromResult(NotSupported("Head tracking")) : Change(EarFunSetting.Spatial, [mode == SpatialAudioMode.Off ? (byte)1 : (byte)2], p => p[0] == (mode == SpatialAudioMode.Off ? 1 : 2), cancellationToken);
     public override Task<CommandResult> SetPromptVolumeAsync(int level, CancellationToken cancellationToken = default)
     {
         if (level is < 0 or > 100 || level % 25 != 0) return Task.FromResult(NotSupported("Prompt volume"));
         byte value = (byte)(Model.Gaia ? (100 - level) / 25 : 1 + level / 25);
-        return Change(EarFunSetting.Prompt, [value], p => p.SequenceEqual(new[] { value }), cancellationToken);
+        return Change(EarFunSetting.Prompt, [value], p => p[0] == value, cancellationToken);
     }
     public override Task<CommandResult> FindEarbudsAsync(bool ring, CancellationToken cancellationToken = default)
     {
         if (!Model.Has("find")) return Task.FromResult(NotSupported("Find earbuds"));
         byte[] value = Model.Gaia ? [ring ? (byte)3 : (byte)0] : [ring ? (byte)1 : (byte)0, ring ? (byte)1 : (byte)0];
-        return Change(EarFunSetting.Find, value, p => p.SequenceEqual(value), cancellationToken, stopping: !ring);
+        return Change(EarFunSetting.Find, value, p => Model.Gaia ? p[0] == value[0] : p.SequenceEqual(value), cancellationToken, stopping: !ring);
     }
     public override Task<CommandResult> SetOptionAsync(string id, int value, CancellationToken cancellationToken = default)
     {
         if (!Store.Current.Options.TryGetValue(id, out var option) || !option.Value.Accepts(value)) return Task.FromResult(NotSupported("Option value"));
         var setting = new[] { EarFunSetting.Sub, EarFunSetting.Ambient, EarFunSetting.AutoOff }.Cast<EarFunSetting?>().FirstOrDefault(s => id == "earfun-" + s!.Value.ToString().ToLowerInvariant());
-        return setting is null ? Task.FromResult(NotSupported("Option")) : Change(setting.Value, [(byte)value], p => p.SequenceEqual(new[] { (byte)value }), cancellationToken);
+        return setting is null ? Task.FromResult(NotSupported("Option")) : Change(setting.Value, [(byte)value], p => p[0] == value, cancellationToken);
     }
 
     public override Task<CommandResult> SetKeyFunctionAsync(KeyFunction assignment, CancellationToken cancellationToken = default) => Serialized(async ct =>
     {
-        if (!Context.AllowExperimental() || !_profile.Confirmed(EarFunGestures.Read(Model))) return NotSupported("Unconfirmed or experimental gestures");
+        if (!Model.Has("keys")) return NotSupported("Gestures");
         var slots = EarFunGestures.Slots(Model);
         int index = Enumerable.Range(0, slots.Count).FirstOrDefault(i => slots[i].Matches(assignment), -1);
         if (index < 0 || slots[index].Choices.FirstOrDefault(c => c.Function == assignment.Function) is not { } choice
-            || (choice.Requires is { } capability && !_profile.Capabilities.IsAvailable(capability, Context.AllowExperimental()))) return NotSupported("Gesture assignment");
+            || (choice.Requires is { } capability && !_profile.Capabilities.IsAvailable(capability, allowExperimental: false))) return NotSupported("Gesture assignment");
         var current = await Request(EarFunGestures.Read(Model), [], ct).ConfigureAwait(false);
         if (current is not { Type: 0 } || EarFunGestures.Decode(Model, current.Payload) is not { } old) return TimedOut;
         byte[] payload;

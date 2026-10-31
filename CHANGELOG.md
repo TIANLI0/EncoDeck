@@ -6,6 +6,9 @@
 
 ### 修复
 
+- EarFun Air Pro 4+ 等耳机只走传统蓝牙 SPP 控制，EncoDeck 不再为它们保持 LE 链路：此前即使在 Windows 和耳机里关闭了 LE Audio，EncoDeck 仍会维持 LE 连接，首页显示“LE Audio”，耳机断开时还会提示等待 LE Audio。现在只有 Windows 真正为这副耳机提供了 LE Audio 输出时才显示 LE Audio（[#16](https://github.com/TIANLI0/EncoDeck/issues/16)）。
+- EarFun 耳机回报的设置值带有额外字节时不再被忽略。
+
 - Enco X4 / X3 切换到 LE Audio 后不再走传统蓝牙：双耳 LE 配对完成后删除 Windows 自动生成的传统蓝牙配对，只保留 LE 配对。此前传统链路会在 LC3 旁边反复建立，经典 A2DP 可能抢在 LE Audio 端点出现之前接管声音（切换显示失败、需要多试几次），或者 LE 链路被反复打断、控制通道不停重连。之后再次出现的传统配对也会自动删除；EncoDeck 按原来的设备身份继续识别耳机，设置不丢失。
 - 切换到 LE Audio 时等待 LE Audio 播放端点的时间由 20 秒延长到 30 秒，Intel 智音技术适配器注册端点较慢时不再误报失败。
 

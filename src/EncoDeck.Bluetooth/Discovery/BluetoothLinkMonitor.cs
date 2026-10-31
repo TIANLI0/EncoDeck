@@ -17,6 +17,7 @@ namespace EncoDeck.Bluetooth.Discovery;
 public sealed class BluetoothLinkMonitor : ILinkStateSource
 {
     private static readonly TimeSpan SecondaryRetry = TimeSpan.FromSeconds(15);
+    private static readonly TimeSpan OutputPoll = TimeSpan.FromSeconds(5);
     private const int SecondaryAttempts = 8;
 
     private readonly Lock _gate = new();
@@ -26,24 +27,28 @@ public sealed class BluetoothLinkMonitor : ILinkStateSource
     private ImmutableArray<Windows.Devices.Bluetooth.GenericAttributeProfile.GattSession> _sessions = [];
     private volatile bool _connected;
     private volatile bool _leAudio;
+    private volatile bool _leAudioOutput;
     private LeAudioLinkState _leLinks = LeAudioLinkState.Empty;
     private int _searching;
     private bool _disposed;
 
     private readonly bool _singleUnit;
+    private readonly bool _managesLe;
 
     /// <param name="device">The Classic device; null for earbuds kept on LE Audio alone (<see cref="LeAudioOnlyDevices"/>).</param>
-    private BluetoothLinkMonitor(BluetoothDevice? device, ImmutableArray<BluetoothLEDevice> leDevices, bool singleUnit)
+    private BluetoothLinkMonitor(BluetoothDevice? device, ImmutableArray<BluetoothLEDevice> leDevices, bool singleUnit, bool managesLe)
     {
         _device = device;
         _leDevices = leDevices;
         _singleUnit = singleUnit;
+        _managesLe = managesLe;
         _connected = Evaluate();
         _leAudio = EvaluateLe();
         _leLinks = EvaluateLinks();
         if (_device is not null) _device.ConnectionStatusChanged += OnConnectionStatusChanged;
         foreach (var le in leDevices) le.ConnectionStatusChanged += OnConnectionStatusChanged;
-        _ = MaintainAsync(leDevices);
+        if (managesLe) _ = MaintainAsync(leDevices);
+        else if (!leDevices.IsDefaultOrEmpty) _ = WatchLeAudioOutputAsync();
         // Only the primary bonded so far (e.g. the LE Audio switch is still pairing the other earbud).
         if (leDevices.Length == 1 && !singleUnit) _ = FindSecondaryAsync(SecondaryAttempts);
     }
@@ -58,8 +63,11 @@ public sealed class BluetoothLinkMonitor : ILinkStateSource
 
     public event EventHandler? LinkDetailsChanged;
 
-    /// <summary>The earbuds were switched to LE Audio on this PC (an LE bond is watched).</summary>
-    public bool IsLeAudioBonded => !_leDevices.IsDefaultOrEmpty;
+    /// <summary>
+    /// The earbuds were switched to LE Audio on this PC (an LE bond is watched). An LE bond of earbuds whose LE Audio
+    /// Windows decides says nothing about the audio path, so it never makes them wait for LE Audio.
+    /// </summary>
+    public bool IsLeAudioBonded => _managesLe && !_leDevices.IsDefaultOrEmpty;
 
     public event EventHandler? TransportChanged;
 
@@ -67,13 +75,14 @@ public sealed class BluetoothLinkMonitor : ILinkStateSource
     /// Headphones expose exactly one LE identity, so the "other earbud" of a true pair never appears.
     /// Treating that as "only one side is connected" made the UI claim one earbud was missing.
     /// </param>
-    public static async Task<BluetoothLinkMonitor?> CreateAsync(string deviceId, bool singleUnit, CancellationToken cancellationToken)
+    /// <param name="managesLe">See <see cref="Core.Profiles.IDeviceProfile.ManagesLeAudioLink"/>.</param>
+    public static async Task<BluetoothLinkMonitor?> CreateAsync(string deviceId, bool singleUnit, bool managesLe, CancellationToken cancellationToken)
     {
         // Never open the Classic device of LE-only earbuds: only their LE bonds carry links.
         if (LeAudioOnlyDevices.Find(deviceId) is { } leOnly)
         {
             var bonds = await BondedLeIdentitiesAsync(leOnly.Address, cancellationToken).ConfigureAwait(false);
-            if (!bonds.IsDefaultOrEmpty) return new BluetoothLinkMonitor(null, bonds, singleUnit);
+            if (!bonds.IsDefaultOrEmpty) return new BluetoothLinkMonitor(null, bonds, singleUnit, managesLe);
         }
 
         BluetoothDevice? device;
@@ -88,7 +97,7 @@ public sealed class BluetoothLinkMonitor : ILinkStateSource
         if (device is null) return null;
         try
         {
-            return new BluetoothLinkMonitor(device, await BondedLeIdentitiesAsync(device.BluetoothAddress, cancellationToken).ConfigureAwait(false), singleUnit);
+            return new BluetoothLinkMonitor(device, await BondedLeIdentitiesAsync(device.BluetoothAddress, cancellationToken).ConfigureAwait(false), singleUnit, managesLe);
         }
         catch
         {
@@ -170,7 +179,7 @@ public sealed class BluetoothLinkMonitor : ILinkStateSource
                     }
                 }
                 foreach (var le in found) le.Dispose();
-                _ = MaintainAsync(_leDevices.Skip(1));
+                if (_managesLe) _ = MaintainAsync(_leDevices.Skip(1));
                 OnConnectionStatusChanged(this, EventArgs.Empty);
                 return;
             }
@@ -216,9 +225,50 @@ public sealed class BluetoothLinkMonitor : ILinkStateSource
         }
     }
 
-    private bool Evaluate() => _device?.ConnectionStatus == BluetoothConnectionStatus.Connected || EvaluateLe();
+    private bool Evaluate() => _device?.ConnectionStatus == BluetoothConnectionStatus.Connected || IsLeLinkUp();
 
-    private bool EvaluateLe() => _leDevices.Any(le => le.ConnectionStatus == BluetoothConnectionStatus.Connected);
+    private bool IsLeLinkUp() => _leDevices.Any(le => le.ConnectionStatus == BluetoothConnectionStatus.Connected);
+
+    private bool EvaluateLe() => IsLeLinkUp() && (_managesLe || _leAudioOutput);
+
+    /// <summary>
+    /// For earbuds whose LE Audio Windows decides: whether Windows exposes an active LE Audio output for them while
+    /// an LE link is up. Polled, since the output appears seconds after the link and turning LE Audio off in Windows
+    /// removes it without dropping the link. Read-only.
+    /// </summary>
+    private async Task WatchLeAudioOutputAsync()
+    {
+        var token = _lifetime.Token;
+        try
+        {
+            while (!token.IsCancellationRequested)
+            {
+                bool output = false;
+                var devices = _leDevices;
+                if (!devices.IsDefaultOrEmpty && IsLeLinkUp())
+                {
+                    try
+                    {
+                        var inspection = await LeAudioClassicAudioEndpoint.InspectAsync(devices[0].BluetoothAddress, token).ConfigureAwait(false);
+                        output = inspection.LeAudioRender is { IsStateKnown: true, IsActive: true, IsDisabled: false };
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException and not ObjectDisposedException)
+                    {
+                        output = _leAudioOutput;
+                    }
+                }
+                if (output != _leAudioOutput)
+                {
+                    _leAudioOutput = output;
+                    OnConnectionStatusChanged(this, EventArgs.Empty);
+                }
+                await Task.Delay(OutputPoll, token).ConfigureAwait(false);
+            }
+        }
+        catch (Exception ex) when (ex is OperationCanceledException or ObjectDisposedException)
+        {
+        }
+    }
 
     private LeAudioLinkState EvaluateLinks()
     {

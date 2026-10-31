@@ -282,6 +282,7 @@ public sealed class DeviceManager : IDeviceManager
                 link = bridgeOnly ? null : await BluetoothLinkMonitor.CreateAsync(
                     choice.Identity.DeviceId,
                     profile.Form == DeviceForm.Headphones,
+                    profile.ManagesLeAudioLink,
                     cancellationToken).ConfigureAwait(false);
             }
             // 0x800710DF (device not ready): Windows has no Bluetooth radio left, typically because A2DP Windows
