@@ -68,7 +68,8 @@ public sealed class FeaturesViewModel
         is EncoDeck.Protocol.Brands.Moondrop.MoondropProfile
         or EncoDeck.Protocol.Brands.Akg.AkgHybridProfile
         or EncoDeck.Protocol.Brands.Vivo.VivoDeviceProfile
-        or EncoDeck.Protocol.Brands.Edifier.EdifierProfile;
+        or EncoDeck.Protocol.Brands.Edifier.EdifierProfile
+        or EncoDeck.Protocol.Brands.EarFun.EarFunProfile;
 
     public bool AllowExperimental => OffersExperimental(State.Profile) && _settings.Current.EnableExperimentalFeatures;
 
@@ -211,7 +212,8 @@ public sealed class FeaturesViewModel
     // ---- device-reported options (auto power off, button assignment, levels) -----------------------
 
     /// <summary>Options the earbuds reported, in display order. Only present after a device readback.</summary>
-    public IReadOnlyList<DeviceOption> Options => State.Options.Values.Select(o => o.Value).OrderBy(o => o.Order).ThenBy(o => o.Id, StringComparer.Ordinal).ToArray();
+    public IReadOnlyList<DeviceOption> Options => State.Profile is EncoDeck.Protocol.Brands.EarFun.EarFunProfile && !AllowExperimental ? []
+        : State.Options.Values.Select(o => o.Value).OrderBy(o => o.Order).ThenBy(o => o.Id, StringComparer.Ordinal).ToArray();
 
     public Task<CommandResult> SetOptionAsync(string id, int value) => Run(() => _commands.SetOptionAsync(id, value));
 

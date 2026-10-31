@@ -184,3 +184,7 @@ MOONDROP model data, GAIA framing and commands draw on [MiuixMoondrop](https://g
 [GPL-3.0-only](LICENSE).
 
 EncoDeck is an unofficial open-source project with no affiliation, partnership or endorsement from the brands above or their manufacturers. Brand and product names are used only to describe compatibility.
+
+### EarFun (development version)
+
+23 GAIA / EF profiles, including EarFun Air Pro 4+ (TW700), are available with battery and firmware reads and model-specific controls gated by device readback and the experimental-features switch. EncoAPI provides 13 exact official product photographs. Hardware verification and EQ readback remain pending; see [compatibility details](docs/COMPATIBILITY.md#earfun--atvel).

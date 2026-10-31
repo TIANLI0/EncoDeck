@@ -114,6 +114,7 @@ EncoDeck 是用 **WinUI 3** 编写的 Windows 耳机控制工具。它把常用�
 | **AKG** | N400NC、N700NCM2、N200NC、Y600：经 BLE（经典蓝牙备用）读取电量 / 充电、固件，降噪 / 环境感知 / 对话模式、预设 EQ、入耳自动播放/暂停；N5/N9 Hybrid 使用 Airoha RACE（电量、充电盒电量，降噪为实验功能）；N700NC 仅识别和素材 | 协议实现，未真机验证 |
 | **漫步者** | W820NB、W200BT / W200BT Plus、W860NB PRO、花再 Evo Pro、FitBuds Turbo、FitClip Ultra、X5 Pro；Atom / Lolli 系列 28 个型号的识别、SPP / BLE 与双耳 / 盒电量；降噪 / 环境声、游戏模式、按键控制、音效与定时关机按型号和回读开放 | 协议实现，未真机验证；[范围说明](docs/COMPATIBILITY.md#漫步者) |
 | **水月雨 MOONDROP** | 18 个型号档案及通用识别（非完整型号支持）；GAIA BLE / RFCOMM、电量、按型号降噪 / 抗风噪、增益；能力发现后开放 LED、提示音开关 / 音量、双耳 TOUCHV2、LHDC / 双设备互斥、出厂 EQ 预设与用户 PEQ；实验性加入 LDAC / LC3、入耳检测、空间音频 / 头部跟踪、动态低音、左右声道交换 | EDGE 固件 1.3.0 已在 Windows 真机验证 RFCOMM 控制连接与基础状态读取；EDGE、太空漫游2 的 EQ 读写有社区真机记录；新增设置及其他型号仍以协议移植与模拟验证为主；推断及新增功能须实验性启用 |
+| **EarFun / ATVEL** | 23 条 GAIA / EF 型号记录，含 Air Pro 4+；电量、固件，按型号与回读开放实验性降噪、游戏模式、双设备、入耳检测、提示音、查找与触控；13 条精确产品图 | 协议移植与模拟设备测试，须开启实验性功能，未真机验证；[范围说明](docs/COMPATIBILITY.md#earfun--atvel) |
 | **荣耀** | 9 款（含 HONOR CHOICE X5 / X5 Pro）；电量、降噪 / 通透及档位、佩戴检测、双设备连接、耳机返回预设后的 EQ（按型号） | 协议实现，未真机验证 |
 | **森海塞尔** | 13 款电量与固件；MOMENTUM 4 / 5、ACCENTUM 系列、HDB 630 按型号提供降噪 / 自适应 / 通透、抗风噪、Smart Pause、用户 EQ 与已配对设备列表；MOMENTUM TW 4 降噪、抗风噪、佩戴检测、低延迟与触控自定义 | 协议实现与模拟设备测试，部分功能有社区真机记录，EncoDeck 未真机验证 |
 | **三星** | Galaxy Buds2、Buds2 Pro、Buds4 Pro：左右耳与充电盒电量、关闭 / 降噪 / 通透、预设 EQ；Buds4 Pro 自适应模式与降噪强度，Buds2 / Buds2 Pro 触控锁定 | 协议移植，未真机验证 |

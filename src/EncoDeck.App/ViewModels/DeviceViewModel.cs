@@ -506,13 +506,15 @@ public sealed partial class DeviceViewModel : ObservableObject
                 && (other is not EncoDeck.Protocol.Brands.Moondrop.MoondropProfile moondrop
                     || moondrop.Capabilities.IsAvailable(EncoDeck.Protocol.Brands.Moondrop.MoondropProfile.ToggleCapability(toggle), _settings.Current.EnableExperimentalFeatures))
             : profile is UsbHeadsetProfile usb && usb.Toggles.Contains(toggle);
+        if (profile is EncoDeck.Protocol.Brands.EarFun.EarFunProfile && !_settings.Current.EnableExperimentalFeatures) offered = false;
         if (!offered) return;
         Toggles.Add(new DeviceToggleViewModel(toggle, Loc.Get($"Toggle_{toggle}"), Loc.Get($"Toggle_{toggle}_Description")));
     }
 
     private void ApplyNoise(DeviceState state, IDeviceProfile? profile)
     {
-        IsNoiseAvailable = IsReady && profile is not null && profile.Capabilities.IsAvailable(DeviceCapability.NoiseCancellation, allowExperimental: false);
+        IsNoiseAvailable = IsReady && profile is not null && profile.Capabilities.IsAvailable(DeviceCapability.NoiseCancellation,
+            allowExperimental: profile is EncoDeck.Protocol.Brands.EarFun.EarFunProfile && _settings.Current.EnableExperimentalFeatures);
         // Only models verified to refuse noise changes over LE Audio (the X4) are greyed out there.
         CanSetNoise = IsNoiseAvailable && !(state.IsLeAudio && profile is OppoDeviceProfile { Definition.RejectsNoiseChangeOnLeAudio: true });
         IsNoisePending = state.IsPending("noise-control");
@@ -624,7 +626,8 @@ public sealed partial class DeviceViewModel : ObservableObject
         return parts.Count > 0 ? string.Join(" · ", parts) : "A2DP";
     }
 
-    private static bool IsAllowed(CapabilitySupport support) => support == CapabilitySupport.Supported;
+    private bool IsAllowed(CapabilitySupport support) => support == CapabilitySupport.Supported
+        || (support == CapabilitySupport.Experimental && Profile is EncoDeck.Protocol.Brands.EarFun.EarFunProfile && _settings.Current.EnableExperimentalFeatures);
 
     /// <summary>
     /// Localized text for a profile resource key, or <paramref name="fallback"/> when the key is unknown.

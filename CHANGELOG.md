@@ -2,6 +2,12 @@
 
 本文件记录 EncoDeck 每个版本的用户可见变化，格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。每个版本按“新增 / 改进 / 修复 / 移除”分类。
 
+## [Unreleased]
+
+### 新增
+
+- 接入 EarFun Air Pro 4+ 及 EarKit 的 23 条 GAIA / EF 型号记录（[#16](https://github.com/TIANLI0/EncoDeck/issues/16)）：电量、固件、按型号回读开放的降噪、游戏模式、双设备、入耳检测、提示音量、查找及触控。控制功能须在设备页开启实验性功能，仍待真机验证。EncoAPI 同步提供 13 条精确型号的官网产品图；EQ 缺少可核实的回读，暂不开放。
+
 ## [1.14.0-beta.2] - 2026-10-31
 
 ### 新增

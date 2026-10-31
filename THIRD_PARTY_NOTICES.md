@@ -219,3 +219,32 @@ non-commercial purposes. EncoDeck talks to the separate A2DPWB process over its 
 
 `src/EncoDeck.Platform/A2dpBridge/Lang/en.json` and `zh-CN.json` are A2DPWB's `app/lang` message files from the pinned
 release (Apache-2.0 OR MIT), embedded so that the core's status and error keys read as A2DPWB words them.
+
+
+## EarKit (EarFun protocol adapter)
+
+Model facts, GAIA/EF framing, command values and gesture layouts adapted from [EarKit](https://github.com/ChuiFeng-wind/EarKit), commit `a77acd18890a5f28746c2303bfff0e23fff8d8ca`. The adapter uses EncoDeck state, capability gates and readback confirmation.
+
+MIT License
+
+Copyright (c) 2026 EarKit contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+EarFun product photographs are downloaded at runtime from EncoAPI; copyright remains with the original rights holders.

@@ -1083,4 +1083,84 @@
   <data name="Codec_ReportedDescription" xml:space="preserve"><value>音频编码：{0}</value></data>
   <data name="Codec_BridgeDescription" xml:space="preserve"><value>A2DP Bridge 正在向这台耳机发送 {0} 音频。</value></data>
   <data name="Codec_LeAudioDescription" xml:space="preserve"><value>LE 链路已连接，尚未确认音频流或 LC3 编码。</value></data>
+  <data name="EarFun_Wind" xml:space="preserve"><value>抗风噪</value></data>
+  <data name="EarFun_Anc1" xml:space="preserve"><value>降噪 1</value></data>
+  <data name="EarFun_EarAdaptive" xml:space="preserve"><value>耳道智能自适应</value></data>
+  <data name="EarFun_Adaptive" xml:space="preserve"><value>自适应</value></data>
+  <data name="EarFun_Level1" xml:space="preserve"><value>1 档</value></data>
+  <data name="EarFun_Level2" xml:space="preserve"><value>2 档</value></data>
+  <data name="EarFun_Level3" xml:space="preserve"><value>3 档</value></data>
+  <data name="EarFun_Level4" xml:space="preserve"><value>4 档（最强）</value></data>
+  <data name="EarFun_Strong" xml:space="preserve"><value>强力</value></data>
+  <data name="EarFun_Balanced" xml:space="preserve"><value>均衡</value></data>
+  <data name="EarFun_Default" xml:space="preserve"><value>默认</value></data>
+  <data name="EarFun_Natural" xml:space="preserve"><value>自然</value></data>
+  <data name="EarFun_Never" xml:space="preserve"><value>从不</value></data>
+  <data name="EarFun_Minutes" xml:space="preserve"><value>{0} 分钟</value></data>
+  <data name="EarFun_Sub" xml:space="preserve"><value>降噪子模式</value></data>
+  <data name="EarFun_Ambient" xml:space="preserve"><value>通透子模式</value></data>
+  <data name="EarFun_AutoOff" xml:space="preserve"><value>自动关机</value></data>
+  <data name="EarFun_CallTriple" xml:space="preserve"><value>通话中三击</value></data>
+  <data name="EarFun_CallHold" xml:space="preserve"><value>通话中长按</value></data>
+  <data name="EarFun_Button0Tap" xml:space="preserve"><value>音量 + · 单击</value></data>
+  <data name="EarFun_Button0Hold" xml:space="preserve"><value>音量 + · 长按</value></data>
+  <data name="EarFun_Button1Tap" xml:space="preserve"><value>音量 - · 单击</value></data>
+  <data name="EarFun_Button1Hold" xml:space="preserve"><value>音量 - · 长按</value></data>
+  <data name="EarFun_Button2Tap" xml:space="preserve"><value>降噪按键 · 单击</value></data>
+  <data name="EarFun_Button2Hold" xml:space="preserve"><value>降噪按键 · 长按</value></data>
+  <data name="EarFun_QAction1" xml:space="preserve"><value>播放 / 暂停</value></data>
+  <data name="EarFun_QAction2" xml:space="preserve"><value>音量 +</value></data>
+  <data name="EarFun_QAction3" xml:space="preserve"><value>音量 -</value></data>
+  <data name="EarFun_QAction4" xml:space="preserve"><value>上一曲</value></data>
+  <data name="EarFun_QAction5" xml:space="preserve"><value>下一曲</value></data>
+  <data name="EarFun_QAction6" xml:space="preserve"><value>语音助手</value></data>
+  <data name="EarFun_QAction7" xml:space="preserve"><value>游戏模式</value></data>
+  <data name="EarFun_QAction8" xml:space="preserve"><value>降噪模式循环</value></data>
+  <data name="EarFun_QAction9" xml:space="preserve"><value>降噪 / 关闭</value></data>
+  <data name="EarFun_QAction10" xml:space="preserve"><value>通透 / 关闭</value></data>
+  <data name="EarFun_QAction11" xml:space="preserve"><value>降噪 / 通透</value></data>
+  <data name="EarFun_QAction13" xml:space="preserve"><value>回拨</value></data>
+  <data name="EarFun_QAction16" xml:space="preserve"><value>无功能</value></data>
+  <data name="EarFun_EAction0" xml:space="preserve"><value>无功能</value></data>
+  <data name="EarFun_EAction1" xml:space="preserve"><value>播放 / 暂停</value></data>
+  <data name="EarFun_EAction2" xml:space="preserve"><value>音量 +</value></data>
+  <data name="EarFun_EAction3" xml:space="preserve"><value>音量 -</value></data>
+  <data name="EarFun_EAction4" xml:space="preserve"><value>上一曲</value></data>
+  <data name="EarFun_EAction5" xml:space="preserve"><value>下一曲</value></data>
+  <data name="EarFun_EAction6" xml:space="preserve"><value>语音助手</value></data>
+  <data name="EarFun_EAction7" xml:space="preserve"><value>游戏模式</value></data>
+  <data name="EarFun_EAction8" xml:space="preserve"><value>降噪模式循环</value></data>
+  <data name="EarFun_EAction9" xml:space="preserve"><value>降噪 / 关闭</value></data>
+  <data name="EarFun_EAction10" xml:space="preserve"><value>关机</value></data>
+  <data name="EarFun_EAction11" xml:space="preserve"><value>回拨</value></data>
+  <data name="EarFun_EAction12" xml:space="preserve"><value>双设备连接</value></data>
+  <data name="EarFun_TAction0" xml:space="preserve"><value>无功能</value></data>
+  <data name="EarFun_TAction1" xml:space="preserve"><value>播放 / 暂停</value></data>
+  <data name="EarFun_TAction2" xml:space="preserve"><value>音量 +</value></data>
+  <data name="EarFun_TAction3" xml:space="preserve"><value>音量 -</value></data>
+  <data name="EarFun_TAction4" xml:space="preserve"><value>上一曲</value></data>
+  <data name="EarFun_TAction5" xml:space="preserve"><value>下一曲</value></data>
+  <data name="EarFun_TAction6" xml:space="preserve"><value>语音助手</value></data>
+  <data name="EarFun_TAction7" xml:space="preserve"><value>游戏模式</value></data>
+  <data name="EarFun_TAction8" xml:space="preserve"><value>降噪模式循环</value></data>
+  <data name="EarFun_TAction9" xml:space="preserve"><value>降噪 / 关闭</value></data>
+  <data name="EarFun_TAction10" xml:space="preserve"><value>关机</value></data>
+  <data name="EarFun_TAction11" xml:space="preserve"><value>回拨</value></data>
+  <data name="EarFun_TAction12" xml:space="preserve"><value>空间音频</value></data>
+  <data name="EarFun_TAction14" xml:space="preserve"><value>通透 / 关闭</value></data>
+  <data name="EarFun_TAction15" xml:space="preserve"><value>降噪 / 通透</value></data>
+  <data name="EarFun_CAction0" xml:space="preserve"><value>无功能</value></data>
+  <data name="EarFun_CAction1" xml:space="preserve"><value>播放 / 暂停</value></data>
+  <data name="EarFun_CAction2" xml:space="preserve"><value>音量 +</value></data>
+  <data name="EarFun_CAction3" xml:space="preserve"><value>音量 -</value></data>
+  <data name="EarFun_CAction4" xml:space="preserve"><value>上一曲</value></data>
+  <data name="EarFun_CAction5" xml:space="preserve"><value>下一曲</value></data>
+  <data name="EarFun_CAction6" xml:space="preserve"><value>语音助手</value></data>
+  <data name="EarFun_CAction7" xml:space="preserve"><value>游戏模式</value></data>
+  <data name="EarFun_CAction8" xml:space="preserve"><value>降噪模式循环</value></data>
+  <data name="EarFun_CAction9" xml:space="preserve"><value>降噪 / 关闭</value></data>
+  <data name="EarFun_CAction10" xml:space="preserve"><value>关机</value></data>
+  <data name="EarFun_CAction11" xml:space="preserve"><value>回拨</value></data>
+  <data name="EarFun_CAction12" xml:space="preserve"><value>低音增强</value></data>
+  <data name="EarFun_CAction13" xml:space="preserve"><value>礼貌模式</value></data>
 </root>

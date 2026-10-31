@@ -52,13 +52,13 @@ public sealed record DeviceResourceKey(string ModelId, uint? ProductId, int? Col
     public string ProductIdText => ProductId is { } pid ? pid.ToString("X6") : string.Empty;
     public string Brand => ModelId.Split('-', ':')[0].ToLowerInvariant();
     // USB receiver profiles ("<brand>-usb-<model>") never carry an OPLUS product ID, whatever the brand.
-    public bool UsesOplusId => Brand is not ("vivo" or "iqoo" or "huawei" or "honor" or "xiaomi" or "redmi" or "edifier" or "realme" or "dizo" or "sony" or "akg" or "moondrop" or "sennheiser" or "dareu" or "rapoo" or "mchose" or "razer"
+    public bool UsesOplusId => Brand is not ("vivo" or "iqoo" or "huawei" or "honor" or "earfun" or "xiaomi" or "redmi" or "edifier" or "realme" or "dizo" or "sony" or "akg" or "moondrop" or "sennheiser" or "dareu" or "rapoo" or "mchose" or "razer"
         // No artwork source for these brands yet: cache identity only, never downloaded.
         or "samsung" or "google" or "bose" or "nothing")
         && !ModelId.Contains("-usb-", StringComparison.Ordinal);
     public bool CanDownload => UsesOplusId
         ? ProductId is <= 0xFFFFFF && ColorId is >= 0 and <= 16
-        : (Brand is "vivo" or "iqoo" or "huawei" or "honor" or "xiaomi" or "redmi" or "edifier" or "realme" or "dizo" or "sony" or "akg" or "moondrop" or "sennheiser" or "dareu" or "rapoo" or "mchose" or "razer")
+        : (Brand is "vivo" or "iqoo" or "huawei" or "honor" or "earfun" or "xiaomi" or "redmi" or "edifier" or "realme" or "dizo" or "sony" or "akg" or "moondrop" or "sennheiser" or "dareu" or "rapoo" or "mchose" or "razer")
           && (ColorId is null or (>= 0 and <= 255)) && (!string.IsNullOrWhiteSpace(DeviceName) || !string.IsNullOrWhiteSpace(ModelName));
 
     // Family profiles (e.g. Xiaomi) can serve many devices. Their caches must never share artwork.

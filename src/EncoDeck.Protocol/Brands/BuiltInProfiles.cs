@@ -21,6 +21,7 @@ public static class BuiltInProfiles
         .. VivoProfiles.CreateBuiltIn(),
         .. HuaweiProfiles.CreateBuiltIn(),
         .. HonorProfiles.CreateBuiltIn(),
+        .. EarFun.EarFunProfiles.CreateBuiltIn(),
         .. MoondropProfiles.CreateBuiltIn(),
         .. Sony.SonyAkgProfiles.CreateBuiltIn(),
         .. Sennheiser.SennheiserProfiles.Create(),

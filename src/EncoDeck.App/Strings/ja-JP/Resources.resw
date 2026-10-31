@@ -1083,4 +1083,84 @@
   <data name="Codec_ReportedDescription" xml:space="preserve"><value>オーディオコーデック: {0}</value></data>
   <data name="Codec_BridgeDescription" xml:space="preserve"><value>A2DP Bridge がこのイヤホンに {0} 音声を送信しています。</value></data>
   <data name="Codec_LeAudioDescription" xml:space="preserve"><value>LE リンクは接続済みです。音声ストリームと LC3 コーデックは未確認です。</value></data>
+  <data name="EarFun_Wind" xml:space="preserve"><value>風切り音低減</value></data>
+  <data name="EarFun_Anc1" xml:space="preserve"><value>ANC 1</value></data>
+  <data name="EarFun_EarAdaptive" xml:space="preserve"><value>外耳道に適応</value></data>
+  <data name="EarFun_Adaptive" xml:space="preserve"><value>自動調整</value></data>
+  <data name="EarFun_Level1" xml:space="preserve"><value>レベル 1</value></data>
+  <data name="EarFun_Level2" xml:space="preserve"><value>レベル 2</value></data>
+  <data name="EarFun_Level3" xml:space="preserve"><value>レベル 3</value></data>
+  <data name="EarFun_Level4" xml:space="preserve"><value>レベル 4（最大）</value></data>
+  <data name="EarFun_Strong" xml:space="preserve"><value>強</value></data>
+  <data name="EarFun_Balanced" xml:space="preserve"><value>バランス</value></data>
+  <data name="EarFun_Default" xml:space="preserve"><value>標準</value></data>
+  <data name="EarFun_Natural" xml:space="preserve"><value>ナチュラル</value></data>
+  <data name="EarFun_Never" xml:space="preserve"><value>なし</value></data>
+  <data name="EarFun_Minutes" xml:space="preserve"><value>{0} 分</value></data>
+  <data name="EarFun_Sub" xml:space="preserve"><value>ノイズキャンセリングの種類</value></data>
+  <data name="EarFun_Ambient" xml:space="preserve"><value>外音取り込みの種類</value></data>
+  <data name="EarFun_AutoOff" xml:space="preserve"><value>自動電源オフ</value></data>
+  <data name="EarFun_CallTriple" xml:space="preserve"><value>通話中に3回タップ</value></data>
+  <data name="EarFun_CallHold" xml:space="preserve"><value>通話中に長押し</value></data>
+  <data name="EarFun_Button0Tap" xml:space="preserve"><value>音量 + · 1回押す</value></data>
+  <data name="EarFun_Button0Hold" xml:space="preserve"><value>音量 + · 長押し</value></data>
+  <data name="EarFun_Button1Tap" xml:space="preserve"><value>音量 - · 1回押す</value></data>
+  <data name="EarFun_Button1Hold" xml:space="preserve"><value>音量 - · 長押し</value></data>
+  <data name="EarFun_Button2Tap" xml:space="preserve"><value>NC ボタン · 1回押す</value></data>
+  <data name="EarFun_Button2Hold" xml:space="preserve"><value>NC ボタン · 長押し</value></data>
+  <data name="EarFun_QAction1" xml:space="preserve"><value>再生 / 一時停止</value></data>
+  <data name="EarFun_QAction2" xml:space="preserve"><value>音量を上げる</value></data>
+  <data name="EarFun_QAction3" xml:space="preserve"><value>音量を下げる</value></data>
+  <data name="EarFun_QAction4" xml:space="preserve"><value>前の曲</value></data>
+  <data name="EarFun_QAction5" xml:space="preserve"><value>次の曲</value></data>
+  <data name="EarFun_QAction6" xml:space="preserve"><value>音声アシスタント</value></data>
+  <data name="EarFun_QAction7" xml:space="preserve"><value>ゲームモード</value></data>
+  <data name="EarFun_QAction8" xml:space="preserve"><value>ノイズ制御を切り替え</value></data>
+  <data name="EarFun_QAction9" xml:space="preserve"><value>ANC / オフ</value></data>
+  <data name="EarFun_QAction10" xml:space="preserve"><value>外音取り込み / オフ</value></data>
+  <data name="EarFun_QAction11" xml:space="preserve"><value>ANC / 外音取り込み</value></data>
+  <data name="EarFun_QAction13" xml:space="preserve"><value>リダイヤル</value></data>
+  <data name="EarFun_QAction16" xml:space="preserve"><value>なし</value></data>
+  <data name="EarFun_EAction0" xml:space="preserve"><value>なし</value></data>
+  <data name="EarFun_EAction1" xml:space="preserve"><value>再生 / 一時停止</value></data>
+  <data name="EarFun_EAction2" xml:space="preserve"><value>音量を上げる</value></data>
+  <data name="EarFun_EAction3" xml:space="preserve"><value>音量を下げる</value></data>
+  <data name="EarFun_EAction4" xml:space="preserve"><value>前の曲</value></data>
+  <data name="EarFun_EAction5" xml:space="preserve"><value>次の曲</value></data>
+  <data name="EarFun_EAction6" xml:space="preserve"><value>音声アシスタント</value></data>
+  <data name="EarFun_EAction7" xml:space="preserve"><value>ゲームモード</value></data>
+  <data name="EarFun_EAction8" xml:space="preserve"><value>ノイズ制御を切り替え</value></data>
+  <data name="EarFun_EAction9" xml:space="preserve"><value>ANC / オフ</value></data>
+  <data name="EarFun_EAction10" xml:space="preserve"><value>電源オフ</value></data>
+  <data name="EarFun_EAction11" xml:space="preserve"><value>リダイヤル</value></data>
+  <data name="EarFun_EAction12" xml:space="preserve"><value>マルチポイント</value></data>
+  <data name="EarFun_TAction0" xml:space="preserve"><value>なし</value></data>
+  <data name="EarFun_TAction1" xml:space="preserve"><value>再生 / 一時停止</value></data>
+  <data name="EarFun_TAction2" xml:space="preserve"><value>音量を上げる</value></data>
+  <data name="EarFun_TAction3" xml:space="preserve"><value>音量を下げる</value></data>
+  <data name="EarFun_TAction4" xml:space="preserve"><value>前の曲</value></data>
+  <data name="EarFun_TAction5" xml:space="preserve"><value>次の曲</value></data>
+  <data name="EarFun_TAction6" xml:space="preserve"><value>音声アシスタント</value></data>
+  <data name="EarFun_TAction7" xml:space="preserve"><value>ゲームモード</value></data>
+  <data name="EarFun_TAction8" xml:space="preserve"><value>ノイズ制御を切り替え</value></data>
+  <data name="EarFun_TAction9" xml:space="preserve"><value>ANC / オフ</value></data>
+  <data name="EarFun_TAction10" xml:space="preserve"><value>電源オフ</value></data>
+  <data name="EarFun_TAction11" xml:space="preserve"><value>リダイヤル</value></data>
+  <data name="EarFun_TAction12" xml:space="preserve"><value>空間オーディオ</value></data>
+  <data name="EarFun_TAction14" xml:space="preserve"><value>外音取り込み / オフ</value></data>
+  <data name="EarFun_TAction15" xml:space="preserve"><value>ANC / 外音取り込み</value></data>
+  <data name="EarFun_CAction0" xml:space="preserve"><value>なし</value></data>
+  <data name="EarFun_CAction1" xml:space="preserve"><value>再生 / 一時停止</value></data>
+  <data name="EarFun_CAction2" xml:space="preserve"><value>音量を上げる</value></data>
+  <data name="EarFun_CAction3" xml:space="preserve"><value>音量を下げる</value></data>
+  <data name="EarFun_CAction4" xml:space="preserve"><value>前の曲</value></data>
+  <data name="EarFun_CAction5" xml:space="preserve"><value>次の曲</value></data>
+  <data name="EarFun_CAction6" xml:space="preserve"><value>音声アシスタント</value></data>
+  <data name="EarFun_CAction7" xml:space="preserve"><value>ゲームモード</value></data>
+  <data name="EarFun_CAction8" xml:space="preserve"><value>ノイズ制御を切り替え</value></data>
+  <data name="EarFun_CAction9" xml:space="preserve"><value>ANC / オフ</value></data>
+  <data name="EarFun_CAction10" xml:space="preserve"><value>電源オフ</value></data>
+  <data name="EarFun_CAction11" xml:space="preserve"><value>リダイヤル</value></data>
+  <data name="EarFun_CAction12" xml:space="preserve"><value>低音強調</value></data>
+  <data name="EarFun_CAction13" xml:space="preserve"><value>マナーモード</value></data>
 </root>

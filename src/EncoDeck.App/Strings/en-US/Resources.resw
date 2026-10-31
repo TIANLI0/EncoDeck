@@ -1083,4 +1083,84 @@ Afterwards Windows lists two entries with the same name (one is the other earbud
   <data name="Codec_ReportedDescription" xml:space="preserve"><value>Audio codec: {0}</value></data>
   <data name="Codec_BridgeDescription" xml:space="preserve"><value>A2DP Bridge is sending {0} audio to these earbuds.</value></data>
   <data name="Codec_LeAudioDescription" xml:space="preserve"><value>The LE link is connected. Audio streaming and the LC3 codec have not been verified.</value></data>
+  <data name="EarFun_Wind" xml:space="preserve"><value>Wind reduction</value></data>
+  <data name="EarFun_Anc1" xml:space="preserve"><value>ANC 1</value></data>
+  <data name="EarFun_EarAdaptive" xml:space="preserve"><value>Ear adaptive</value></data>
+  <data name="EarFun_Adaptive" xml:space="preserve"><value>Adaptive</value></data>
+  <data name="EarFun_Level1" xml:space="preserve"><value>Level 1</value></data>
+  <data name="EarFun_Level2" xml:space="preserve"><value>Level 2</value></data>
+  <data name="EarFun_Level3" xml:space="preserve"><value>Level 3</value></data>
+  <data name="EarFun_Level4" xml:space="preserve"><value>Level 4 (strongest)</value></data>
+  <data name="EarFun_Strong" xml:space="preserve"><value>Strong</value></data>
+  <data name="EarFun_Balanced" xml:space="preserve"><value>Balanced</value></data>
+  <data name="EarFun_Default" xml:space="preserve"><value>Default</value></data>
+  <data name="EarFun_Natural" xml:space="preserve"><value>Natural</value></data>
+  <data name="EarFun_Never" xml:space="preserve"><value>Never</value></data>
+  <data name="EarFun_Minutes" xml:space="preserve"><value>{0} minutes</value></data>
+  <data name="EarFun_Sub" xml:space="preserve"><value>ANC sub-mode</value></data>
+  <data name="EarFun_Ambient" xml:space="preserve"><value>Transparency sub-mode</value></data>
+  <data name="EarFun_AutoOff" xml:space="preserve"><value>Automatic power off</value></data>
+  <data name="EarFun_CallTriple" xml:space="preserve"><value>Triple-tap during calls</value></data>
+  <data name="EarFun_CallHold" xml:space="preserve"><value>Hold during calls</value></data>
+  <data name="EarFun_Button0Tap" xml:space="preserve"><value>Volume + · single press</value></data>
+  <data name="EarFun_Button0Hold" xml:space="preserve"><value>Volume + · hold</value></data>
+  <data name="EarFun_Button1Tap" xml:space="preserve"><value>Volume - · single press</value></data>
+  <data name="EarFun_Button1Hold" xml:space="preserve"><value>Volume - · hold</value></data>
+  <data name="EarFun_Button2Tap" xml:space="preserve"><value>NC button · single press</value></data>
+  <data name="EarFun_Button2Hold" xml:space="preserve"><value>NC button · hold</value></data>
+  <data name="EarFun_QAction1" xml:space="preserve"><value>Play / pause</value></data>
+  <data name="EarFun_QAction2" xml:space="preserve"><value>Volume up</value></data>
+  <data name="EarFun_QAction3" xml:space="preserve"><value>Volume down</value></data>
+  <data name="EarFun_QAction4" xml:space="preserve"><value>Previous track</value></data>
+  <data name="EarFun_QAction5" xml:space="preserve"><value>Next track</value></data>
+  <data name="EarFun_QAction6" xml:space="preserve"><value>Voice assistant</value></data>
+  <data name="EarFun_QAction7" xml:space="preserve"><value>Game mode</value></data>
+  <data name="EarFun_QAction8" xml:space="preserve"><value>Noise mode cycle</value></data>
+  <data name="EarFun_QAction9" xml:space="preserve"><value>ANC / off</value></data>
+  <data name="EarFun_QAction10" xml:space="preserve"><value>Transparency / off</value></data>
+  <data name="EarFun_QAction11" xml:space="preserve"><value>ANC / transparency</value></data>
+  <data name="EarFun_QAction13" xml:space="preserve"><value>Redial</value></data>
+  <data name="EarFun_QAction16" xml:space="preserve"><value>None</value></data>
+  <data name="EarFun_EAction0" xml:space="preserve"><value>None</value></data>
+  <data name="EarFun_EAction1" xml:space="preserve"><value>Play / pause</value></data>
+  <data name="EarFun_EAction2" xml:space="preserve"><value>Volume up</value></data>
+  <data name="EarFun_EAction3" xml:space="preserve"><value>Volume down</value></data>
+  <data name="EarFun_EAction4" xml:space="preserve"><value>Previous track</value></data>
+  <data name="EarFun_EAction5" xml:space="preserve"><value>Next track</value></data>
+  <data name="EarFun_EAction6" xml:space="preserve"><value>Voice assistant</value></data>
+  <data name="EarFun_EAction7" xml:space="preserve"><value>Game mode</value></data>
+  <data name="EarFun_EAction8" xml:space="preserve"><value>Noise mode cycle</value></data>
+  <data name="EarFun_EAction9" xml:space="preserve"><value>ANC / off</value></data>
+  <data name="EarFun_EAction10" xml:space="preserve"><value>Power off</value></data>
+  <data name="EarFun_EAction11" xml:space="preserve"><value>Redial</value></data>
+  <data name="EarFun_EAction12" xml:space="preserve"><value>Dual-device connection</value></data>
+  <data name="EarFun_TAction0" xml:space="preserve"><value>None</value></data>
+  <data name="EarFun_TAction1" xml:space="preserve"><value>Play / pause</value></data>
+  <data name="EarFun_TAction2" xml:space="preserve"><value>Volume up</value></data>
+  <data name="EarFun_TAction3" xml:space="preserve"><value>Volume down</value></data>
+  <data name="EarFun_TAction4" xml:space="preserve"><value>Previous track</value></data>
+  <data name="EarFun_TAction5" xml:space="preserve"><value>Next track</value></data>
+  <data name="EarFun_TAction6" xml:space="preserve"><value>Voice assistant</value></data>
+  <data name="EarFun_TAction7" xml:space="preserve"><value>Game mode</value></data>
+  <data name="EarFun_TAction8" xml:space="preserve"><value>Noise mode cycle</value></data>
+  <data name="EarFun_TAction9" xml:space="preserve"><value>ANC / off</value></data>
+  <data name="EarFun_TAction10" xml:space="preserve"><value>Power off</value></data>
+  <data name="EarFun_TAction11" xml:space="preserve"><value>Redial</value></data>
+  <data name="EarFun_TAction12" xml:space="preserve"><value>Spatial audio</value></data>
+  <data name="EarFun_TAction14" xml:space="preserve"><value>Transparency / off</value></data>
+  <data name="EarFun_TAction15" xml:space="preserve"><value>ANC / transparency</value></data>
+  <data name="EarFun_CAction0" xml:space="preserve"><value>None</value></data>
+  <data name="EarFun_CAction1" xml:space="preserve"><value>Play / pause</value></data>
+  <data name="EarFun_CAction2" xml:space="preserve"><value>Volume up</value></data>
+  <data name="EarFun_CAction3" xml:space="preserve"><value>Volume down</value></data>
+  <data name="EarFun_CAction4" xml:space="preserve"><value>Previous track</value></data>
+  <data name="EarFun_CAction5" xml:space="preserve"><value>Next track</value></data>
+  <data name="EarFun_CAction6" xml:space="preserve"><value>Voice assistant</value></data>
+  <data name="EarFun_CAction7" xml:space="preserve"><value>Game mode</value></data>
+  <data name="EarFun_CAction8" xml:space="preserve"><value>Noise mode cycle</value></data>
+  <data name="EarFun_CAction9" xml:space="preserve"><value>ANC / off</value></data>
+  <data name="EarFun_CAction10" xml:space="preserve"><value>Power off</value></data>
+  <data name="EarFun_CAction11" xml:space="preserve"><value>Redial</value></data>
+  <data name="EarFun_CAction12" xml:space="preserve"><value>Bass enhancement</value></data>
+  <data name="EarFun_CAction13" xml:space="preserve"><value>Polite mode</value></data>
 </root>

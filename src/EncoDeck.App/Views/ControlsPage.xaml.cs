@@ -230,7 +230,8 @@ public sealed partial class ControlsPage : Page
         // One setting for both earbuds everywhere: no left/right choice.
         bool perEar = model is not null && (model.GestureRows.Any(r => r.IsWritten && !r.IsCallControl && !r.BothEars) || (model.NoiseCycleIndices.Count > 0 && !model.NoiseCycleShared));
         EarSelector.Visibility = Show(perEar);
-        var (minVolume, maxVolume) = Features.State.Profile is EncoDeck.Protocol.Brands.Moondrop.MoondropProfile
+        bool earFun = Features.State.Profile is EncoDeck.Protocol.Brands.EarFun.EarFunProfile;
+        var (minVolume, maxVolume) = Features.State.Profile is EncoDeck.Protocol.Brands.Moondrop.MoondropProfile or EncoDeck.Protocol.Brands.EarFun.EarFunProfile
             ? (0, 100) : model?.PromptVolumeRange ?? (1, 10);
         // Changing the range can un-coerce a previous value and raise ValueChanged; it is not a user edit.
         bool wasSyncing = _syncing;
@@ -239,6 +240,8 @@ public sealed partial class ControlsPage : Page
         {
             PromptVolumeSlider.Minimum = minVolume;
             PromptVolumeSlider.Maximum = maxVolume;
+            PromptVolumeSlider.StepFrequency = earFun ? 25 : 1;
+            PromptVolumeSlider.TickFrequency = earFun ? 25 : 1;
         }
         finally { _syncing = wasSyncing; }
     }
