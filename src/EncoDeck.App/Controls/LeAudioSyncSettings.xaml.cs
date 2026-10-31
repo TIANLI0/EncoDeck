@@ -46,6 +46,8 @@ public sealed partial class LeAudioSyncSettings : UserControl
         LeAudioSyncStatus status = Companion.Guard.Status;
         bool on = App.Instance.Host.Settings.Current.LeAudioSyncGuard;
         bool supported = support == LeAudioSyncSupport.Supported;
+        // Only where it applies: an affected PC with LE Audio (LC3) earbuds connected.
+        Visibility = supported && Companion.LeAudioConnected ? Visibility.Visible : Visibility.Collapsed;
 
         _syncing = true;
         Enable.IsOn = on;

@@ -53,6 +53,22 @@
     <Content Include="..\..\THIRD_PARTY_NOTICES.md" Link="THIRD_PARTY_NOTICES.md" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\THIRD_PARTY_NOTICES.md')" />
   </ItemGroup>
 
+  <!-- Labs LE Audio bitrate: the native hook DLL (src/EncoDeck.LeHook, MinGW-w64), x64 only. build.ps1 skips it
+       with a warning where gcc is missing (the card then reports the component missing) and fails on CI. -->
+  <PropertyGroup>
+    <LeHookDirectory>$(MSBuildThisFileDirectory)..\EncoDeck.LeHook\</LeHookDirectory>
+    <LeHookDll>$(LeHookDirectory)bin\EncoDeck.LeHook.dll</LeHookDll>
+  </PropertyGroup>
+  <Target Name="BuildLeHook" BeforeTargets="AssignTargetPaths" Condition="'$(RuntimeIdentifier)' == 'win-x64'"
+          Inputs="$(LeHookDirectory)lehook.c;$(LeHookDirectory)build.ps1" Outputs="$(LeHookDll)">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(LeHookDirectory)build.ps1&quot;" />
+  </Target>
+  <Target Name="IncludeLeHook" AfterTargets="BuildLeHook" BeforeTargets="AssignTargetPaths" Condition="'$(RuntimeIdentifier)' == 'win-x64'">
+    <ItemGroup Condition="Exists('$(LeHookDll)')">
+      <Content Include="$(LeHookDll)" Link="EncoDeck.LeHook.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
+
   <ItemGroup>
     <ProjectReference Include="..\EncoDeck.Core\EncoDeck.Core.csproj" />
     <ProjectReference Include="..\EncoDeck.Protocol\EncoDeck.Protocol.csproj" />

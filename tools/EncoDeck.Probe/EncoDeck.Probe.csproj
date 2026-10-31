@@ -7,7 +7,7 @@
     <RootNamespace>EncoDeck.Probe</RootNamespace>
     <AssemblyName>EncoDeck.Probe</AssemblyName>
     <InvariantGlobalization>false</InvariantGlobalization>
-      <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\EncoDeck.Core\EncoDeck.Core.csproj" />
@@ -18,5 +18,9 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Logging" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- le-hook: the native hook DLL EncoDeck.App's build makes (src/EncoDeck.LeHook), copied when present. -->
+    <None Include="..\..\src\EncoDeck.LeHook\bin\EncoDeck.LeHook.dll" Condition="Exists('..\..\src\EncoDeck.LeHook\bin\EncoDeck.LeHook.dll')" CopyToOutputDirectory="PreserveNewest" Link="EncoDeck.LeHook.dll" />
   </ItemGroup>
 </Project>

@@ -78,7 +78,7 @@ public sealed class LeAudioSyncGuardTests
         await WaitForAsync(guard, LeAudioSyncState.Checking);
         guard.ReportOffset();
         await WaitForAsync(guard, LeAudioSyncState.WaitingForIdle);
-        await Task.Delay(100);
+        await Task.Delay(100, TestContext.Current.CancellationToken);
         Assert.Equal(0, platform.Closes);
         platform.OtherSessions = false;
         await WaitUntilAsync(() => platform.Opens == 2);

@@ -36,6 +36,7 @@ internal static class ProbeApp
                 "le-audio" => await LeAudioCommand.RunAsync(options, ct),
                 "le-sync" => await LeSyncCommand.RunAsync(options, ct),
                 "le-sync-selftest" => await LeSyncCommand.SelfTestAsync(options, ct),
+                "le-hook" => await LeHookCommand.RunAsync(options, ct),
                 "multipoint-off" => await LeAudioCommand.DisableMultipointCommandAsync(options, ct),
                 "render-model" => await RenderModelCommand.RunAsync(options, ct),
                 "bridge" => await BridgeCommand.RunAsync(options, ct),
@@ -107,6 +108,9 @@ internal static class ProbeApp
                       [--render <endpoint id>]  Use this render endpoint instead of the active LE Audio one.
               le-sync-selftest [--seconds N]  Research, run elevated: turn on Intel link statistics and print the
                                               per-CIS reports while audio plays, then restore the controller.
+              le-hook [status]            Labs LE Audio bitrate: support, applied preset and the hook's log.
+              le-hook apply --preset <id> Elevated: what the card's Apply does (48_1..48_5, or default).
+                      [--mode auto|low|high]  Transport: Windows' choice, latency first or reliability first.
               monitor [--seconds N]       Run the app's device runtime headlessly, print state changes
                                           and finally every feature value the session start read.
                       [--set-anc a,b --confirm-write]  Also run commands (off|anc|transparency|adaptive|smart|deep|medium|light|less|standard|more).

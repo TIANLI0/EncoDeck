@@ -74,6 +74,8 @@ foreach ($arch in $Architectures) {
         -p:VersionPrefix=$numeric -p:VersionSuffix="$(if ($Version -match '-(.+)$') { $Matches[1] } else { '' })" `
         -o $layout --nologo
     if ($LASTEXITCODE -ne 0) { throw "dotnet publish ($arch) failed." }
+    # The Labs LE Audio bitrate hook needs an elevated injector, which the Store package does not offer.
+    Remove-Item (Join-Path $layout "EncoDeck.LeHook.dll") -ErrorAction SilentlyContinue
 
     # Scale variants plus targetsize *_altform-unplated icons: without the unplated ones the taskbar,
     # Start and Alt+Tab draw the icon on an accent-colored square plate.

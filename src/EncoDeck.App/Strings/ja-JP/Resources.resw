@@ -824,6 +824,43 @@
   <data name="LeAudioSync_Status_Rebuilding" xml:space="preserve"><value>オーディオリンクを作り直しています（{0} 回目）…</value></data>
   <data name="LeAudioSync_Status_WaitingForIdle" xml:space="preserve"><value>ほかのプログラムが再生中です。一時停止するとリンクを作り直します。</value></data>
   <data name="LeAudioSync_Status_MicrophoneInUse" xml:space="preserve"><value>プログラムがイヤホンのマイクを使っているため、Windows が通話用のリンクに切り替えました。マイクが閉じたらもう一度確認してください。</value></data>
+  <data name="LeAudioCodec_Title.Text" xml:space="preserve"><value>LE Audio ビットレートと遅延（試験運用）</value></data>
+  <data name="LeAudioCodec_Summary.Text" xml:space="preserve"><value>Windows は LE Audio イヤホンに固定の LC3 プリセット（通常は 96 kbps、7.5 ms）を使い、伝送方式も自分で決めます（ゲーム中は遅延優先、それ以外は安定性優先）。ここでは別の標準プリセット（124.8 kbps など）を選んだり、伝送方式を固定したりできます。EncoDeck が Windows の Bluetooth オーディオ サービス内で要求される構成を置き換えるため、管理者権限が必要です。</value></data>
+  <data name="LeAudioCodec_Preset.Header" xml:space="preserve"><value>LC3 プリセット（48 kHz、片耳のビットレート）</value></data>
+  <data name="LeAudioCodec_PresetDefault" xml:space="preserve"><value>Windows の既定（変更しない）</value></data>
+  <data name="LeAudioCodec_PresetFormat" xml:space="preserve"><value>{0} kbps · {1} ms</value></data>
+  <data name="LeAudioCodec_Latency" xml:space="preserve"><value>遅延：LC3 の符号化は約 {0} ms。リンクの伝送は Windows が決め、上限はゲーム中 {1} ms、それ以外は {2} ms です。さらにイヤホン側に {3} ms の再生バッファーがあります。ビットレートはパケットの大きさを変えるだけで、遅延にはほとんど影響しません。</value></data>
+  <data name="LeAudioCodec_Result_SymbolsUnavailable" xml:space="preserve"><value>この PC の Windows Bluetooth オーディオ コンポーネントの公開シンボルを Microsoft のシンボル サーバーからダウンロードできませんでした（インターネット接続が必要、約 12 MB）。しばらくしてからもう一度お試しください。</value></data>
+  <data name="LeAudioCodec_Mode.Header" xml:space="preserve"><value>伝送方式</value></data>
+  <data name="LeAudioCodec_Mode_Auto" xml:space="preserve"><value>自動（Windows が決定：ゲーム中は遅延優先、それ以外は安定性優先）</value></data>
+  <data name="LeAudioCodec_Mode_LowLatency" xml:space="preserve"><value>遅延優先（常に低遅延。電波干渉が多いと途切れやすい）</value></data>
+  <data name="LeAudioCodec_Mode_HighReliability" xml:space="preserve"><value>安定性優先（常に再送を多く。途切れにくいが遅延は大きい）</value></data>
+  <data name="LeAudioCodec_ModeName_Auto" xml:space="preserve"><value>自動</value></data>
+  <data name="LeAudioCodec_ModeName_LowLatency" xml:space="preserve"><value>遅延優先</value></data>
+  <data name="LeAudioCodec_ModeName_HighReliability" xml:space="preserve"><value>安定性優先</value></data>
+  <data name="LeAudioCodec_Latency_Fixed" xml:space="preserve"><value>遅延：LC3 の符号化は約 {0} ms。リンクの伝送は上限 {1} ms・最大 {2} 回の再送に固定されます。さらにイヤホン側に {3} ms の再生バッファーがあります。</value></data>
+  <data name="LeAudioCodec_LinkFormat" xml:space="preserve"><value>{0} kbps · {1} ms · {2}（伝送上限 {3} ms、最大 {4} 回再送）</value></data>
+  <data name="LeAudioCodec_Link" xml:space="preserve"><value>現在のリンク：{0}（{1} に確立）。</value></data>
+  <data name="LeAudioCodec_LinkUnknown" xml:space="preserve"><value>現在のリンク：まだ記録がありません。次に LE Audio リンクが作られると表示されます。</value></data>
+  <data name="LeAudioCodec_Status_Pending" xml:space="preserve"><value>適用しました。Windows が次に LE Audio リンクを作るのを待っています（すべての再生を 5 秒以上止めるか、ゲームを開始・終了してください）。有効になると通知が表示されます。</value></data>
+  <data name="LeAudioCodec_HelpModes.Text" xml:space="preserve"><value>伝送方式：Windows はゲーム音声を再生しているプログラムがあると低遅延の伝送（リンク上限 15 ms、最大 5 回再送。実測約 12 ms）、それ以外では安定性重視の伝送（上限 75 ms、最大 13 回再送。実測約 48 ms）を使います。ゲームの音が始まる・止まるとこれを切り替えてリンクを作り直します。「遅延優先」か「安定性優先」に固定すると、何を再生しても同じ伝送を使います（切り替え時にリンクは作り直されますが、設定は変わりません）。</value></data>
+  <data name="Notify_LeAudioSwitched_Title" xml:space="preserve"><value>LE Audio を切り替えました</value></data>
+  <data name="LeAudioCodec_Apply" xml:space="preserve"><value>適用（管理者権限が必要）</value></data>
+  <data name="LeAudioCodec_Applying" xml:space="preserve"><value>適用しています…</value></data>
+  <data name="LeAudioCodec_Support_ComponentMissing" xml:space="preserve"><value>EncoDeck.LeHook.dll が見つかりません。EncoDeck を再インストールしてください。</value></data>
+  <data name="LeAudioCodec_Support_UnsupportedWindows" xml:space="preserve"><value>この PC の Windows Bluetooth オーディオ コンポーネントに変更すべき箇所が見つかりません（Windows Update で変わった可能性があります）。安全のため変更しません。</value></data>
+  <data name="LeAudioCodec_Status_Default" xml:space="preserve"><value>Windows の既定のプリセットを使っています。</value></data>
+  <data name="LeAudioCodec_Status_Active" xml:space="preserve"><value>適用済み：{0}。</value></data>
+  <data name="LeAudioCodec_Status_Lost" xml:space="preserve"><value>前回 {0} を適用しましたが、その後 Windows の Bluetooth オーディオ サービスが再起動しました（再起動、サインアウト、Bluetooth のオフ）。既定に戻っているので、もう一度適用してください。</value></data>
+  <data name="LeAudioCodec_Result_Ok" xml:space="preserve"><value>適用しました。次に LE Audio リンクが作られたときに有効になり、そのとき通知が表示されます。</value></data>
+  <data name="LeAudioCodec_Result_OkRebuilt" xml:space="preserve"><value>適用しました。リンクを作り直しています。有効になると通知が表示されます。作り直したあと、上の左右チャンネル調整カードでもう一度確認してください。</value></data>
+  <data name="LeAudioCodec_Result_Declined" xml:space="preserve"><value>キャンセルしました：管理者権限が得られませんでした。</value></data>
+  <data name="LeAudioCodec_Result_ServiceNotRunning" xml:space="preserve"><value>Windows の Bluetooth オーディオ サービスが動いていません。LE Audio イヤホンを接続してから適用してください。</value></data>
+  <data name="LeAudioCodec_Result_Failed" xml:space="preserve"><value>適用できませんでした（{0}）。詳しいログは {1} にあります。</value></data>
+  <data name="LeAudioCodec_Notes.Text" xml:space="preserve"><value>変更は Windows の Bluetooth オーディオ サービスが再起動するまで有効です（再起動、サインアウト、Bluetooth のオフ後はもう一度適用）。システム ファイルは変更しません。適用後に音が出ない、ノイズが出る場合は、イヤホンか PC の Bluetooth オーディオ ハードウェアがそのプリセットに対応していません。「Windows の既定」を選んで適用してください。</value></data>
+  <data name="LeAudioCodec_Help.Header" xml:space="preserve"><value>仕組みと制限</value></data>
+  <data name="LeAudioCodec_HelpHow.Text" xml:space="preserve"><value>Windows は LE Audio リンクを作るとき、まずイヤホンの対応範囲から LC3 構成を選び、次にそれに合う伝送設定（SDU のサイズ、間隔、遅延）を探します。EncoDeck はこの 2 か所でフレーム長と 1 フレームのバイト数を選んだプリセットに置き換えるので、両者は一致し、イヤホン、Windows、ハードウェア エンコーダーがすべて新しいプリセットで動きます。Bluetooth BAP 仕様の標準プリセット（48_1～48_5）のみを用意しています。</value></data>
+  <data name="LeAudioCodec_HelpLimits.Text" xml:space="preserve"><value>48 kHz のみ対応です。EncoDeck は Windows のバージョンに縛られません。初回利用時に Microsoft の公開シンボル サーバーからこの PC の Windows Bluetooth オーディオ コンポーネントのシンボル（約 12 MB、以後キャッシュ）をダウンロードし、変更すべき 2 か所を名前で探して先頭の命令を 1 つずつ確認します。見つからない、または一致しない場合（Windows Update で書き換えられた場合など）はこのカードを表示せず、何も変更しません。イヤホンが選んだプリセットに対応している必要があります。ビットレートが高いほど Bluetooth の電波を多く使うため、同じ Bluetooth アダプターにつないだコントローラーやキーボード、マウスが影響を受けやすくなります。</value></data>
   <data name="LeAudio_Endpoint_Disabled" xml:space="preserve"><value>クラシック A2DP のレンダリングエンドポイントを無効にしました。サウンド設定で LE Audio の「スピーカー」エンドポイントを選択してください。</value></data>
   <data name="LeAudio_Endpoint_AlreadyLeAudioOnly" xml:space="preserve"><value>クラシック A2DP エンドポイントは既に無効になっています。</value></data>
   <data name="LeAudio_Endpoint_NoClassicEndpoint" xml:space="preserve"><value>無効にできるクラシック A2DP エンドポイントが見つかりませんでした。</value></data>

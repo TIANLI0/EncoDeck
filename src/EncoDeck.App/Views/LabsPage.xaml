@@ -10,8 +10,10 @@
         <StackPanel MaxWidth="{StaticResource PageMaxWidth}" Padding="32,8,32,32" Spacing="16">
             <TextBlock x:Uid="Labs_Summary" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}"
                        Text="Experimental audio features. They change Windows Bluetooth or audio settings and are not guaranteed to work on every device." />
+            <!-- LE Audio (LC3): connection, then the calibration and bitrate cards, each shown only where it applies. -->
             <controls:LeAudioSettings />
             <controls:LeAudioSyncSettings />
+            <controls:LeAudioCodecSettings />
             <controls:LhdcSettings />
             <controls:A2dpBridgeSettings />
         </StackPanel>

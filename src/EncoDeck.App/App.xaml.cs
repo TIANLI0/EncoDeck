@@ -81,6 +81,15 @@ public partial class App : Application
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
         string[] commandLine = Environment.GetCommandLineArgs().Skip(1).ToArray();
+        // Elevated child of the Labs LE Audio bitrate card: apply and leave, without a window or the single-instance check.
+        int codec = Array.FindIndex(commandLine, a => string.Equals(a, LeAudioCodecCompanion.ApplyArgument, StringComparison.OrdinalIgnoreCase));
+        if (codec >= 0)
+        {
+            Environment.Exit(LeAudioCodecCompanion.RunElevatedApply(
+                codec + 1 < commandLine.Length ? commandLine[codec + 1] : null,
+                codec + 2 < commandLine.Length ? commandLine[codec + 2] : null));
+            return;
+        }
         // The MSIX StartupTask launches without arguments; treat it like the Run entry's --background.
         if (PackageIdentity.IsPackaged
             && Microsoft.Windows.AppLifecycle.AppInstance.GetCurrent().GetActivatedEventArgs().Kind
@@ -223,6 +232,7 @@ public partial class App : Application
         Host.Devices.ActiveDeviceCaseLidOpened += OnCaseLidOpened;
         Host.Store.StateChanged += OnStateChanged;
         Host.Updates.UpdateReady += OnUpdateReady;
+        Host.LeAudioCodec.Switched += OnLeAudioCodecSwitched;
         PowerManager.SystemSuspendStatusChanged += OnSuspendStatusChanged;
         Host.Start();
 
@@ -375,6 +385,10 @@ public partial class App : Application
         string parts = string.Join(" · ", low.Select(l => $"{Loc.Get(l.Component == BatteryComponent.Left ? "Battery_Left" : "Battery_Right")} {l.Level}%"));
         _dispatcher?.TryEnqueue(() => _tray?.Notify(Loc.Format("Notify_LowBattery_Title", e.Current.Device?.Name), parts));
     }
+
+    /// <summary>Labs LE Audio bitrate: the applied choice is now the link Windows uses.</summary>
+    private void OnLeAudioCodecSwitched(object? sender, Platform.LeAudioCodec.LeAudioLinkConfig link) =>
+        _dispatcher?.TryEnqueue(() => _tray?.Notify(Loc.Get("Notify_LeAudioSwitched_Title"), LeAudioCodecText.Link(link)));
 
     /// <summary>
     /// Store check for the MSIX build, once after start-up and when the main window opens (at most once an hour);

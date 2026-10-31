@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl x:Class="EncoDeck.App.Controls.LeAudioCodecSettings"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:local="using:EncoDeck.App.Controls"
+ Visibility="Collapsed">
+ <!-- Same layout as the other labs cards: title, summary, choices, latency, status, message bar, actions, notes, help.
+      Shown only where the hook can be applied (installed x64 build, supported Windows Bluetooth component), while LE
+      Audio (LC3) earbuds are connected. -->
+ <Border Style="{StaticResource CardStyle}">
+  <StackPanel Spacing="10">
+   <TextBlock x:Uid="LeAudioCodec_Title" Style="{StaticResource BodyStrongTextBlockStyle}" />
+   <TextBlock x:Uid="LeAudioCodec_Summary" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" />
+   <!-- Preset and transport side by side; they wrap on a narrow window. -->
+   <local:WrapPanel HorizontalSpacing="12" VerticalSpacing="10">
+    <ComboBox x:Name="Preset" x:Uid="LeAudioCodec_Preset" MinWidth="220" SelectionChanged="OnChoiceChanged" />
+    <ComboBox x:Name="Mode" x:Uid="LeAudioCodec_Mode" MinWidth="320" SelectionChanged="OnChoiceChanged" />
+   </local:WrapPanel>
+   <!-- Latency of the selected preset and transport. -->
+   <TextBlock x:Name="Latency" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" />
+   <!-- What is applied (and whether it already took effect), then the link Windows uses right now. -->
+   <TextBlock x:Name="Status" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+   <TextBlock x:Name="Link" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" />
+   <InfoBar x:Name="Notice" IsOpen="False" Visibility="Collapsed" />
+   <local:WrapPanel HorizontalSpacing="8" VerticalSpacing="8">
+    <Button x:Name="Apply" Click="OnApply" Style="{StaticResource AccentButtonStyle}" />
+   </local:WrapPanel>
+   <TextBlock x:Uid="LeAudioCodec_Notes" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" />
+   <Expander x:Uid="LeAudioCodec_Help" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+    <StackPanel Spacing="10">
+     <TextBlock x:Uid="LeAudioCodec_HelpHow" TextWrapping="Wrap" />
+     <TextBlock x:Uid="LeAudioCodec_HelpModes" TextWrapping="Wrap" />
+     <TextBlock x:Uid="LeAudioCodec_HelpLimits" TextWrapping="Wrap" />
+     <HyperlinkButton x:Uid="LeAudio_Guide" NavigateUri="https://github.com/TIANLI0/EncoDeck/blob/main/docs/LE_AUDIO.md" Padding="0" />
+    </StackPanel>
+   </Expander>
+  </StackPanel>
+ </Border>
+</UserControl>

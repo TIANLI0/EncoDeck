@@ -45,7 +45,16 @@ public sealed class LeAudioSyncCompanion : IAsyncDisposable
     /// <summary>Whether this PC qualifies; null until checked at start.</summary>
     public LeAudioSyncSupport? Support { get; private set; }
 
-    /// <summary>Raised on a background thread when <see cref="Support"/> or the guard's status changes.</summary>
+    /// <summary>
+    /// The active device plays over LE Audio (LC3) with both earbud links up. The Labs LE Audio adjustments (this
+    /// calibration and the bitrate) are only offered then.
+    /// </summary>
+    public bool LeAudioConnected
+    {
+        get { lock (_gate) return _target is not null; }
+    }
+
+    /// <summary>Raised on a background thread when <see cref="Support"/>, <see cref="LeAudioConnected"/> or the guard's status changes.</summary>
     public event EventHandler? Changed;
 
     public void Start()
@@ -82,12 +91,15 @@ public sealed class LeAudioSyncCompanion : IAsyncDisposable
         ulong? target = state is { IsLeAudio: true, LeAudioLinks.BothConnected: true, Device: { Transport: DeviceTransport.Bluetooth } device }
             ? device.Address.Value
             : null;
+        bool changed;
         lock (_gate)
         {
-            if (!force && target == _target) return;
+            changed = target != _target;
+            if (!force && !changed) return;
             _target = target;
         }
         StartResolve(target);
+        if (changed) Changed?.Invoke(this, EventArgs.Empty);
     }
 
     private void StartResolve(ulong? address, TimeSpan delay = default)

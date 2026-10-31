@@ -65,6 +65,11 @@ jobs:
       - name: Build libraries, Probe and tests
         run: dotnet build EncoDeck.slnx -c Release --no-restore
 
+      # EncoDeck.LeHook.dll (Labs LE Audio bitrate) is built with MinGW-w64 gcc during the x64 app build.
+      - name: MinGW-w64
+        shell: pwsh
+        run: ./build/ensure-mingw.ps1
+
       - name: Build app (x64)
         run: dotnet build src/EncoDeck.App -c Release -p:Platform=x64
 
@@ -90,6 +95,10 @@ jobs:
         with:
           global-json-file: global.json
 
+      - name: MinGW-w64
+        shell: pwsh
+        run: ./build/ensure-mingw.ps1
+
       - name: Publish app (win-x64, self-contained, unpackaged)
         shell: pwsh
         run: |
@@ -99,7 +108,7 @@ jobs:
           dotnet publish tools/EncoDeck.Probe -c Release -r win-x64 --self-contained -p:VersionSuffix=$suffix -o artifacts/EncoDeck.Probe-win-x64
           Copy-Item LICENSE, THIRD_PARTY_NOTICES.md, README.md, README_EN.md artifacts/EncoDeck-win-x64/
           Copy-Item LICENSE artifacts/EncoDeck.Probe-win-x64/
-          foreach ($f in 'EncoDeck.exe', 'EncoDeck.pri', 'Microsoft.WindowsAppRuntime.dll', 'Microsoft.ui.xaml.dll') {
+          foreach ($f in 'EncoDeck.exe', 'EncoDeck.pri', 'Microsoft.WindowsAppRuntime.dll', 'Microsoft.ui.xaml.dll', 'EncoDeck.LeHook.dll') {
             if (-not (Test-Path "artifacts/EncoDeck-win-x64/$f")) { throw "Missing $f in publish output" }
           }
           Compress-Archive artifacts/EncoDeck-win-x64/* artifacts/EncoDeck-win-x64.zip

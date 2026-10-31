@@ -824,6 +824,43 @@
   <data name="LeAudioSync_Status_Rebuilding" xml:space="preserve"><value>正在重新建立音频链路（第 {0} 次）…</value></data>
   <data name="LeAudioSync_Status_WaitingForIdle" xml:space="preserve"><value>其他程序正在播放。暂停它们之后会自动重新建立链路。</value></data>
   <data name="LeAudioSync_Status_MicrophoneInUse" xml:space="preserve"><value>有程序在使用耳机麦克风，Windows 改用了通话链路；麦克风关闭后需要重新检查。</value></data>
+  <data name="LeAudioCodec_Title.Text" xml:space="preserve"><value>LE Audio 码率与延迟（实验性）</value></data>
+  <data name="LeAudioCodec_Summary.Text" xml:space="preserve"><value>Windows 给 LE Audio 耳机选的 LC3 档位是固定的（通常 96 kbps、7.5 ms），传输方式也由它决定：玩游戏时延迟优先，其余时候抗干扰优先。这里可以改选其他标准档位（例如 124.8 kbps），也可以固定传输方式。EncoDeck 会在 Windows 的蓝牙音频服务里替换它请求的配置，需要管理员权限。</value></data>
+  <data name="LeAudioCodec_Preset.Header" xml:space="preserve"><value>LC3 档位（48 kHz，单耳码率）</value></data>
+  <data name="LeAudioCodec_PresetDefault" xml:space="preserve"><value>Windows 默认（不修改）</value></data>
+  <data name="LeAudioCodec_PresetFormat" xml:space="preserve"><value>{0} kbps · {1} ms</value></data>
+  <data name="LeAudioCodec_Latency" xml:space="preserve"><value>延迟：LC3 编码约 {0} ms；链路传输由 Windows 决定，上限为游戏时 {1} ms、平时 {2} ms；耳机另有 {3} ms 播放缓冲。码率只改变每个包的大小，对延迟几乎没有影响。</value></data>
+  <data name="LeAudioCodec_Result_SymbolsUnavailable" xml:space="preserve"><value>无法从微软符号服务器下载这台电脑的 Windows 蓝牙音频组件的公开符号（需要联网，约 12 MB），稍后再试。</value></data>
+  <data name="LeAudioCodec_Mode.Header" xml:space="preserve"><value>传输方式</value></data>
+  <data name="LeAudioCodec_Mode_Auto" xml:space="preserve"><value>自动（Windows 决定：玩游戏时延迟优先，其余时候抗干扰优先）</value></data>
+  <data name="LeAudioCodec_Mode_LowLatency" xml:space="preserve"><value>延迟优先（始终低延迟，干扰多时更容易断音）</value></data>
+  <data name="LeAudioCodec_Mode_HighReliability" xml:space="preserve"><value>抗干扰优先（始终多次重传，更稳，延迟更高）</value></data>
+  <data name="LeAudioCodec_ModeName_Auto" xml:space="preserve"><value>自动</value></data>
+  <data name="LeAudioCodec_ModeName_LowLatency" xml:space="preserve"><value>延迟优先</value></data>
+  <data name="LeAudioCodec_ModeName_HighReliability" xml:space="preserve"><value>抗干扰优先</value></data>
+  <data name="LeAudioCodec_Latency_Fixed" xml:space="preserve"><value>延迟：LC3 编码约 {0} ms；链路传输上限固定为 {1} ms，最多重传 {2} 次；耳机另有 {3} ms 播放缓冲。</value></data>
+  <data name="LeAudioCodec_LinkFormat" xml:space="preserve"><value>{0} kbps · {1} ms · {2}（传输上限 {3} ms，最多重传 {4} 次）</value></data>
+  <data name="LeAudioCodec_Link" xml:space="preserve"><value>当前链路：{0}，{1} 建立。</value></data>
+  <data name="LeAudioCodec_LinkUnknown" xml:space="preserve"><value>当前链路：还没有记录，下次建立 LE Audio 链路后显示。</value></data>
+  <data name="LeAudioCodec_Status_Pending" xml:space="preserve"><value>已应用，等待 Windows 下次建立 LE Audio 链路（暂停所有播放 5 秒以上再继续，或开始、停止游戏）。生效时会弹出通知。</value></data>
+  <data name="LeAudioCodec_HelpModes.Text" xml:space="preserve"><value>传输方式：Windows 只要发现有程序在播放“游戏”类音频，就用低延迟传输（链路上限 15 ms、最多重传 5 次，实测链路约 12 ms），否则用抗干扰传输（上限 75 ms、最多重传 13 次，实测约 48 ms）。游戏开始或停止发声时 Windows 会在两者之间切换并重建链路。固定为“延迟优先”或“抗干扰优先”后，不管播放什么都使用同一种传输（切换时仍会重建一次链路，但参数不变）。</value></data>
+  <data name="Notify_LeAudioSwitched_Title" xml:space="preserve"><value>LE Audio 已切换</value></data>
+  <data name="LeAudioCodec_Apply" xml:space="preserve"><value>应用（需要管理员权限）</value></data>
+  <data name="LeAudioCodec_Applying" xml:space="preserve"><value>正在应用…</value></data>
+  <data name="LeAudioCodec_Support_ComponentMissing" xml:space="preserve"><value>缺少 EncoDeck.LeHook.dll，请重新安装 EncoDeck。</value></data>
+  <data name="LeAudioCodec_Support_UnsupportedWindows" xml:space="preserve"><value>这台电脑的 Windows 蓝牙音频组件里找不到需要修改的位置（可能是 Windows 更新改动了它），为安全起见不做修改。</value></data>
+  <data name="LeAudioCodec_Status_Default" xml:space="preserve"><value>当前使用 Windows 默认档位。</value></data>
+  <data name="LeAudioCodec_Status_Active" xml:space="preserve"><value>已应用：{0}。</value></data>
+  <data name="LeAudioCodec_Status_Lost" xml:space="preserve"><value>上次应用了 {0}，但 Windows 蓝牙音频服务之后重启过（重启电脑、注销或关闭过蓝牙），现在已恢复为 Windows 默认，需要重新应用。</value></data>
+  <data name="LeAudioCodec_Result_Ok" xml:space="preserve"><value>已应用。下次建立 LE Audio 链路时生效，生效时会弹出通知。</value></data>
+  <data name="LeAudioCodec_Result_OkRebuilt" xml:space="preserve"><value>已应用，正在重新建立链路，生效时会弹出通知。重建后请在上方的左右声道校准卡片里再检查一次。</value></data>
+  <data name="LeAudioCodec_Result_Declined" xml:space="preserve"><value>已取消：没有获得管理员权限。</value></data>
+  <data name="LeAudioCodec_Result_ServiceNotRunning" xml:space="preserve"><value>Windows 蓝牙音频服务没有运行。先连接 LE Audio 耳机再应用。</value></data>
+  <data name="LeAudioCodec_Result_Failed" xml:space="preserve"><value>应用失败（{0}）。详细日志在 {1}。</value></data>
+  <data name="LeAudioCodec_Notes.Text" xml:space="preserve"><value>修改只保留到 Windows 蓝牙音频服务重启为止（重启电脑、注销或关闭蓝牙后需要重新应用），不会改动系统文件。如果应用后没有声音或有杂音，说明耳机或电脑的蓝牙音频硬件不支持该档位，选回“Windows 默认”再应用即可。</value></data>
+  <data name="LeAudioCodec_Help.Header" xml:space="preserve"><value>工作原理与限制</value></data>
+  <data name="LeAudioCodec_HelpHow.Text" xml:space="preserve"><value>Windows 建立 LE Audio 链路时，先按耳机声明的能力挑一个 LC3 配置，再按它查一组传输参数（每个 SDU 的大小、间隔和延迟）。EncoDeck 在这两处把帧长和每帧字节数换成你选的档位，两边保持一致，之后耳机、Windows 和硬件编码器都按新档位工作。只提供蓝牙 BAP 规范里的标准档位（48_1 到 48_5）。</value></data>
+  <data name="LeAudioCodec_HelpLimits.Text" xml:space="preserve"><value>只支持 48 kHz。EncoDeck 不绑定 Windows 版本：第一次使用时会从微软的公开符号服务器下载这台电脑 Windows 蓝牙音频组件的符号（约 12 MB，之后缓存），按函数名找到需要修改的两处，并逐条核对开头的指令；找不到或对不上（例如 Windows 更新重写了它们）就不显示此卡片，也不做任何修改。耳机需要支持所选档位。码率越高越占用蓝牙空口，同一个蓝牙适配器上的手柄、键鼠可能更容易受影响。</value></data>
   <data name="LeAudio_Endpoint_Disabled" xml:space="preserve"><value>已禁用经典 A2DP 渲染端点；请在声音设置中选择 LE Audio 的“扬声器”。</value></data>
   <data name="LeAudio_Endpoint_AlreadyLeAudioOnly" xml:space="preserve"><value>经典 A2DP 端点已经处于禁用状态。</value></data>
   <data name="LeAudio_Endpoint_NoClassicEndpoint" xml:space="preserve"><value>没有找到可禁用的经典 A2DP 端点。</value></data>
