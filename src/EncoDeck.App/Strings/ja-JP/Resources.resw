@@ -1082,13 +1082,12 @@
   <data name="UsbEq_Custom" xml:space="preserve"><value>カスタム</value></data>
   <data name="AutoOff_Minutes" xml:space="preserve"><value>{0} 分後</value></data>
   <data name="AutoOff_IdleDescription" xml:space="preserve"><value>選択した時間アイドル状態が続くと、ヘッドホンの電源をオフにします</value></data>
-  <data name="Codec_ReportedDescription" xml:space="preserve"><value>オーディオコーデック: {0}</value></data>
   <data name="Codec_BridgeDescription" xml:space="preserve"><value>A2DP Bridge がこのイヤホンに {0} 音声を送信しています。</value></data>
   <data name="Codec_LeAudioDescription" xml:space="preserve"><value>LE リンクは接続済みです。音声ストリームと LC3 コーデックは未確認です。</value></data>
   <data name="Codec_WindowsDescription" xml:space="preserve"><value>Windows が記録したオーディオ コーデック：{0}</value></data>
   <data name="WindowsCodec_Title.Text" xml:space="preserve"><value>Windows からオーディオ コーデックを取得</value></data>
-  <data name="WindowsCodec_Summary.Text" xml:space="preserve"><value>イヤホンが報告するコーデックが PC で実際に使われているとは限りません。一度許可すると、Windows が Bluetooth オーディオ（A2DP）の再生ごとにコーデックを記録し、ホームにはその記録が表示されます。以降は許可不要で、Store 版でも使えます。負荷はごくわずかです（PC の起動とともに開始する Windows のトレース セッション 1 つと、最大 1 MB の循環ファイル）。</value></data>
-  <data name="WindowsCodec_Status_Off" xml:space="preserve"><value>未許可：ホームにはイヤホンが報告するコーデックが表示されます。</value></data>
+  <data name="WindowsCodec_Summary.Text" xml:space="preserve"><value>イヤホンが報告するコーデックは PC で実際に使われているとは限らないため、EncoDeck は使用しません。オフの間、ホームには「A2DP」とだけ表示されます。一度許可すると、Windows が Bluetooth オーディオ（A2DP）の再生ごとにコーデックを記録し、ホームにはその記録が表示されます。以降は許可不要で、Store 版でも使えます。負荷はごくわずかです（PC の起動とともに開始する Windows のトレース セッション 1 つと、最大 1 MB の循環ファイル）。</value></data>
+  <data name="WindowsCodec_Status_Off" xml:space="preserve"><value>オフ：ホームには「A2DP」とだけ表示され、コーデックは表示されません。</value></data>
   <data name="WindowsCodec_Status_Waiting" xml:space="preserve"><value>許可済み、まだ記録はありません：可能になり次第、自動的に記録されます。</value></data>
   <data name="WindowsCodec_Status_On" xml:space="preserve"><value>許可済み：ホームには Windows が記録したコーデックが表示されます。</value></data>
   <data name="WindowsCodec_Authorize" xml:space="preserve"><value>許可（管理者）</value></data>
@@ -1097,4 +1096,8 @@
   <data name="WindowsCodec_Result_NotApplied" xml:space="preserve"><value>完了しませんでした。もう一度お試しください。ログ ファイルは {0} にあります。</value></data>
   <data name="WindowsCodec_Result_Failed" xml:space="preserve"><value>完了しませんでした：{0}</value></data>
   <data name="WindowsCodec_Notes.Text" xml:space="preserve"><value>Windows は再生の終了時（しばらく一時停止、出力デバイスの切り替え、切断）にコーデックを記録し、イヤホンごとに記憶されます。新しいイヤホンは一度再生して停止すると表示されます。LE Audio イヤホンはこの方法を使いません。EncoDeck のインストーラー版をアンインストールすると許可も取り消されます。Store 版はアンインストール前に「許可を取り消す」を選んでください。</value></data>
+  <data name="Codec_A2dpDescription" xml:space="preserve"><value>Bluetooth A2DP で接続しています。ここには具体的なコーデックを表示しません。イヤホンが報告するコーデックは PC が実際に使うものとは限らないため使用しません。実際のコーデックは Windows だけが把握しており、「Windows からオーディオ コーデックを取得」をオンにする（管理者の許可が一度必要）と読み取れます。</value></data>
+  <data name="Codec_A2dpNotLoggedDescription" xml:space="preserve"><value>Bluetooth A2DP で接続しています。Windows はこのイヤホンのコーデックをまだ記録していません。音声を再生して停止すると、ここに表示されます。</value></data>
+  <data name="CodecBadge_Enable" xml:space="preserve"><value>オンにする（管理者の許可が一度必要）</value></data>
+  <data name="CodecBadge_Enabled" xml:space="preserve"><value>オンにしました。音声を再生して停止すると、Windows が実際に使うコーデックがここに表示されます。</value></data>
 </root>

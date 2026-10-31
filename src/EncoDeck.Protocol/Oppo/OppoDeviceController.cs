@@ -108,9 +108,6 @@ public sealed partial class OppoDeviceController : IDeviceController
     /// </summary>
     public async Task<bool> InitializeAsync(CancellationToken cancellationToken)
     {
-        // A new control session must not revive codec data from an earlier connection when its
-        // firmware no longer advertises the query, or when initialization fails before the read.
-        _store.TryUpdate(_identity.DeviceId, s => s with { Codec = null, ReportedCodecId = null });
         RequestResult? handshake = null;
         for (int attempt = 0; attempt < HandshakeAttempts; attempt++)
         {
@@ -132,7 +129,6 @@ public sealed partial class OppoDeviceController : IDeviceController
         // HeyMelody advertises its translation support here; a PC has none.
         await RequestIfAllowedAsync(new OppoRequest(OppoCommand.SetHostCapabilities, [0x00], SequenceMode.FixedSet), cancellationToken).ConfigureAwait(false);
         if (IsLeAudioTransport) await ReportLeAudioTransportAsync(cancellationToken).ConfigureAwait(false);
-        StartCodecPolling();
         if (KeepAliveInterval is { } interval)
             _keepAliveTask ??= Task.Run(() => KeepAliveAsync(interval, _keepAliveStop.Token), CancellationToken.None);
         return true;
@@ -193,8 +189,6 @@ public sealed partial class OppoDeviceController : IDeviceController
             if (result?.Response is { } frame) ApplyResponse(frame, StateSource.QueryResponse);
             if (result?.Status != RequestStatus.Timeout) break;
         }
-        if (request.Command == OppoCommand.QueryCodec && result?.Response is null)
-            _store.TryUpdate(_identity.DeviceId, s => s with { Codec = null, ReportedCodecId = null });
         return result;
     }
 
@@ -227,14 +221,11 @@ public sealed partial class OppoDeviceController : IDeviceController
             requests.Add(new OppoRequest(OppoCommand.QueryVid, [0xFF, 0xFF]));
         }
         requests.Add(new OppoRequest(OppoCommand.QueryBattery, [], SequenceMode.FixedSet));
-        // The codec can change while connected (e.g. Hi-Res/LHDC toggled), so refreshes read it too.
-        if (!initial) requests.Add(new OppoRequest(OppoCommand.QueryCodec, []));
         if (initial)
         {
             requests.Add(new OppoRequest(OppoCommand.QueryColor, []));
             requests.Add(new OppoRequest(OppoCommand.QueryProductId, []));
             requests.Add(new OppoRequest(OppoCommand.QueryMtu, [0x00, 0x02]));
-            requests.Add(new OppoRequest(OppoCommand.QueryCodec, []));
             requests.Add(new OppoRequest(OppoCommand.QueryFirmware, []));
             requests.Add(new OppoRequest(OppoCommand.QueryUpgradeCapability, []));
         }
@@ -347,9 +338,6 @@ public sealed partial class OppoDeviceController : IDeviceController
                 break;
             case OppoCommand.QueryFirmware:
                 ApplyFirmware(frame);
-                break;
-            case OppoCommand.QueryCodec:
-                ApplyCodec(frame, source);
                 break;
             default:
                 ApplyFeatureResponse(frame, source);
@@ -959,7 +947,7 @@ public sealed partial class OppoDeviceController : IDeviceController
         _session.UnsolicitedFrame -= OnUnsolicitedFrame;
         _session.Closed -= OnSessionClosed;
         await _keepAliveStop.CancelAsync().ConfigureAwait(false);
-        foreach (var task in new[] { _keepAliveTask, _codecPollTask })
+        foreach (var task in new[] { _keepAliveTask })
         {
             if (task is null) continue;
             try

@@ -106,32 +106,6 @@ public static class OppoParsers
     }
 
     /// <summary>
-    /// <c>0x8114</c>: <c>[status][codec]</c>. Decodes the vendor's reported enum (1 SBC, 2 AAC, 3 LDAC,
-    /// 4 aptX, 5 aptX HD, 6 aptX Adaptive, 7/8 LHDC). The controller validates the model's reports;
-    /// this mapping alone does not prove a negotiated stream. Nonzero status and unknown ids fail.
-    /// </summary>
-    public static bool TryParseCodec(OppoFrame frame, out AudioCodec codec)
-    {
-        codec = default;
-        var p = frame.Payload;
-        if (frame.Command != OppoCommand.ResponseOf(OppoCommand.QueryCodec) || p.Length < 2 || p[0] != StatusOk) return false;
-        AudioCodec? known = p[1] switch
-        {
-            1 => AudioCodec.Sbc,
-            2 => AudioCodec.Aac,
-            3 => AudioCodec.Ldac,
-            4 => AudioCodec.AptX,
-            5 => AudioCodec.AptXHd,
-            6 => AudioCodec.AptXAdaptive,
-            7 or 8 => AudioCodec.Lhdc,
-            _ => null,
-        };
-        if (known is not { } value) return false;
-        codec = value;
-        return true;
-    }
-
-    /// <summary>
     /// <c>0x0204</c> noise control event: <c>[0x03|0x04][…][0x01][0x01][bitmap…]</c>. The bytes between the
     /// event code and the 01 01 marker are not understood; the parser only accepts the marker directly
     /// after the event code (the layout observed so far) to avoid misreading other events.

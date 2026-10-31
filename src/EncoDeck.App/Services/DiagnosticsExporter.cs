@@ -35,9 +35,8 @@ internal static class DiagnosticsExporter
             firmware = state.Firmware?.Value.Extra,
             codec = new
             {
-                reportedId = state.ReportedCodecId?.Value,
-                reportedAt = state.ReportedCodecId?.Timestamp,
-                accepted = state.Codec?.Value.ToString(),
+                windowsLogged = state.WindowsCodecLogged,
+                windows = state.WindowsCodec,
                 displayKind = CodecDisplay.Resolve(state).Kind.ToString(),
                 displayCodec = CodecDisplay.Resolve(state).Codec,
             },

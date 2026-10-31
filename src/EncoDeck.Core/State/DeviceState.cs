@@ -49,15 +49,9 @@ public sealed record DeviceState
 
     public Observed<FirmwareInfo>? Firmware { get; init; }
 
-    /// <summary>Accepted A2DP codec reported by the earbuds; not independent proof of the PC's negotiated stream.</summary>
-    public Observed<AudioCodec>? Codec { get; init; }
-
-    /// <summary>Raw OPPO codec id from a successful query, including values rejected for this model.</summary>
-    public Observed<byte>? ReportedCodecId { get; init; }
-
     /// <summary>
-    /// Windows logs its A2DP codec on this PC (one-time authorization): <see cref="WindowsCodec"/> is shown, never the
-    /// earbuds' own <see cref="Codec"/> report.
+    /// Windows logs its A2DP codec on this PC (one-time authorization). The codec is only ever shown from that log, never
+    /// from the earbuds' own report; without it a Classic link shows as plain A2DP.
     /// </summary>
     public bool WindowsCodecLogged { get; init; }
 

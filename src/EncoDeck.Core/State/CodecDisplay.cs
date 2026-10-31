@@ -6,15 +6,21 @@ namespace EncoDeck.Core.State;
 public enum CodecDisplayKind
 {
     None,
-    DeviceReport,
-    UnknownDeviceReport,
     BridgeStream,
     UnknownBridgeStream,
     LeLink,
+    /// <summary>The codec Windows logged for this device's A2DP stream.</summary>
     WindowsStream,
+    /// <summary>A Classic link while Windows' codec log is off: only "A2DP" is known; the log can be turned on.</summary>
+    A2dpLogOff,
+    /// <summary>A Classic link with the log on, but Windows has not logged a stream to this device yet.</summary>
+    A2dpNotLogged,
 }
 
-/// <summary>One source for the audio badge on every surface; a device report is not a verified PC stream.</summary>
+/// <summary>
+/// One source for the audio badge on every surface. Codecs come only from the PC side (A2DP Bridge or Windows' own log),
+/// never from the earbuds' report, which does not prove what the PC streams.
+/// </summary>
 public sealed record CodecDisplay(CodecDisplayKind Kind, string? Codec = null)
 {
     public static CodecDisplay Resolve(DeviceState state)
@@ -22,39 +28,16 @@ public sealed record CodecDisplay(CodecDisplayKind Kind, string? Codec = null)
         if (state.Device?.Transport != DeviceTransport.Bluetooth) return new(CodecDisplayKind.None);
 
         // BridgeDeviceMatch attaches this stream only after matching its Bluetooth address.
-        // A streaming bridge with a missing codec must not fall back to an unrelated old report.
+        // A streaming bridge with a missing codec must not fall back to an unrelated old record.
         if (state.Bridge is { IsStreaming: true } bridge)
             return string.IsNullOrWhiteSpace(bridge.Codec) ? new(CodecDisplayKind.UnknownBridgeStream)
                 : new(CodecDisplayKind.BridgeStream, bridge.Codec.Trim());
 
         if (!state.Connection.IsLinkUp()) return new(CodecDisplayKind.None);
         if (state.IsLeAudio) return new(CodecDisplayKind.LeLink);
-        // Windows' own log of its A2DP streams, once authorized, replaces the earbuds' report (also while none is logged).
-        if (state.WindowsCodecLogged)
-            return state.WindowsCodec is { Length: > 0 } codec ? new(CodecDisplayKind.WindowsStream, codec) : new(CodecDisplayKind.None);
-        if (state.Connection != DeviceConnectionState.ControlReady) return new(CodecDisplayKind.None);
-
-        bool air5s = state.ProductId is 0x06C810 or 0x06E810;
-        if (state.ReportedCodecId is { IsConfirmed: true } raw && air5s && raw.Value is not (1 or 2))
-            return new(CodecDisplayKind.UnknownDeviceReport);
-        if (state.Codec is { IsConfirmed: true } report)
-        {
-            if (air5s && report.Value is not (AudioCodec.Sbc or AudioCodec.Aac))
-                return new(CodecDisplayKind.UnknownDeviceReport);
-            string? name = report.Value switch
-            {
-                AudioCodec.Sbc => "SBC",
-                AudioCodec.Aac => "AAC",
-                AudioCodec.Ldac => "LDAC",
-                AudioCodec.AptX => "aptX",
-                AudioCodec.AptXHd => "aptX HD",
-                AudioCodec.AptXAdaptive => "aptX Adaptive",
-                AudioCodec.Lhdc => "LHDC",
-                _ => null,
-            };
-            return name is null ? new(CodecDisplayKind.UnknownDeviceReport) : new(CodecDisplayKind.DeviceReport, name);
-        }
-        return state.ReportedCodecId is { IsConfirmed: true }
-            ? new(CodecDisplayKind.UnknownDeviceReport) : new(CodecDisplayKind.None);
+        // Linked only through the bridge's own adapter: Windows has no A2DP link to this device.
+        if (state.LinkViaBridge) return new(CodecDisplayKind.None);
+        if (!state.WindowsCodecLogged) return new(CodecDisplayKind.A2dpLogOff);
+        return state.WindowsCodec is { Length: > 0 } codec ? new(CodecDisplayKind.WindowsStream, codec) : new(CodecDisplayKind.A2dpNotLogged);
     }
 }

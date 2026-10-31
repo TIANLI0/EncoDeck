@@ -1082,13 +1082,12 @@ Afterwards Windows lists two entries with the same name (one is the other earbud
   <data name="UsbEq_Custom" xml:space="preserve"><value>Custom</value></data>
   <data name="AutoOff_Minutes" xml:space="preserve"><value>After {0} minutes</value></data>
   <data name="AutoOff_IdleDescription" xml:space="preserve"><value>Turn the headset off after it has been idle for the selected time</value></data>
-  <data name="Codec_ReportedDescription" xml:space="preserve"><value>Audio codec: {0}</value></data>
   <data name="Codec_BridgeDescription" xml:space="preserve"><value>A2DP Bridge is sending {0} audio to these earbuds.</value></data>
   <data name="Codec_LeAudioDescription" xml:space="preserve"><value>The LE link is connected. Audio streaming and the LC3 codec have not been verified.</value></data>
   <data name="Codec_WindowsDescription" xml:space="preserve"><value>Audio codec Windows logged: {0}</value></data>
   <data name="WindowsCodec_Title.Text" xml:space="preserve"><value>Audio codec from Windows</value></data>
-  <data name="WindowsCodec_Summary.Text" xml:space="preserve"><value>The codec the earbuds report is not necessarily the one the PC uses. Authorize once and Windows logs the codec of every Bluetooth audio (A2DP) stream; the home page then shows that instead. No further prompts, and it works in the Store version too. The cost is tiny: one Windows trace session that starts with the PC and writes a circular file of at most 1 MB.</value></data>
-  <data name="WindowsCodec_Status_Off" xml:space="preserve"><value>Not authorized: the home page shows the codec the earbuds report.</value></data>
+  <data name="WindowsCodec_Summary.Text" xml:space="preserve"><value>The codec the earbuds report is not necessarily the one the PC uses, so EncoDeck does not use it; while this is off, the home page shows only "A2DP". Authorize once and Windows logs the codec of every Bluetooth audio (A2DP) stream; the home page then shows that. No further prompts, and it works in the Store version too. The cost is tiny: one Windows trace session that starts with the PC and writes a circular file of at most 1 MB.</value></data>
+  <data name="WindowsCodec_Status_Off" xml:space="preserve"><value>Off: the home page shows only "A2DP", without the codec.</value></data>
   <data name="WindowsCodec_Status_Waiting" xml:space="preserve"><value>Authorized, nothing logged yet: it is logged automatically when possible.</value></data>
   <data name="WindowsCodec_Status_On" xml:space="preserve"><value>Authorized: the home page shows the codec Windows logged.</value></data>
   <data name="WindowsCodec_Authorize" xml:space="preserve"><value>Authorize (administrator)</value></data>
@@ -1097,4 +1096,8 @@ Afterwards Windows lists two entries with the same name (one is the other earbud
   <data name="WindowsCodec_Result_NotApplied" xml:space="preserve"><value>That did not complete; please try again. The log file is in {0}.</value></data>
   <data name="WindowsCodec_Result_Failed" xml:space="preserve"><value>That did not complete: {0}</value></data>
   <data name="WindowsCodec_Notes.Text" xml:space="preserve"><value>Windows logs the codec when a stream ends (a pause, switching the output device, or disconnecting), and it is remembered per pair of earbuds, so new earbuds show it after they have played and stopped once. LE Audio earbuds do not use this. Uninstalling the EncoDeck installer version removes the authorization too; for the Store version, select "Remove authorization" before uninstalling.</value></data>
+  <data name="Codec_A2dpDescription" xml:space="preserve"><value>Connected over Bluetooth A2DP. No codec is shown here: the codec the earbuds report is not necessarily the one the PC uses, so it is not used. Only Windows knows the actual codec, and it can be read once "Audio codec from Windows" is turned on (one administrator authorization).</value></data>
+  <data name="Codec_A2dpNotLoggedDescription" xml:space="preserve"><value>Connected over Bluetooth A2DP. Windows has not logged a codec for these earbuds yet: play some audio and stop it, and it shows here.</value></data>
+  <data name="CodecBadge_Enable" xml:space="preserve"><value>Turn on (one administrator authorization)</value></data>
+  <data name="CodecBadge_Enabled" xml:space="preserve"><value>Turned on. Play some audio and stop it, and the codec Windows actually uses shows here.</value></data>
 </root>
