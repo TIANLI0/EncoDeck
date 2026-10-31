@@ -306,12 +306,16 @@ public class EarFunTests
     }
 
     [Fact]
-    public async Task UnknownCodecReportsCannotKeepAnOlderCodecAsCurrent()
+    public async Task EarbudCodecReportsCannotOverrideWindowsCodec()
     {
         var device = new Device(true); var (controller, store) = Create(device, "TW700"); await using var owner = controller;
+        store.TryUpdate("earfun-test", s => s with { WindowsCodecLogged = true, WindowsCodec = "LDAC" });
         Assert.True(await controller.InitializeAsync(Ct)); await Wait(() => store.Current.KeyFunctions is not null);
-        Assert.Equal(AudioCodec.Aac, store.Current.Codec!.Value);
+        device.Push(0x034D, [2]);
         device.Push(0x034D, [6]);
-        await Wait(() => store.Current.Codec is null);
+        device.Push(0x0317, [0x80 | 60]);
+        await Wait(() => store.Current.Battery.Case?.Value.Level == 60);
+        Assert.Equal("LDAC", store.Current.WindowsCodec);
+        Assert.DoesNotContain(device.Written, frame => frame[6] == 3 && frame[7] == 0x4D);
     }
 }

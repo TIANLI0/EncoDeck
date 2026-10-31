@@ -14,6 +14,8 @@
             <controls:LeAudioSettings />
             <controls:LeAudioSyncSettings />
             <controls:LeAudioCodecSettings />
+            <!-- Classic (A2DP): the codec from Windows' own log, then the codec and bridge components. -->
+            <controls:WindowsCodecSettings />
             <controls:LhdcSettings />
             <controls:A2dpBridgeSettings />
         </StackPanel>

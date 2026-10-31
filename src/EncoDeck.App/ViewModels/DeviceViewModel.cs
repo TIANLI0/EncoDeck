@@ -124,6 +124,10 @@ public sealed partial class DeviceViewModel : ObservableObject
     [ObservableProperty] public partial string CodecLabel { get; set; } = string.Empty;
     [ObservableProperty] public partial string CodecDescription { get; set; } = string.Empty;
     [ObservableProperty] public partial bool HasCodec { get; set; }
+    /// <summary>The tag names a codec rather than only the link (A2DP whose codec Windows has not logged).</summary>
+    [ObservableProperty] public partial bool CodecIsDetailed { get; set; } = true;
+    /// <summary>The tag is plain A2DP because Windows' codec log is off: clicking it offers to turn it on.</summary>
+    [ObservableProperty] public partial bool CodecCanEnable { get; set; }
     [ObservableProperty] public partial string? DeviceImagePath { get; set; }
     [ObservableProperty] public partial string? LeftArtworkPath { get; set; }
     [ObservableProperty] public partial string? RightArtworkPath { get; set; }
@@ -341,18 +345,24 @@ public sealed partial class DeviceViewModel : ObservableObject
         CodecLabel = codecDisplay.Kind switch
         {
             // The "A2DP Bridge" tag beside a bridge stream already names its source.
-            CodecDisplayKind.DeviceReport or CodecDisplayKind.BridgeStream => codecDisplay.Codec!,
+            CodecDisplayKind.BridgeStream or CodecDisplayKind.WindowsStream => codecDisplay.Codec!,
             CodecDisplayKind.LeLink => "LE Audio",
-            // An unknown codec shows no tag at all (the diagnostics still record why).
+            // Only the Classic link is known: the earbuds' own codec report is never shown.
+            CodecDisplayKind.A2dpLogOff or CodecDisplayKind.A2dpNotLogged => "A2DP",
+            // An unknown bridge codec shows no tag at all (the diagnostics still record why).
             _ => string.Empty,
         };
         CodecDescription = codecDisplay.Kind switch
         {
-            CodecDisplayKind.DeviceReport => Loc.Format("Codec_ReportedDescription", codecDisplay.Codec),
             CodecDisplayKind.BridgeStream => Loc.Format("Codec_BridgeDescription", codecDisplay.Codec),
+            CodecDisplayKind.WindowsStream => Loc.Format("Codec_WindowsDescription", codecDisplay.Codec),
             CodecDisplayKind.LeLink => Loc.Get("Codec_LeAudioDescription"),
+            CodecDisplayKind.A2dpLogOff => Loc.Get("Codec_A2dpDescription"),
+            CodecDisplayKind.A2dpNotLogged => Loc.Get("Codec_A2dpNotLoggedDescription"),
             _ => string.Empty,
         };
+        CodecIsDetailed = codecDisplay.Kind is not (CodecDisplayKind.A2dpLogOff or CodecDisplayKind.A2dpNotLogged);
+        CodecCanEnable = codecDisplay.Kind == CodecDisplayKind.A2dpLogOff;
         HasCodec = CodecLabel.Length > 0;
         // One earbud worn while the other charges is ordinary use; warn only when the other should be up.
         if (LeAudioStatus.IsMissingEarbud(state, warnWithoutWear: profile is OppoDeviceProfile))

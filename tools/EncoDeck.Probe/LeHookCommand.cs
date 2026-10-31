@@ -35,7 +35,7 @@ internal static class LeHookCommand
 
     private static int Usage()
     {
-        Console.Error.WriteLine("le-hook status | le-hook apply --preset <id> [--mode auto|low|high] [--dll <path>]   (apply needs an elevated prompt)");
+        Console.Error.WriteLine("le-hook status | le-hook apply --preset <id> [--mode auto|low|high] [--no-call] [--dll <path>]   (apply needs an elevated prompt)");
         foreach (var preset in LeAudioCodecPreset.All)
             Console.Error.WriteLine($"  {preset.Id,-8} {(preset.IsWindowsDefault ? "Windows' own choice" : $"{preset.FrameUs} us, {preset.Octets} octets, {preset.Kbps:0.#} kbps")}");
         return 2;
@@ -45,7 +45,7 @@ internal static class LeHookCommand
     {
         Console.WriteLine($"support: {await LeAudioCodecHook.CheckSupportAsync(ct)}");
         var applied = LeAudioCodecHook.ReadApplied();
-        Console.WriteLine($"applied: {applied.Preset.Id}, {applied.Mode}{(applied.IsWindowsDefault ? "" : applied.Active ? " (active)" : " (lost: the service restarted)")}");
+        Console.WriteLine($"applied: {applied.Preset.Id}, {applied.Mode}{(applied.NoCallMode ? ", no call mode" : "")}{(applied.IsWindowsDefault ? "" : applied.Active ? " (active)" : " (lost: the service restarted)")}");
         if (LeAudioCodecHook.ReadLink() is { } link)
             Console.WriteLine($"link: {link.At:HH:mm:ss} {link.FrameUs} us, max SDU {link.MaxSdu} ({link.Kbps:0.#} kbps), at most {link.LatencyMs} ms, {link.Retransmissions} retransmissions");
         if (File.Exists(LeAudioCodecHook.LogPath))
@@ -69,7 +69,7 @@ internal static class LeHookCommand
             "high" => LeAudioLatencyMode.HighReliability,
             _ => LeAudioLatencyMode.Auto,
         };
-        int result = await LeAudioCodecHook.ApplyElevatedAsync(preset, mode, dll, Console.WriteLine);
+        int result = await LeAudioCodecHook.ApplyElevatedAsync(preset, mode, options.Has("no-call"), dll, Console.WriteLine);
         Console.WriteLine(result == LeAudioCodecHook.Result.Ok
             ? $"applied {preset.Id}: takes effect when Windows next builds the LE Audio stream"
             : $"not applied: result {result}");

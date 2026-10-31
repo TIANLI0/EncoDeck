@@ -175,6 +175,20 @@ begin
   end;
 end;
 
+// Labs "Audio codec from Windows" registered a boot-time trace session (WindowsA2dpCodecLog.cs): unregister it and
+// delete its log, which needs the administrator prompt the user gave when authorizing.
+procedure RemoveCodecLog();
+var
+  LogDir: String;
+  ErrorCode: Integer;
+begin
+  LogDir := ExpandConstant('{commonappdata}\{#AppName}\Codec');
+  if not DirExists(LogDir) or UninstallSilent() then Exit;
+  ShellExec('runas', ExpandConstant('{sys}\cmd.exe'),
+    '/d /s /c "logman stop EncoDeck-BthA2dp -ets & logman delete "autosession\EncoDeck-BthA2dp" & rmdir /s /q "' + LogDir + '""',
+    '', SW_HIDE, ewWaitUntilTerminated, ErrorCode);
+end;
+
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   DataDir: String;
@@ -184,6 +198,7 @@ begin
 
   // A real uninstall: remove the autostart entry the app may have created itself.
   RegDeleteValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run', '{#AppName}');
+  RemoveCodecLog();
 
   DataDir := ExpandConstant('{localappdata}\{#AppName}');
   if DirExists(DataDir) and not UninstallSilent() then

@@ -79,24 +79,30 @@ public sealed class LeAudioCodecHookTests
     [Fact]
     public void StateRoundTrips()
     {
-        var state = new LeAudioCodecHook.AppliedState(2220, 7500, 117, LeAudioLatencyMode.LowLatency);
+        var state = new LeAudioCodecHook.AppliedState(2220, 7500, 117, LeAudioLatencyMode.LowLatency, NoCallMode: true);
         Assert.Equal(state, LeAudioCodecHook.ParseState(LeAudioCodecHook.FormatState(state)));
         Assert.Null(LeAudioCodecHook.ParseState(""));
-        // A state written before the transport choice existed reads as automatic.
-        Assert.Equal(LeAudioLatencyMode.Auto, LeAudioCodecHook.ParseState("pid=1\nframeUs=7500\noctets=117\n")!.Mode);
+        // A state written before the transport and call choices existed reads as automatic, calls allowed.
+        var old = LeAudioCodecHook.ParseState("pid=1\nframeUs=7500\noctets=117\n")!;
+        Assert.Equal(LeAudioLatencyMode.Auto, old.Mode);
+        Assert.False(old.NoCallMode);
     }
 
     [Fact]
     public void AppliedChoiceIsActiveOnlyInTheSameServiceProcess()
     {
         var state = new LeAudioCodecHook.AppliedState(2220, 7500, 117, LeAudioLatencyMode.HighReliability);
-        Assert.Equal(new LeAudioCodecApplied(LeAudioCodecPreset.Find("48_5")!, LeAudioLatencyMode.HighReliability, true),
+        Assert.Equal(new LeAudioCodecApplied(LeAudioCodecPreset.Find("48_5")!, LeAudioLatencyMode.HighReliability, false, true),
             LeAudioCodecHook.Interpret(state, 2220));
         // The service restarted (new process) or is not running: the hook is gone.
         Assert.False(LeAudioCodecHook.Interpret(state, 4096).Active);
         Assert.False(LeAudioCodecHook.Interpret(state, 0).Active);
-        // A transport alone (Windows' codec) is a choice too.
+        // A transport alone (Windows' codec) is a choice too, and so is keeping calls off the link.
         Assert.False(LeAudioCodecHook.Interpret(new(2220, 0, 0, LeAudioLatencyMode.LowLatency), 2220).IsWindowsDefault);
+        var noCall = LeAudioCodecHook.Interpret(new(2220, 0, 0, NoCallMode: true), 2220);
+        Assert.False(noCall.IsWindowsDefault);
+        Assert.True(noCall.NoCallMode);
+        Assert.False(LeAudioCodecHook.Interpret(new(2220, 0, 0, NoCallMode: true), 4096).Active);
     }
 
     [Fact]

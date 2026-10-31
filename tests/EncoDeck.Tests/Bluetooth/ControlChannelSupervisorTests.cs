@@ -524,37 +524,6 @@ public class ControlChannelSupervisorTests
     }
 
     [Fact]
-    public async Task LinkDrop_ClearsCodecReportBeforeReconnect()
-    {
-        var link = new FakeLink(true);
-        var (supervisor, store) = Create(link, new FakeConnector());
-        await using var _ = supervisor;
-        supervisor.Start();
-        await WaitFor(store, DeviceConnectionState.ControlReady);
-        Assert.NotNull(store.Current.Codec);
-        link.Set(false);
-        await WaitFor(store, DeviceConnectionState.Disconnected);
-        Assert.Null(store.Current.Codec);
-        Assert.Null(store.Current.ReportedCodecId);
-    }
-
-    [Fact]
-    public async Task TransportSwitch_ClearsClassicCodecInTheTransportSnapshot()
-    {
-        var link = new FakeLink(true);
-        var (supervisor, store) = Create(link, new FakeConnector());
-        await using var _ = supervisor;
-        supervisor.Start();
-        await WaitFor(store, DeviceConnectionState.ControlReady);
-        DeviceState? switched = null;
-        store.StateChanged += (_, e) => { if (!e.Previous.IsLeAudio && e.Current.IsLeAudio) switched = e.Current; };
-        link.SetLeAudio(true);
-        Assert.NotNull(switched);
-        Assert.Null(switched.Codec);
-        Assert.Null(switched.ReportedCodecId);
-    }
-
-    [Fact]
     public void ReconnectPolicy_IsExponentialAndBounded()
     {
         var policy = new ReconnectPolicy(TimeSpan.FromSeconds(1), 2, TimeSpan.FromSeconds(5), 4);

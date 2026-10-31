@@ -40,7 +40,6 @@ internal sealed class EarFunDeviceController(IDuplexByteChannel channel, Control
             yield return EarFunSetting.Case;
             if (!Model.Gaia) { yield return EarFunSetting.Charging; yield return EarFunSetting.CaseCharging; }
         }
-        yield return EarFunSetting.Codec;
         foreach (var (feature, setting) in new[] { ("noise", EarFunSetting.Noise), ("game", EarFunSetting.Game),
             ("dual", EarFunSetting.Dual), ("ear", EarFunSetting.Wear), ("prompt", EarFunSetting.Prompt),
             ("find", EarFunSetting.Find), ("spatial", EarFunSetting.Spatial), ("sub", EarFunSetting.Sub),
@@ -52,7 +51,7 @@ internal sealed class EarFunDeviceController(IDuplexByteChannel channel, Control
     {
         Store.TryUpdate(DeviceId, s => s with { Profile = _profile, Battery = BatteryStatus.Unknown,
             NoiseControl = null, Toggles = s.Toggles.Clear(), Options = s.Options.Clear(), PromptVolume = null, Spatial = null,
-            Firmware = null, Codec = null, KeyFunctions = null, IsFindingEarbuds = false });
+            Firmware = null, KeyFunctions = null, IsFindingEarbuds = false });
         if (Model.Gaia && Model.Variant is not ("tw600" or "tw700"))
         {
             // Legacy QCC initialization/subscriptions, exactly as EarKit. TW600/TW700 must skip these.
@@ -158,12 +157,6 @@ internal sealed class EarFunDeviceController(IDuplexByteChannel channel, Control
             case EarFunSetting.Sub or EarFunSetting.Ambient or EarFunSetting.AutoOff:
                 if (EarFunSettings.Option(Model, pair, value) is not { } option) return false;
                 Store.TryUpdate(DeviceId, s => s with { Options = s.Options.SetItem(option.Id, Observed.From(option, Now, source)) }); return true;
-            case EarFunSetting.Codec:
-                // Core has no aptX Lossless enum yet. Clear an older codec instead of keeping it as the current report.
-                if (value == 6) { Store.TryUpdate(DeviceId, s => s with { Codec = null }); return true; }
-                AudioCodec? codec = value switch { 1 => AudioCodec.Sbc, 2 => AudioCodec.Aac, 3 => AudioCodec.AptX, 4 => AudioCodec.AptXHd, 5 => AudioCodec.AptXAdaptive, 7 => AudioCodec.Ldac, _ => null };
-                if (codec is null) return false;
-                Store.TryUpdate(DeviceId, s => s with { Codec = Observed.From(codec.Value, Now, source) }); return true;
             default: return false;
         }
     }

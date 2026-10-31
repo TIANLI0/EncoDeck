@@ -299,39 +299,6 @@ public class OppoDeviceControllerTests
     }
 
     [Fact]
-    public async Task Codec_IsReadOnStartAndClearedWithoutClassicAudio()
-    {
-        await using var h = new Harness();
-        await h.Controller.InitializeAsync(Ct);
-        Assert.Equal(AudioCodec.Aac, h.Store.Current.Codec!.Value);
-
-        // Over LE Audio the earbuds answer 01 01: no Classic codec, so nothing stale stays shown.
-        h.Device.CodecResponse = [0x01, 0x01];
-        await h.Controller.RefreshAsync(Ct);
-        Assert.Null(h.Store.Current.Codec);
-    }
-
-    [Theory]
-    [InlineData("0001", AudioCodec.Sbc)]
-    [InlineData("0003", AudioCodec.Ldac)]
-    [InlineData("0006", AudioCodec.AptXAdaptive)]
-    [InlineData("0007", AudioCodec.Lhdc)]
-    [InlineData("0008", AudioCodec.Lhdc)]
-    public void Codec_MapsReportedValues(string hex, AudioCodec expected)
-    {
-        var frame = new OppoFrame(OppoCommand.ResponseOf(OppoCommand.QueryCodec), 0, Convert.FromHexString(hex));
-        Assert.True(OppoParsers.TryParseCodec(frame, out var codec));
-        Assert.Equal(expected, codec);
-    }
-
-    [Theory]
-    [InlineData("0101")]
-    [InlineData("0009")]
-    [InlineData("00")]
-    public void Codec_RejectsFailuresAndUnknownValues(string hex) =>
-        Assert.False(OppoParsers.TryParseCodec(new OppoFrame(OppoCommand.ResponseOf(OppoCommand.QueryCodec), 0, Convert.FromHexString(hex)), out _));
-
-    [Fact]
     public async Task SetNoiseControl_StaleNotWorn_RereadsWearBeforeRefusing()
     {
         await using var h = new Harness();

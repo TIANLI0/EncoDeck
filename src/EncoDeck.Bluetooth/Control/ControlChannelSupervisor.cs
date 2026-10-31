@@ -138,8 +138,6 @@ public sealed class ControlChannelSupervisor : IAsyncDisposable
         _store.TryUpdate(_identity.DeviceId, s => s.IsLeAudio == leAudio && s.IsLeAudioBonded == bonded && s.LeAudioLinks == links ? s : s with
         {
             IsLeAudio = leAudio, IsLeAudioBonded = bonded, LeAudioLinks = links,
-            Codec = s.IsLeAudio == leAudio ? s.Codec : null,
-            ReportedCodecId = s.IsLeAudio == leAudio ? s.ReportedCodecId : null,
         });
     }
 
@@ -388,12 +386,9 @@ public sealed class ControlChannelSupervisor : IAsyncDisposable
         bool leAudio = _link.IsLeAudio, bonded = _link.IsLeAudioBonded, viaBridge = _link.IsConnected && _link.IsViaBridge;
         var links = _link.LeAudioLinks;
         _store.TryUpdate(_identity.DeviceId, s => s.Connection == state && s.IsLeAudio == leAudio && s.IsLeAudioBonded == bonded && s.LeAudioLinks == links && s.LinkViaBridge == viaBridge
-            && (state == DeviceConnectionState.ControlReady || (s.Codec is null && s.ReportedCodecId is null))
             ? s : s with
             {
                 Connection = state, IsLeAudio = leAudio, IsLeAudioBonded = bonded, LeAudioLinks = links, LinkViaBridge = viaBridge,
-                Codec = state == DeviceConnectionState.ControlReady ? s.Codec : null,
-                ReportedCodecId = state == DeviceConnectionState.ControlReady ? s.ReportedCodecId : null,
             });
     }
 

@@ -798,8 +798,6 @@
   <data name="LeAudio_StatusEndpointUnknown" xml:space="preserve"><value>Windows のオーディオエンドポイントの状態を確認できませんでした。ACL/GATT の準備完了は両耳再生を保証するものではありません。</value></data>
   <data name="LeAudio_DisableClassic" xml:space="preserve"><value>クラシックのオーディオエンドポイントを無効化</value></data>
   <data name="LeAudio_EnableClassic" xml:space="preserve"><value>クラシックのオーディオエンドポイントを復元</value></data>
-  <data name="LeAudio_MicOff.Header" xml:space="preserve"><value>ヘッドセットのマイクを無効化</value></data>
-  <data name="LeAudio_MicOffNote" xml:space="preserve"><value>アプリがヘッドセットのマイクを開くと、Windows は LE Audio を双方向通話構成に切り替え、再生音質が大きく低下します。無効にすると、アプリは他のマイクしか使用できず、イヤホンはメディア品質の再生を維持します。再ペアリング後は再度オンにしてください。</value></data>
   <data name="LeAudio_MicFailed" xml:space="preserve"><value>ヘッドセットのマイクを変更できませんでした: {0}</value></data>
   <data name="LeAudioSync_Title.Text" xml:space="preserve"><value>LE Audio 左右チャンネルの調整（試験的）</value></data>
   <data name="LeAudioSync_Summary.Text" xml:space="preserve"><value>Intel の Bluetooth を使う一部の PC では、LE Audio のオーディオリンクを確立するたびに一定の確率で左のイヤホンが右より約 7.5 ms（1 オーディオフレーム）遅れ、音が右に寄って聞こえます。リンク確立後はずれが変わらないため、EncoDeck がリンクを保ち続け、一度耳で確認できるようにします。ずれていればそろうまでリンクを作り直します。</value></data>
@@ -830,6 +828,10 @@
   <data name="LeAudioCodec_PresetDefault" xml:space="preserve"><value>Windows の既定（変更しない）</value></data>
   <data name="LeAudioCodec_PresetFormat" xml:space="preserve"><value>{0} kbps · {1} ms</value></data>
   <data name="LeAudioCodec_Latency" xml:space="preserve"><value>遅延：LC3 の符号化は約 {0} ms。リンクの伝送は Windows が決め、上限はゲーム中 {1} ms、それ以外は {2} ms です。さらにイヤホン側に {3} ms の再生バッファーがあります。ビットレートはパケットの大きさを変えるだけで、遅延にはほとんど影響しません。</value></data>
+  <data name="LeAudioCodec_NoCall.Header" xml:space="preserve"><value>通話モードに切り替えない（イヤホンのマイクを無効化）</value></data>
+  <data name="LeAudioCodec_NoCallNote.Text" xml:space="preserve"><value>ゲームのボイスチャットや通話アプリの音も他の音と同じ高音質リンクで再生され、イヤホンが通話構成（音質の急低下、マイク チャンネル）に切り替わらなくなります。イヤホンのマイクも無効になり、プログラムからは見えなくなります。音声には別のマイクを使ってください。オンにした後、イヤホンを充電ケースに戻して取り出す（一度再接続する）と有効になります。</value></data>
+  <data name="LeAudioCodec_NoCallName" xml:space="preserve"><value>通話モードなし</value></data>
+  <data name="LeAudioCodec_Result_NoCallReconnect" xml:space="preserve"><value>「通話モードに切り替えない」は、イヤホンを充電ケースに戻して取り出した（一度再接続した）後に有効になります。</value></data>
   <data name="LeAudioCodec_Result_SymbolsUnavailable" xml:space="preserve"><value>この PC の Windows Bluetooth オーディオ コンポーネントの公開シンボルを Microsoft のシンボル サーバーからダウンロードできませんでした（インターネット接続が必要、約 12 MB）。しばらくしてからもう一度お試しください。</value></data>
   <data name="LeAudioCodec_Mode.Header" xml:space="preserve"><value>伝送方式</value></data>
   <data name="LeAudioCodec_Mode_Auto" xml:space="preserve"><value>自動（Windows が決定：ゲーム中は遅延優先、それ以外は安定性優先）</value></data>
@@ -1080,7 +1082,6 @@
   <data name="UsbEq_Custom" xml:space="preserve"><value>カスタム</value></data>
   <data name="AutoOff_Minutes" xml:space="preserve"><value>{0} 分後</value></data>
   <data name="AutoOff_IdleDescription" xml:space="preserve"><value>選択した時間アイドル状態が続くと、ヘッドホンの電源をオフにします</value></data>
-  <data name="Codec_ReportedDescription" xml:space="preserve"><value>オーディオコーデック: {0}</value></data>
   <data name="Codec_BridgeDescription" xml:space="preserve"><value>A2DP Bridge がこのイヤホンに {0} 音声を送信しています。</value></data>
   <data name="Codec_LeAudioDescription" xml:space="preserve"><value>LE リンクは接続済みです。音声ストリームと LC3 コーデックは未確認です。</value></data>
   <data name="EarFun_Wind" xml:space="preserve"><value>風切り音低減</value></data>
@@ -1163,4 +1164,20 @@
   <data name="EarFun_CAction11" xml:space="preserve"><value>リダイヤル</value></data>
   <data name="EarFun_CAction12" xml:space="preserve"><value>低音強調</value></data>
   <data name="EarFun_CAction13" xml:space="preserve"><value>マナーモード</value></data>
+  <data name="Codec_WindowsDescription" xml:space="preserve"><value>Windows が記録したオーディオ コーデック：{0}</value></data>
+  <data name="WindowsCodec_Title.Text" xml:space="preserve"><value>Windows からオーディオ コーデックを取得</value></data>
+  <data name="WindowsCodec_Summary.Text" xml:space="preserve"><value>イヤホンが報告するコーデックは PC で実際に使われているとは限らないため、EncoDeck は使用しません。オフの間、ホームには「A2DP」とだけ表示されます。一度許可すると、Windows が Bluetooth オーディオ（A2DP）の再生ごとにコーデックを記録し、ホームにはその記録が表示されます。以降は許可不要で、Store 版でも使えます。負荷はごくわずかです（PC の起動とともに開始する Windows のトレース セッション 1 つと、最大 1 MB の循環ファイル）。</value></data>
+  <data name="WindowsCodec_Status_Off" xml:space="preserve"><value>オフ：ホームには「A2DP」とだけ表示され、コーデックは表示されません。</value></data>
+  <data name="WindowsCodec_Status_Waiting" xml:space="preserve"><value>許可済み、まだ記録はありません：可能になり次第、自動的に記録されます。</value></data>
+  <data name="WindowsCodec_Status_On" xml:space="preserve"><value>許可済み：ホームには Windows が記録したコーデックが表示されます。</value></data>
+  <data name="WindowsCodec_Authorize" xml:space="preserve"><value>許可（管理者）</value></data>
+  <data name="WindowsCodec_Remove" xml:space="preserve"><value>許可を取り消す</value></data>
+  <data name="WindowsCodec_Result_Declined" xml:space="preserve"><value>管理者の確認が取り消されました。</value></data>
+  <data name="WindowsCodec_Result_NotApplied" xml:space="preserve"><value>完了しませんでした。もう一度お試しください。ログ ファイルは {0} にあります。</value></data>
+  <data name="WindowsCodec_Result_Failed" xml:space="preserve"><value>完了しませんでした：{0}</value></data>
+  <data name="WindowsCodec_Notes.Text" xml:space="preserve"><value>Windows は再生の終了時（しばらく一時停止、出力デバイスの切り替え、切断）にコーデックを記録し、イヤホンごとに記憶されます。新しいイヤホンは一度再生して停止すると表示されます。LE Audio イヤホンはこの方法を使いません。EncoDeck のインストーラー版をアンインストールすると許可も取り消されます。Store 版はアンインストール前に「許可を取り消す」を選んでください。</value></data>
+  <data name="Codec_A2dpDescription" xml:space="preserve"><value>Bluetooth A2DP で接続しています。ここには具体的なコーデックを表示しません。イヤホンが報告するコーデックは PC が実際に使うものとは限らないため使用しません。実際のコーデックは Windows だけが把握しており、「Windows からオーディオ コーデックを取得」をオンにする（管理者の許可が一度必要）と読み取れます。</value></data>
+  <data name="Codec_A2dpNotLoggedDescription" xml:space="preserve"><value>Bluetooth A2DP で接続しています。Windows はこのイヤホンのコーデックをまだ記録していません。音声を再生して停止すると、ここに表示されます。</value></data>
+  <data name="CodecBadge_Enable" xml:space="preserve"><value>オンにする（管理者の許可が一度必要）</value></data>
+  <data name="CodecBadge_Enabled" xml:space="preserve"><value>オンにしました。音声を再生して停止すると、Windows が実際に使うコーデックがここに表示されます。</value></data>
 </root>

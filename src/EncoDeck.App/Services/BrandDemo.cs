@@ -179,18 +179,18 @@ internal sealed class BrandDemo
 
     private static DeviceState ApplyCodecScenario(DeviceState state, string? scenario)
     {
-        Observed<T> O<T>(T value) => Observed.From(value, DateTimeOffset.UtcNow, StateSource.QueryResponse);
         // Explicit diagnostic fixtures only. The normal application never calls BrandDemo.
         return scenario switch
         {
             null => state,
-            "reported-aac" => state with { Codec = O(AudioCodec.Aac), ReportedCodecId = O((byte)2) },
-            "unknown" => state with { ReportedCodecId = O((byte)7) },
-            "le" => state with { IsLeAudio = true, LeAudioLinks = new(true, true, true, true), Codec = O(AudioCodec.Aac) },
-            "bridge-aac" => state with { Bridge = new(true, "AAC", 256, 48000, "demo"), IsLeAudio = true, Codec = O(AudioCodec.Lhdc) },
-            "bridge-unknown" => state with { Bridge = new(true, null, 256, 48000, "demo"), Codec = O(AudioCodec.Aac) },
+            "windows-aac" => state with { WindowsCodecLogged = true, WindowsCodec = "AAC" },
+            "a2dp" => state with { WindowsCodecLogged = false, WindowsCodec = null },
+            "a2dp-not-logged" => state with { WindowsCodecLogged = true, WindowsCodec = null },
+            "le" => state with { IsLeAudio = true, LeAudioLinks = new(true, true, true, true), WindowsCodecLogged = true, WindowsCodec = "AAC" },
+            "bridge-aac" => state with { Bridge = new(true, "AAC", 256, 48000, "demo"), IsLeAudio = true },
+            "bridge-unknown" => state with { Bridge = new(true, null, 256, 48000, "demo"), WindowsCodecLogged = true, WindowsCodec = "AAC" },
             "bridge-idle" => state with { Bridge = new(false, "AAC", 0, 0, "demo"), Connection = DeviceConnectionState.PairedNotConnected },
-            "disconnected" => state with { Connection = DeviceConnectionState.Disconnected, Codec = O(AudioCodec.Aac), ReportedCodecId = O((byte)2) },
+            "disconnected" => state with { Connection = DeviceConnectionState.Disconnected, WindowsCodecLogged = true, WindowsCodec = "AAC" },
             _ => throw new InvalidDataException($"Unknown codec preview scenario: {scenario}"),
         };
     }

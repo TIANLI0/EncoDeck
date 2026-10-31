@@ -16,6 +16,11 @@
     <ComboBox x:Name="Preset" x:Uid="LeAudioCodec_Preset" MinWidth="220" SelectionChanged="OnChoiceChanged" />
     <ComboBox x:Name="Mode" x:Uid="LeAudioCodec_Mode" MinWidth="320" SelectionChanged="OnChoiceChanged" />
    </local:WrapPanel>
+   <!-- Calls and game chat keep the media link; the earbud microphone is disabled with it. -->
+   <StackPanel Spacing="2">
+    <ToggleSwitch x:Name="NoCall" x:Uid="LeAudioCodec_NoCall" />
+    <TextBlock x:Uid="LeAudioCodec_NoCallNote" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" />
+   </StackPanel>
    <!-- Latency of the selected preset and transport. -->
    <TextBlock x:Name="Latency" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" />
    <!-- What is applied (and whether it already took effect), then the link Windows uses right now. -->

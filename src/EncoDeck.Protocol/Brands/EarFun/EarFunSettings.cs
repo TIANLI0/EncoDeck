@@ -4,7 +4,7 @@ using EncoDeck.Core.State;
 
 namespace EncoDeck.Protocol.Brands.EarFun;
 
-public enum EarFunSetting { Firmware, Battery, RightBattery, Case, Charging, CaseCharging, Codec, Noise, Game, Dual, Wear, Prompt, Find, Spatial, Sub, Ambient, AutoOff }
+public enum EarFunSetting { Firmware, Battery, RightBattery, Case, Charging, CaseCharging, Noise, Game, Dual, Wear, Prompt, Find, Spatial, Sub, Ambient, AutoOff }
 
 public static class EarFunSettings
 {
@@ -15,7 +15,6 @@ public static class EarFunSettings
         (true, EarFunSetting.RightBattery) => (0x0307, 0),
         (true, EarFunSetting.Case) => (0x0317, 0), (false, EarFunSetting.Case) => (0x1018, 0),
         (false, EarFunSetting.Charging) => (0x1016, 0), (false, EarFunSetting.CaseCharging) => (0x1020, 0),
-        (true, EarFunSetting.Codec) => (0x034D, 0), (false, EarFunSetting.Codec) => (0x1024, 0),
         (true, EarFunSetting.Noise) => (0x0315, 0x0314), (false, EarFunSetting.Noise) => (0x2080, 0x2085),
         (true, EarFunSetting.Game) => (0x0313, 0x0312), (false, EarFunSetting.Game) => (0x2030, 0x2035),
         (true, EarFunSetting.Dual) => (0x0326, 0x0327), (false, EarFunSetting.Dual) => (0x2140, 0x2145),

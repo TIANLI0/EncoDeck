@@ -32,9 +32,9 @@ public enum LeAudioLatencyMode
 }
 
 /// <summary>What was last applied, and whether the hook is still in the running Bluetooth audio service.</summary>
-public sealed record LeAudioCodecApplied(LeAudioCodecPreset Preset, LeAudioLatencyMode Mode, bool Active)
+public sealed record LeAudioCodecApplied(LeAudioCodecPreset Preset, LeAudioLatencyMode Mode, bool NoCallMode, bool Active)
 {
-    public bool IsWindowsDefault => Preset.IsWindowsDefault && Mode == LeAudioLatencyMode.Auto;
+    public bool IsWindowsDefault => Preset.IsWindowsDefault && Mode == LeAudioLatencyMode.Auto && !NoCallMode;
 }
 
 /// <summary>The transport of the latest LE Audio stream Windows set up, as the hook recorded it.</summary>
@@ -119,15 +119,15 @@ public static class LeAudioCodecHook
 
     internal static LeAudioCodecApplied Interpret(AppliedState? state, int servicePid)
     {
-        if (state is null) return new LeAudioCodecApplied(LeAudioCodecPreset.WindowsDefault, LeAudioLatencyMode.Auto, true);
+        if (state is null) return new LeAudioCodecApplied(LeAudioCodecPreset.WindowsDefault, LeAudioLatencyMode.Auto, false, true);
         var preset = LeAudioCodecPreset.Find(state.FrameUs, state.Octets) ?? LeAudioCodecPreset.WindowsDefault;
         var mode = Enum.IsDefined(state.Mode) ? state.Mode : LeAudioLatencyMode.Auto;
-        if (preset.IsWindowsDefault && mode == LeAudioLatencyMode.Auto)
-            return new LeAudioCodecApplied(preset, mode, true);
-        return new LeAudioCodecApplied(preset, mode, servicePid != 0 && servicePid == state.ServicePid);
+        if (preset.IsWindowsDefault && mode == LeAudioLatencyMode.Auto && !state.NoCallMode)
+            return new LeAudioCodecApplied(preset, mode, false, true);
+        return new LeAudioCodecApplied(preset, mode, state.NoCallMode, servicePid != 0 && servicePid == state.ServicePid);
     }
 
-    internal sealed record AppliedState(int ServicePid, int FrameUs, int Octets, LeAudioLatencyMode Mode = LeAudioLatencyMode.Auto);
+    internal sealed record AppliedState(int ServicePid, int FrameUs, int Octets, LeAudioLatencyMode Mode = LeAudioLatencyMode.Auto, bool NoCallMode = false);
 
     private static Dictionary<string, string> ParseValues(string text) =>
         text.Split('\n', StringSplitOptions.RemoveEmptyEntries)
@@ -142,11 +142,11 @@ public static class LeAudioCodecHook
     {
         var values = ParseValues(text);
         int Get(string key) => (int)GetNumber(values, key);
-        return values.Count == 0 ? null : new AppliedState(Get("pid"), Get("frameUs"), Get("octets"), (LeAudioLatencyMode)Get("mode"));
+        return values.Count == 0 ? null : new AppliedState(Get("pid"), Get("frameUs"), Get("octets"), (LeAudioLatencyMode)Get("mode"), Get("noCallMode") != 0);
     }
 
     internal static string FormatState(AppliedState state) =>
-        string.Create(CultureInfo.InvariantCulture, $"pid={state.ServicePid}\nframeUs={state.FrameUs}\noctets={state.Octets}\nmode={(int)state.Mode}\n");
+        string.Create(CultureInfo.InvariantCulture, $"pid={state.ServicePid}\nframeUs={state.FrameUs}\noctets={state.Octets}\nmode={(int)state.Mode}\nnoCallMode={(state.NoCallMode ? 1 : 0)}\n");
 
     /// <summary>link.txt as the hook writes it (time is a FILETIME); null when incomplete.</summary>
     internal static LeAudioLinkConfig? ParseLink(string text)
@@ -192,12 +192,13 @@ public static class LeAudioCodecHook
     }
 
     /// <summary>
-    /// In an elevated process: stores the preset and transport for the hook, then turns the hook on in the running
-    /// service and records what was applied. With Windows' own choice the hook stays on but only records each new
+    /// In an elevated process: stores the preset, the transport and whether calls may take over the link for the hook,
+    /// then turns the hook on in the running service and records what was applied. <paramref name="noCallMode"/> only
+    /// applies to endpoints created afterwards: the earbuds have to reconnect once. With Windows' own choice the hook stays on but only records each new
     /// link, so that one can be confirmed too. Returns a <see cref="Result"/> code. Takes effect the next time Windows
     /// builds an LE Audio stream.
     /// </summary>
-    public static async Task<int> ApplyElevatedAsync(LeAudioCodecPreset preset, LeAudioLatencyMode mode, string hookDll, Action<string>? log = null)
+    public static async Task<int> ApplyElevatedAsync(LeAudioCodecPreset preset, LeAudioLatencyMode mode, bool noCallMode, string hookDll, Action<string>? log = null)
     {
         log ??= _ => { };
         if (!Environment.IsPrivilegedProcess) return Result.NotElevated;
@@ -216,6 +217,7 @@ public static class LeAudioCodecHook
                 key.SetValue("FrameDurationUs", preset.FrameUs, RegistryValueKind.DWord);
                 key.SetValue("OctetsPerFrame", preset.Octets, RegistryValueKind.DWord);
                 key.SetValue("LatencyMode", (int)mode, RegistryValueKind.DWord);
+                key.SetValue("NoCallMode", noCallMode ? 1 : 0, RegistryValueKind.DWord);
                 for (int i = 0; i < targets.Count; i++)
                 {
                     key.SetValue($"Hook{i}Rva", targets[i].Rva, RegistryValueKind.DWord);
@@ -238,7 +240,7 @@ public static class LeAudioCodecHook
                 result = LeAudioHookInjector.Enable(pid, hookDll, HookDirectory, log);
             }
             if (result == Result.Ok)
-                File.WriteAllText(StatePath, FormatState(new AppliedState(pid, preset.FrameUs, preset.Octets, mode)));
+                File.WriteAllText(StatePath, FormatState(new AppliedState(pid, preset.FrameUs, preset.Octets, mode, noCallMode)));
             return result;
         }
         catch (Exception ex)

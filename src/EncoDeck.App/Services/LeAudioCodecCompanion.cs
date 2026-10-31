@@ -120,13 +120,17 @@ public sealed class LeAudioCodecCompanion : IDisposable
         _ => LeAudioLatencyMode.Auto,
     };
 
+    /// <summary>Command-line flag of the elevated child: calls must not take over the link.</summary>
+    private const string NoCallArgument = "nocall";
+
     /// <summary>Runs in the elevated child, before any window or single-instance check.</summary>
-    public static int RunElevatedApply(string? presetId, string? mode)
+    public static int RunElevatedApply(string? presetId, string? mode, string? noCall)
     {
         if (LeAudioCodecPreset.Find(presetId ?? "") is not { } preset) return LeAudioCodecHook.Result.Failed;
         string log = Path.Combine(LeAudioCodecHook.HookDirectory, "apply.log");
+        bool noCallMode = string.Equals(noCall, NoCallArgument, StringComparison.OrdinalIgnoreCase);
         // Off the UI thread: the apply awaits a download and must not wait on the dispatcher it blocks.
-        return Task.Run(() => LeAudioCodecHook.ApplyElevatedAsync(preset, ParseMode(mode), LeAudioCodecHook.BundledDll, line =>
+        return Task.Run(() => LeAudioCodecHook.ApplyElevatedAsync(preset, ParseMode(mode), noCallMode, LeAudioCodecHook.BundledDll, line =>
         {
             try { File.AppendAllText(log, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} {line}{Environment.NewLine}"); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
@@ -134,13 +138,15 @@ public sealed class LeAudioCodecCompanion : IDisposable
     }
 
     /// <summary>
-    /// Shows the administrator prompt and applies <paramref name="preset"/> and <paramref name="mode"/>; returns the
-    /// child's result code. A declined prompt throws <see cref="OperationCanceledException"/>.
+    /// Shows the administrator prompt and applies <paramref name="preset"/>, <paramref name="mode"/> and
+    /// <paramref name="noCallMode"/>; returns the child's result code. A declined prompt throws
+    /// <see cref="OperationCanceledException"/>.
     /// </summary>
-    public static async Task<int> ApplyAsync(LeAudioCodecPreset preset, LeAudioLatencyMode mode)
+    public static async Task<int> ApplyAsync(LeAudioCodecPreset preset, LeAudioLatencyMode mode, bool noCallMode)
     {
         string exe = Environment.ProcessPath ?? throw new InvalidOperationException("Unknown executable path.");
-        var start = new ProcessStartInfo(exe, $"{ApplyArgument} {preset.Id} {ModeArgument(mode)}")
+        string arguments = $"{ApplyArgument} {preset.Id} {ModeArgument(mode)}" + (noCallMode ? $" {NoCallArgument}" : "");
+        var start = new ProcessStartInfo(exe, arguments)
         {
             UseShellExecute = true,
             Verb = "runas",

@@ -84,6 +84,17 @@ static Hook g_hooks[] = {
 };
 #define HOOK_COUNT (sizeof g_hooks / sizeof g_hooks[0])
 
+// The audio endpoint declares, pin by pin, which signal processing modes it supports
+// (Apx01000.dll!imp_ApxPinAssignModeDataFormatList, called through the import table). With NoCallMode the
+// communications mode is not declared: the audio engine then plays communications and game chat streams through the
+// ordinary (default mode) stream instead of opening a communications one, which Windows answers by setting the
+// earbuds up for a call (microphone channel, low-rate codec). Takes effect when the endpoint is created (the earbuds
+// connect). Found by name in the import table, so it does not depend on the build.
+typedef LONG (*AssignModeFn)(void *globals, void *pin, const GUID *mode, void *formats);
+static const GUID ModeCommunications = {0x98951333, 0xb9cd, 0x48b1, {0xa0, 0xa3, 0xff, 0x40, 0x68, 0x2d, 0x73, 0xf7}};
+static void **g_assignSlot;
+static AssignModeFn g_assignOriginal;
+
 static LONG g_installed;
 static SRWLOCK g_logLock = SRWLOCK_INIT;
 
@@ -289,6 +300,47 @@ static void RewriteQos(uint8_t *result)
     }
 }
 
+static LONG HookAssignMode(void *globals, void *pin, const GUID *mode, void *formats)
+{
+    if (mode && memcmp(mode, &ModeCommunications, sizeof(GUID)) == 0 && ReadConfig(L"NoCallMode"))
+    {
+        Log("endpoint: communications mode not declared (NoCallMode)");
+        return 0; // STATUS_SUCCESS: the pin simply has no such mode
+    }
+    return g_assignOriginal(globals, pin, mode, formats);
+}
+
+// The import table slot of `function` from `dll` in `module`, or NULL.
+static void **FindImportSlot(HMODULE module, const char *dll, const char *function)
+{
+    uint8_t *base = (uint8_t *)module;
+    IMAGE_NT_HEADERS *nt = (IMAGE_NT_HEADERS *)(base + ((IMAGE_DOS_HEADER *)module)->e_lfanew);
+    IMAGE_DATA_DIRECTORY *directory = &nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];
+    if (!directory->VirtualAddress) return NULL;
+    for (IMAGE_IMPORT_DESCRIPTOR *d = (IMAGE_IMPORT_DESCRIPTOR *)(base + directory->VirtualAddress); d->Name; d++)
+    {
+        if (_stricmp((const char *)(base + d->Name), dll) != 0 || !d->OriginalFirstThunk) continue;
+        IMAGE_THUNK_DATA64 *names = (IMAGE_THUNK_DATA64 *)(base + d->OriginalFirstThunk);
+        IMAGE_THUNK_DATA64 *slots = (IMAGE_THUNK_DATA64 *)(base + d->FirstThunk);
+        for (size_t i = 0; names[i].u1.AddressOfData; i++)
+        {
+            if (IMAGE_SNAP_BY_ORDINAL64(names[i].u1.Ordinal)) continue;
+            IMAGE_IMPORT_BY_NAME *byName = (IMAGE_IMPORT_BY_NAME *)(base + names[i].u1.AddressOfData);
+            if (strcmp((const char *)byName->Name, function) == 0) return (void **)&slots[i].u1.Function;
+        }
+    }
+    return NULL;
+}
+
+static BOOL WriteSlot(void **slot, void *value)
+{
+    DWORD old;
+    if (!VirtualProtect(slot, sizeof *slot, PAGE_READWRITE, &old)) return FALSE;
+    InterlockedExchangePointer(slot, value);
+    VirtualProtect(slot, sizeof *slot, old, &old);
+    return TRUE;
+}
+
 static void *HookGetPreferred(void *self, void *result, void *pacs, void *ascs, uint32_t location)
 {
     void *returned = ((GetPreferredFn)(void *)g_hooks[0].trampoline)(self, result, pacs, ascs, location);
@@ -384,9 +436,20 @@ __declspec(dllexport) DWORD WINAPI LeHookEnable(LPVOID unused)
             return 5;
         }
     }
+    // The endpoint's mode declarations; optional (logged when this build imports it differently).
+    if (!g_assignSlot) g_assignSlot = FindImportSlot(module, "Apx01000.dll", "imp_ApxPinAssignModeDataFormatList");
+    if (g_assignSlot)
+    {
+        if (!g_assignOriginal) g_assignOriginal = (AssignModeFn)*g_assignSlot;
+        if (!WriteSlot(g_assignSlot, (void *)HookAssignMode)) Log("enable: cannot patch the mode declaration import (%lu)", GetLastError());
+    }
+    else
+    {
+        Log("enable: mode declaration import not found; NoCallMode unavailable");
+    }
     InterlockedExchange(&g_installed, 1);
-    Log("enabled: frame %lu us, %lu octets, latency mode %lu (0 = keep Windows' choice)", ReadConfig(L"FrameDurationUs"),
-        ReadConfig(L"OctetsPerFrame"), ReadConfig(L"LatencyMode"));
+    Log("enabled: frame %lu us, %lu octets, latency mode %lu, no call mode %lu (0 = keep Windows' choice)",
+        ReadConfig(L"FrameDurationUs"), ReadConfig(L"OctetsPerFrame"), ReadConfig(L"LatencyMode"), ReadConfig(L"NoCallMode"));
     return 0;
 }
 
@@ -395,6 +458,11 @@ __declspec(dllexport) DWORD WINAPI LeHookDisable(LPVOID unused)
     (void)unused;
     if (InterlockedCompareExchange(&g_installed, 0, 1) != 1) return 0;
     DWORD result = 0;
+    if (g_assignSlot && g_assignOriginal && !WriteSlot(g_assignSlot, (void *)g_assignOriginal))
+    {
+        Log("disable: cannot restore the mode declaration import (%lu)", GetLastError());
+        result = 5;
+    }
     for (size_t i = 0; i < HOOK_COUNT; i++)
     {
         if (!WriteCode(g_hooks[i].target, g_hooks[i].prologue, g_hooks[i].length))

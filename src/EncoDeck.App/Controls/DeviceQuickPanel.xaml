@@ -24,11 +24,9 @@
                             AutomationProperties.Name="{x:Bind ViewModel.BridgeBadgeDescription, Mode=OneWay}">
                         <TextBlock Text="A2DP Bridge" Style="{StaticResource CodecBadgeSubtleTextStyle}" />
                     </Border>
-                    <Border Style="{StaticResource CodecBadgeStyle}" Visibility="{x:Bind ViewModel.HasCodec, Mode=OneWay}"
-                            ToolTipService.ToolTip="{x:Bind ViewModel.CodecDescription, Mode=OneWay}"
-                            AutomationProperties.Name="{x:Bind ViewModel.CodecDescription, Mode=OneWay}">
-                        <TextBlock Text="{x:Bind ViewModel.CodecLabel, Mode=OneWay}" Style="{StaticResource CodecBadgeTextStyle}" MaxWidth="180" TextTrimming="CharacterEllipsis" />
-                    </Border>
+                    <controls:CodecBadge Visibility="{x:Bind ViewModel.HasCodec, Mode=OneWay}" Label="{x:Bind ViewModel.CodecLabel, Mode=OneWay}"
+                                      Description="{x:Bind ViewModel.CodecDescription, Mode=OneWay}" IsDetailed="{x:Bind ViewModel.CodecIsDetailed, Mode=OneWay}"
+                                      CanEnable="{x:Bind ViewModel.CodecCanEnable, Mode=OneWay}" MaxLabelWidth="180" />
                 </StackPanel>
             </StackPanel>
             <Button Grid.Column="2" x:Uid="Panel_OpenApp" Click="OnOpenApp" Style="{StaticResource SubtleButtonStyle}" Padding="8" VerticalAlignment="Top"
