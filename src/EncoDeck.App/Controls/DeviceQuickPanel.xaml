@@ -57,6 +57,37 @@
             <controls:NoiseControlSelector ViewModel="{x:Bind ViewModel}" />
         </StackPanel>
 
+        <!-- Audio connection: earbuds set up for LE Audio switch between LC3 and Classic, keeping every pairing. -->
+        <StackPanel Spacing="6" Visibility="{x:Bind ViewModel.CanSwitchAudioTransport, Mode=OneWay}">
+            <Grid>
+                <TextBlock x:Uid="Panel_AudioTransport" Text="Audio connection" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                <ProgressRing HorizontalAlignment="Right" Width="12" Height="12" IsActive="{x:Bind ViewModel.IsSwitchingAudioTransport, Mode=OneWay}"
+                              Visibility="{x:Bind ViewModel.IsSwitchingAudioTransport, Mode=OneWay}" />
+            </Grid>
+            <Grid ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <ToggleButton x:Name="LeAudioButton" Style="{StaticResource SegmentToggleStyle}" MinHeight="48" Tag="le" Click="OnTransportClick"
+                              IsChecked="{x:Bind ViewModel.IsLeAudio, Mode=OneWay}"
+                              IsEnabled="{x:Bind services:Ui.Not(ViewModel.IsSwitchingAudioTransport), Mode=OneWay}">
+                    <StackPanel Spacing="1" VerticalAlignment="Center">
+                        <TextBlock Text="LC3" Style="{StaticResource BodyStrongTextBlockStyle}" HorizontalAlignment="Center" />
+                        <TextBlock Text="LE Audio" Style="{StaticResource SegmentLabelStyle}" Opacity="0.75" />
+                    </StackPanel>
+                </ToggleButton>
+                <ToggleButton x:Name="ClassicButton" Grid.Column="1" Style="{StaticResource SegmentToggleStyle}" MinHeight="48" Tag="classic" Click="OnTransportClick"
+                              IsChecked="{x:Bind ViewModel.IsClassicAudio, Mode=OneWay}"
+                              IsEnabled="{x:Bind services:Ui.Not(ViewModel.IsSwitchingAudioTransport), Mode=OneWay}">
+                    <StackPanel Spacing="1" VerticalAlignment="Center">
+                        <TextBlock x:Uid="Panel_AudioTransportClassic" Text="Classic" Style="{StaticResource BodyStrongTextBlockStyle}" HorizontalAlignment="Center" />
+                        <TextBlock Text="A2DP" Style="{StaticResource SegmentLabelStyle}" Opacity="0.75" />
+                    </StackPanel>
+                </ToggleButton>
+            </Grid>
+        </StackPanel>
+
         <InfoBar IsOpen="{x:Bind ViewModel.HasError, Mode=OneWay}" Severity="Error" Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
                  CloseButtonCommand="{x:Bind ViewModel.DismissErrorCommand}" />
 

@@ -8,6 +8,7 @@ public enum CodecDisplayKind
     None,
     BridgeStream,
     UnknownBridgeStream,
+    /// <summary>Windows plays the earbuds over LE Audio (its output is active, not just an LE link): always LC3.</summary>
     LeLink,
     /// <summary>The codec Windows logged for this device's A2DP stream.</summary>
     WindowsStream,

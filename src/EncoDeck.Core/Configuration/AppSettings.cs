@@ -107,6 +107,9 @@ public sealed record AppSettings
     /// <summary>Labs: hold the LE Audio link and let the user check (and rebuild) its left/right alignment.</summary>
     public bool LeAudioSyncGuard { get; init; }
 
+    /// <summary>Earbuds set up for both LE Audio and Classic: offer "LC3 / Classic" in the earbuds panel (null = default, on).</summary>
+    public bool? ShowAudioTransportSwitch { get; init; } = true;
+
     /// <summary>The main window's last size and position, or null for the default (centered).</summary>
     public WindowBounds? MainWindowBounds { get; init; }
 
@@ -119,6 +122,7 @@ public sealed record AppSettings
         // Missing in settings saved by older versions (read as 0): the standard size.
         PopupScale = double.IsFinite(PopupScale) && PopupScale > 0 ? Math.Clamp(PopupScale, 0.6, 1.6) : 1.0,
         ShowAboveQuickSettings = ShowAboveQuickSettings ?? true,
+        ShowAudioTransportSwitch = ShowAudioTransportSwitch ?? true,
         HideQuickSettingsPanelWhenBluetoothOff = HideQuickSettingsPanelWhenBluetoothOff ?? true,
         QuickSettingsPanelTheme = Enum.IsDefined(QuickSettingsPanelTheme) ? QuickSettingsPanelTheme : AppTheme.System,
         PopupPosition = Enum.IsDefined(PopupPosition) ? PopupPosition : PopupPosition.NearTray,

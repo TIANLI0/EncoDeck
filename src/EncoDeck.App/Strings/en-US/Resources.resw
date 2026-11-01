@@ -800,7 +800,7 @@
   <data name="LeAudio_Summary.Text" xml:space="preserve"><value>Lets Windows connect these earbuds over LE Audio with the LC3 codec instead of Classic Bluetooth A2DP. Your PC's Bluetooth must support LE Audio.</value></data>
   <data name="LeAudio_NoiseNote.Text" xml:space="preserve"><value>Once on LE Audio, the Enco X4 does not accept noise control changes from the PC. Change it on the earbuds instead.</value></data>
   <data name="LeAudio_Switch" xml:space="preserve"><value>Switch to LE Audio</value></data>
-  <data name="LeAudio_Restore" xml:space="preserve"><value>Restore Classic Bluetooth</value></data>
+  <data name="LeAudio_Restore" xml:space="preserve"><value>Remove LE Audio pairing</value></data>
   <data name="LeAudio_StatusLe" xml:space="preserve"><value>Both earbuds have LE bonds; Windows manages the actual audio connection.</value></data>
   <data name="LeAudio_StatusEndpointUnknown" xml:space="preserve"><value>The Windows audio endpoint state could not be confirmed; ACL/GATT readiness does not prove dual-ear playback.</value></data>
   <data name="LeAudio_DisableClassic" xml:space="preserve"><value>Disable Classic audio endpoint</value></data>
@@ -916,9 +916,9 @@ Afterwards Windows lists two entries with the same name (one is the other earbud
   <data name="LeAudio_Help.Header" xml:space="preserve"><value>About LE Audio</value></data>
   <data name="LeAudio_Guide.Content" xml:space="preserve"><value>Read the guide and how it works</value></data>
   <data name="LeAudio_HelpRequirements.Text" xml:space="preserve"><value>Requires Windows 11 24H2 or later and a Bluetooth adapter and driver with LE Audio support (for example Intel "Smart Sound Technology for Bluetooth LE Audio"). Turning on "Use LE Audio when available" in Settings → Bluetooth &amp; devices → Devices is recommended.</value></data>
-  <data name="LeAudio_HelpSwitch.Text" xml:space="preserve"><value>These earbuds do not appear as an LE device in Windows' "Add device", so pairing there uses Classic Bluetooth. EncoDeck pairs their LE address directly, and Windows generates an associated Classic pairing record. Over LE Audio, EncoDeck uses GATT control only. The other earbud's address is read from the first earbud's advertisement. No setting on the earbuds is changed.</value></data>
+  <data name="LeAudio_HelpSwitch.Text" xml:space="preserve"><value>These earbuds do not appear as an LE device in Windows' "Add device", so pairing there uses Classic Bluetooth. EncoDeck pairs their LE address directly, and Windows generates an associated Classic pairing record. Over LE Audio, EncoDeck controls the earbuds through that Classic pairing's control channel (RFCOMM), which also keeps the Classic link up: the earbuds drop their LE links when the Classic link ends. The other earbud's address is read from the first earbud's advertisement. No setting on the earbuds is changed.</value></data>
   <data name="LeAudio_HelpLimits.Text" xml:space="preserve"><value>Afterwards the other earbud is listed separately in Bluetooth settings under the same name. Over LE Audio, EncoDeck controls the earbuds over GATT, so noise control, battery and the other features keep working. Known issue: when playback starts, one earbud is occasionally about 7.5 ms behind the other, pulling the sound to one side; stop all audio for a few seconds and play again to realign.</value></data>
-  <data name="LeAudio_HelpRestore.Text" xml:space="preserve"><value>To return to Classic Bluetooth, click Restore Classic Bluetooth to remove this PC's earbud pairings. After cleanup, put the earbuds in pairing mode and manually pair them using Add device in Windows Bluetooth settings. EncoDeck does not pair them over Classic Bluetooth automatically.</value></data>
+  <data name="LeAudio_HelpRestore.Text" xml:space="preserve"><value>Once paired for LE Audio, "Use Classic Bluetooth" and "Use LC3" switch at any time without removing any pairing. Switching restarts Windows' Bluetooth audio service, which needs one authorization the first time. "Remove LE Audio pairing" removes this PC's earbud pairings; after cleanup, put the earbuds in pairing mode and manually pair them using Add device in Windows Bluetooth settings. EncoDeck does not pair them over Classic Bluetooth automatically.</value></data>
   <data name="Honor_Anc_Cozy" xml:space="preserve"><value>Comfortable</value></data>
   <data name="Honor_Anc_General" xml:space="preserve"><value>Moderate</value></data>
   <data name="Honor_Anc_Ultra" xml:space="preserve"><value>Deep</value></data>
@@ -1090,7 +1090,7 @@ Afterwards Windows lists two entries with the same name (one is the other earbud
   <data name="AutoOff_Minutes" xml:space="preserve"><value>After {0} minutes</value></data>
   <data name="AutoOff_IdleDescription" xml:space="preserve"><value>Turn the headset off after it has been idle for the selected time</value></data>
   <data name="Codec_BridgeDescription" xml:space="preserve"><value>A2DP Bridge is sending {0} audio to these earbuds.</value></data>
-  <data name="Codec_LeAudioDescription" xml:space="preserve"><value>The LE link is connected. Audio streaming and the LC3 codec have not been verified.</value></data>
+  <data name="Codec_LeAudioDescription" xml:space="preserve"><value>Playing over LE Audio with the LC3 codec.</value></data>
   <data name="EarFun_Wind" xml:space="preserve"><value>Wind reduction</value></data>
   <data name="EarFun_Anc1" xml:space="preserve"><value>ANC 1</value></data>
   <data name="EarFun_EarAdaptive" xml:space="preserve"><value>Ear adaptive</value></data>
@@ -1196,4 +1196,20 @@ Afterwards Windows lists two entries with the same name (one is the other earbud
   <data name="Codec_A2dpNotLoggedDescription" xml:space="preserve"><value>Connected over Bluetooth A2DP. Windows has not logged a codec for these earbuds yet: play some audio and stop it, and it shows here.</value></data>
   <data name="CodecBadge_Enable" xml:space="preserve"><value>Turn on (one administrator authorization)</value></data>
   <data name="CodecBadge_Enabled" xml:space="preserve"><value>Turned on. Play some audio and stop it, and the codec Windows actually uses shows here.</value></data>
+  <data name="LeAudio_UseClassic" xml:space="preserve"><value>Use Classic Bluetooth</value></data>
+  <data name="LeAudio_UseLe" xml:space="preserve"><value>Use LC3</value></data>
+  <data name="LeAudio_StatusUsingLe" xml:space="preserve"><value>Windows is playing over LE Audio (LC3).</value></data>
+  <data name="LeAudio_StatusUsingClassic" xml:space="preserve"><value>Windows is playing over Classic Bluetooth (A2DP); the pairings are kept, so you can switch back to LC3 at any time.</value></data>
+  <data name="LeAudio_ConfirmAuthorize" xml:space="preserve"><value>To switch, EncoDeck restarts Windows' Bluetooth audio service (AVCTP service) so Windows chooses again between LC3 and Classic Bluetooth. An administrator prompt appears once; it only lets your account start and stop that one service, and later switches need no prompt. Bluetooth audio pauses for a few seconds while switching; other Bluetooth devices stay connected. Uninstalling the installed version removes this permission.</value></data>
+  <data name="LeAudio_Authorize" xml:space="preserve"><value>Authorize and switch</value></data>
+  <data name="LeAudio_Stage_ChangingWindowsAudio" xml:space="preserve"><value>Asking Windows to choose the audio connection again (restarting the Bluetooth audio service)…</value></data>
+  <data name="LeAudio_Stage_RestoringClassicAudio" xml:space="preserve"><value>Restoring Classic Bluetooth audio (A2DP, HFP)…</value></data>
+  <data name="LeAudio_Stage_WaitingForAudio" xml:space="preserve"><value>Waiting for Windows to offer the audio output…</value></data>
+  <data name="LeAudio_Result_SwitchedToClassic" xml:space="preserve"><value>Switched to Classic Bluetooth (A2DP). All pairings were kept; you can switch back to LC3 at any time.</value></data>
+  <data name="LeAudio_Result_ClassicAudioMissing" xml:space="preserve"><value>Windows chose Classic Bluetooth, but the A2DP output did not appear in time. Put the earbuds back in the case and take them out again, or retry later.</value></data>
+  <data name="LeAudio_Result_NeedsServiceAccess" xml:space="preserve"><value>Authorize EncoDeck to restart the Bluetooth audio service first.</value></data>
+  <data name="LeAudio_Result_NotSetUp" xml:space="preserve"><value>These earbuds are not set up for LE Audio on this PC yet. Click "Switch to LE Audio" first.</value></data>
+  <data name="Panel_AudioTransport.Text" xml:space="preserve"><value>Audio connection</value></data>
+  <data name="Panel_AudioTransportClassic.Text" xml:space="preserve"><value>Classic</value></data>
+  <data name="LeAudio_QuickSwitch.Header" xml:space="preserve"><value>Show the LC3 / Classic switch in the earbuds panel</value></data>
 </root>

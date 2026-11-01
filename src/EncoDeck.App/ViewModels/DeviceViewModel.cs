@@ -109,6 +109,14 @@ public sealed partial class DeviceViewModel : ObservableObject
 
     /// <summary>The audio runs over LE Audio (shown as an "LC3" tag next to the status).</summary>
     [ObservableProperty] public partial bool IsLeAudio { get; set; }
+    /// <summary>Linked, and Windows plays these earbuds over Classic audio (not LE Audio).</summary>
+    [ObservableProperty] public partial bool IsClassicAudio { get; set; }
+    /// <summary>
+    /// Earbuds set up for LE Audio on this PC (both LE bonds and the derived Classic bond): the earbuds panel offers
+    /// "LC3 / Classic", which moves Windows between them without touching any pairing.
+    /// </summary>
+    [ObservableProperty] public partial bool CanSwitchAudioTransport { get; set; }
+    [ObservableProperty] public partial bool IsSwitchingAudioTransport { get; set; }
     /// <summary>
     /// A2DP Windows Bridge streams to these earbuds but neither it nor Windows carries their control channel. The
     /// "A2DP Bridge" tag already names the bridge in every other case, so only this one takes room above the page.
@@ -262,6 +270,43 @@ public sealed partial class DeviceViewModel : ObservableObject
 
     private Task RunAsync(Func<Task<CommandResult>> action) => RunCommandAsync(action);
 
+    /// <summary>
+    /// "LC3" or "Classic" in the earbuds panel: has Windows use LE Audio or Classic audio for these earbuds. The first
+    /// time it asks (administrator prompt) for the one permission it needs, restarting Windows' Bluetooth audio service.
+    /// </summary>
+    [RelayCommand]
+    private async Task SwitchAudioTransportAsync(string target)
+    {
+        bool toLeAudio = target == "le";
+        if (IsSwitchingAudioTransport || toLeAudio == IsLeAudio || _store.Current.Device is not { Transport: DeviceTransport.Bluetooth } device) return;
+        IsSwitchingAudioTransport = true;
+        try
+        {
+            if (!EncoDeck.Bluetooth.LeAudio.WindowsAudioTransport.CanRestartService)
+                await EncoDeck.Bluetooth.LeAudio.WindowsAudioTransport.AuthorizeAsync();
+            var result = await EncoDeck.Bluetooth.LeAudio.LeAudioPairing.SwitchTransportAsync(device.Address.Value, toLeAudio, null, CancellationToken.None);
+            if (result.Outcome is not (EncoDeck.Bluetooth.LeAudio.LeAudioPairingOutcome.Paired or EncoDeck.Bluetooth.LeAudio.LeAudioPairingOutcome.SwitchedToClassic))
+            {
+                ErrorMessage = Loc.Get($"LeAudio_Result_{result.Outcome}");
+                HasError = true;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // The administrator prompt was declined: nothing changed.
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            ErrorMessage = Loc.Format("LeAudio_Error", ex.Message);
+            HasError = true;
+        }
+        finally
+        {
+            IsSwitchingAudioTransport = false;
+            Apply(_store.Current, forceNotify: true);
+        }
+    }
+
     private static string DescribeFailure(CommandResult result) => (result.Status, result.Detail) switch
     {
         // Reasons the official client reports with its own message.
@@ -341,12 +386,21 @@ public sealed partial class DeviceViewModel : ObservableObject
             IsBusyConnecting = !bridge.IsStreaming;
             IsLeAudio = false;
         }
+        IsClassicAudio = !IsLeAudio && !IsLinkDown && !IsBridgeOnly && state.Connection.IsLinkUp();
+        CanSwitchAudioTransport = _settings.Current.ShowAudioTransportSwitch != false
+            && profile is OppoDeviceProfile { Definition.SupportsLeAudioPairing: true }
+            && state.LeAudioLinks is { PrimaryBonded: true, SecondaryBonded: true }
+            && state.Device is { Transport: DeviceTransport.Bluetooth } switchable
+            // Earbuds kept on LE alone (no Classic bond) cannot use Classic audio.
+            && EncoDeck.Bluetooth.LeAudio.LeAudioOnlyDevices.Find(switchable.DeviceId) is null
+            && !IsLinkDown && !IsBridgeOnly;
         var codecDisplay = CodecDisplay.Resolve(state);
         CodecLabel = codecDisplay.Kind switch
         {
             // The "A2DP Bridge" tag beside a bridge stream already names its source.
             CodecDisplayKind.BridgeStream or CodecDisplayKind.WindowsStream => codecDisplay.Codec!,
-            CodecDisplayKind.LeLink => "LE Audio",
+            // Windows' LE Audio output is active, and LE Audio on Windows is always LC3.
+            CodecDisplayKind.LeLink => "LC3",
             // Only the Classic link is known: the earbuds' own codec report is never shown.
             CodecDisplayKind.A2dpLogOff or CodecDisplayKind.A2dpNotLogged => "A2DP",
             // An unknown bridge codec shows no tag at all (the diagnostics still record why).
@@ -369,8 +423,9 @@ public sealed partial class DeviceViewModel : ObservableObject
             ConnectionText = Loc.Get("Connection_LeAudioSingleEar");
         // Switched to LE Audio but LC3 is not up (e.g. after the case reopened): the earbuds only come
         // back over LE once they advertise; EncoDeck keeps the existing bond ready to reconnect. OPPO
-        // control waits for that link; Classic-controlled earbuds show their own state meanwhile.
-        if (LeAudioStatus.IsWaitingForLeAudio(state, controlNeedsLeAudio: profile is OppoDeviceProfile) && !IsBridgeOnly)
+        // control over GATT waits for that link; earbuds controlled over Classic (also those EncoDeck switches
+        // between LC3 and Classic, which keep their derived Classic bond) show their own state meanwhile.
+        if (LeAudioStatus.IsWaitingForLeAudio(state, controlNeedsLeAudio: profile is OppoDeviceProfile { Definition.SupportsLeAudioPairing: false }) && !IsBridgeOnly)
             ConnectionText = Loc.Get("Connection_WaitingForLeAudio");
         // Until the earbuds connect and report their ids, use the ones remembered from last time
         // (restored by the device cache) or the model's own product id, so the art shows at once.

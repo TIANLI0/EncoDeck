@@ -30,12 +30,25 @@ public static class LeAudioLink
         return new PairingOperation(address);
     }
 
+    /// <summary>
+    /// A switch to or from LE Audio ended (whatever its result): the earbuds' bonds may differ now, so whatever watches
+    /// their links has to look again (a link monitor made before the LE bond existed watches Classic alone).
+    /// </summary>
+    public static event Action<ulong>? PairingOperationEnded;
+
+    /// <summary>Windows may have switched the earbuds between Classic and LE Audio output: whoever shows the audio path looks again.</summary>
+    public static event Action<ulong>? AudioOutputChanged;
+
+    internal static void NotifyAudioOutputChanged(ulong address) => AudioOutputChanged?.Invoke(address);
+
     private sealed class PairingOperation(ulong address) : IDisposable
     {
         private int _disposed;
         public void Dispose()
         {
-            if (Interlocked.Exchange(ref _disposed, 1) == 0) PairingOperations.TryRemove(address, out _);
+            if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
+            PairingOperations.TryRemove(address, out _);
+            PairingOperationEnded?.Invoke(address);
         }
     }
 

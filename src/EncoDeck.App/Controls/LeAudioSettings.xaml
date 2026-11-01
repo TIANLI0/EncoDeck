@@ -21,12 +21,16 @@
    <ProgressBar x:Name="Progress" IsIndeterminate="True" Visibility="Collapsed" />
    <local:WrapPanel HorizontalSpacing="8" VerticalSpacing="8">
     <Button x:Name="Switch" Click="OnSwitch" Style="{StaticResource AccentButtonStyle}" />
+    <!-- Earbuds set up for LE Audio: moves Windows between LC3 and Classic audio, keeping every pairing. -->
+    <Button x:Name="Transport" Click="OnTransport" Style="{StaticResource AccentButtonStyle}" Visibility="Collapsed" />
     <Button x:Name="Restore" Click="OnRestore" />
     <Button x:Name="DisableClassic" Click="OnDisableClassic" Visibility="Collapsed" />
     <Button x:Name="EnableClassic" Click="OnEnableClassic" Visibility="Collapsed" />
     <Button x:Name="Cancel" Click="OnCancel" Visibility="Collapsed" />
     <HyperlinkButton x:Name="OpenBluetooth" x:Uid="LeAudio_OpenBluetooth" NavigateUri="ms-settings:bluetooth" />
    </local:WrapPanel>
+   <!-- The same switch in the earbuds panel (tray and Quick Settings), for earbuds set up for LE Audio. -->
+   <ToggleSwitch x:Name="QuickSwitch" x:Uid="LeAudio_QuickSwitch" Toggled="OnQuickSwitchToggled" Visibility="Collapsed" />
    <TextBlock x:Uid="LeAudio_Disclaimer" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" />
    <Expander x:Uid="LeAudio_Help" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
     <StackPanel Spacing="10">

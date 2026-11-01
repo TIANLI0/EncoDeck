@@ -6,8 +6,8 @@ using Microsoft.UI.Xaml.Controls;
 namespace EncoDeck.App.Controls;
 
 /// <summary>
-/// Device name, batteries and noise control: the content of the tray panel and of the panel on
-/// top of Windows 11 Quick Settings.
+/// Device name, batteries, noise control and (for earbuds set up for LE Audio) LC3 / Classic: the content of the
+/// tray panel and of the panel on top of Windows 11 Quick Settings.
 /// </summary>
 public sealed partial class DeviceQuickPanel : UserControl
 {
@@ -32,6 +32,14 @@ public sealed partial class DeviceQuickPanel : UserControl
     {
         ArtworkColumn.Width = new GridLength(ViewModel.IsHeadphones ? 80 : 56);
         HeaderArtwork.Height = ViewModel.IsHeadphones ? 80 : 48;
+    }
+
+    private void OnTransportClick(object sender, RoutedEventArgs e)
+    {
+        // Revert the local toggle at once; the checked segment follows what Windows actually plays.
+        LeAudioButton.IsChecked = ViewModel.IsLeAudio;
+        ClassicButton.IsChecked = ViewModel.IsClassicAudio;
+        if (sender is FrameworkElement { Tag: string target }) ViewModel.SwitchAudioTransportCommand.Execute(target);
     }
 
     /// <summary>The "open EncoDeck" button was clicked.</summary>

@@ -189,6 +189,22 @@ begin
     '', SW_HIDE, ewWaitUntilTerminated, ErrorCode);
 end;
 
+// LE Audio "Use LC3 / Use Classic Bluetooth" let this user start and stop BthAvctpSvc (WindowsAudioTransport.cs, one
+// administrator prompt): remove that access entry again. Windows writes its rights back as LCRPWP.
+procedure RemoveServiceAccess();
+var
+  Marker: String;
+  ErrorCode: Integer;
+begin
+  Marker := ExpandConstant('{localappdata}\{#AppName}\bluetooth-audio-service-access');
+  if not FileExists(Marker) or UninstallSilent() then Exit;
+  ShellExec('runas', ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
+    '-NoProfile -NonInteractive -Command "$s = ((sc.exe sdshow BthAvctpSvc) -join '''').Trim(); ' +
+    '$n = $s -replace ''\(A;;(LCRPWP|RPWPLC);;;S-1-5-21-[0-9-]+\)'', ''''; if ($n -ne $s) { sc.exe sdset BthAvctpSvc $n }"',
+    '', SW_HIDE, ewWaitUntilTerminated, ErrorCode);
+  DeleteFile(Marker);
+end;
+
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   DataDir: String;
@@ -199,6 +215,7 @@ begin
   // A real uninstall: remove the autostart entry the app may have created itself.
   RegDeleteValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run', '{#AppName}');
   RemoveCodecLog();
+  RemoveServiceAccess();
 
   DataDir := ExpandConstant('{localappdata}\{#AppName}');
   if DirExists(DataDir) and not UninstallSilent() then

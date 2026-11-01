@@ -66,7 +66,7 @@ public class CodecDisplayTests
         Assert.Equal(new CodecDisplay(CodecDisplayKind.WindowsStream, "AAC"), CodecDisplay.Resolve(Logged with { Bridge = new(false, "LDAC", 0, 0, "saved") }));
 
     [Fact]
-    public void LeLink_IsALink_NotVerifiedLc3()
+    public void LeAudioOutput_ShowsLeLink()
     {
         var state = Logged with { IsLeAudio = true };
         Assert.Equal(new CodecDisplay(CodecDisplayKind.LeLink), CodecDisplay.Resolve(state));

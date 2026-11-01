@@ -800,7 +800,7 @@
   <data name="LeAudio_Summary.Text" xml:space="preserve"><value>让 Windows 通过 LE Audio 使用 LC3 编码连接这副耳机，取代传统蓝牙的 A2DP。电脑的蓝牙需支持 LE Audio。</value></data>
   <data name="LeAudio_NoiseNote.Text" xml:space="preserve"><value>Enco X4 切换到 LE Audio 后不接受来自电脑的降噪切换，请在耳机上手动切换降噪。</value></data>
   <data name="LeAudio_Switch" xml:space="preserve"><value>切换到 LE Audio</value></data>
-  <data name="LeAudio_Restore" xml:space="preserve"><value>恢复传统蓝牙</value></data>
+  <data name="LeAudio_Restore" xml:space="preserve"><value>移除 LE Audio 配对</value></data>
   <data name="LeAudio_StatusLe" xml:space="preserve"><value>左右耳均已完成 LE 配对；实际音频连接由 Windows 管理。</value></data>
   <data name="LeAudio_StatusEndpointUnknown" xml:space="preserve"><value>无法确认 Windows 的音频端点状态；不要把 ACL/GATT 就绪当作双耳播放成功。</value></data>
   <data name="LeAudio_DisableClassic" xml:space="preserve"><value>禁用经典音频端点</value></data>
@@ -916,9 +916,9 @@
   <data name="LeAudio_Help.Header" xml:space="preserve"><value>LE Audio 使用说明</value></data>
   <data name="LeAudio_Guide.Content" xml:space="preserve"><value>查看详细说明与工作原理</value></data>
   <data name="LeAudio_HelpRequirements.Text" xml:space="preserve"><value>需要 Windows 11 24H2 或更新版本，以及支持 LE Audio 的蓝牙适配器和驱动（例如 Intel 的“Smart Sound Technology for Bluetooth LE Audio”）。建议在 设置 → 蓝牙和设备 → 设备 中打开“可用时使用 LE 音频”。</value></data>
-  <data name="LeAudio_HelpSwitch.Text" xml:space="preserve"><value>这副耳机不会以 LE 方式出现在 Windows 的“添加设备”中，所以那里总是按传统蓝牙配对。EncoDeck 会直接对耳机的 LE 地址发起配对，Windows 随后自动生成关联的传统蓝牙配对记录。LE Audio 模式下，EncoDeck 只通过 GATT 控制耳机。另一只耳机的地址从第一只耳机的广播中读取。整个过程不会改动耳机上的任何设置。</value></data>
+  <data name="LeAudio_HelpSwitch.Text" xml:space="preserve"><value>这副耳机不会以 LE 方式出现在 Windows 的“添加设备”中，所以那里总是按传统蓝牙配对。EncoDeck 会直接对耳机的 LE 地址发起配对，Windows 随后自动生成关联的传统蓝牙配对记录。LE Audio 模式下，EncoDeck 通过这条传统蓝牙配对的控制通道（RFCOMM）控制耳机，同时保持传统链路在线：耳机在传统链路断开时会一并断开 LE 链路。另一只耳机的地址从第一只耳机的广播中读取。整个过程不会改动耳机上的任何设置。</value></data>
   <data name="LeAudio_HelpLimits.Text" xml:space="preserve"><value>切换后，蓝牙列表中另一只耳机会单独显示为一个同名条目。EncoDeck 在 LE Audio 下通过 GATT 控制耳机，降噪、电量等功能照常可用。已知问题：开始播放时，左右耳偶尔会相差约 7.5 ms，声像偏向一侧；停止所有声音几秒后重新播放即可重新对齐。</value></data>
-  <data name="LeAudio_HelpRestore.Text" xml:space="preserve"><value>要换回传统蓝牙，点击“恢复传统蓝牙”清理本电脑上的耳机配对；完成后让耳机进入配对模式，在 Windows 蓝牙设置中通过“添加设备”手动配对。EncoDeck 不会自动做传统蓝牙配对。</value></data>
+  <data name="LeAudio_HelpRestore.Text" xml:space="preserve"><value>完成 LE Audio 配对后，可以用“改用传统蓝牙”和“改用 LC3”随时切换，不会删除任何配对。切换会重启 Windows 的蓝牙音频服务，第一次需要授权一次。“移除 LE Audio 配对”会清理本电脑上的耳机配对；完成后让耳机进入配对模式，在 Windows 蓝牙设置中通过“添加设备”手动配对。EncoDeck 不会自动做传统蓝牙配对。</value></data>
   <data name="Honor_Anc_Cozy" xml:space="preserve"><value>舒适</value></data>
   <data name="Honor_Anc_General" xml:space="preserve"><value>均衡</value></data>
   <data name="Honor_Anc_Ultra" xml:space="preserve"><value>深度</value></data>
@@ -1090,7 +1090,7 @@
   <data name="AutoOff_Minutes" xml:space="preserve"><value>{0} 分钟后</value></data>
   <data name="AutoOff_IdleDescription" xml:space="preserve"><value>耳机闲置达到所选时长后自动关机</value></data>
   <data name="Codec_BridgeDescription" xml:space="preserve"><value>A2DP Bridge 正在向这台耳机发送 {0} 音频。</value></data>
-  <data name="Codec_LeAudioDescription" xml:space="preserve"><value>LE 链路已连接，尚未确认音频流或 LC3 编码。</value></data>
+  <data name="Codec_LeAudioDescription" xml:space="preserve"><value>通过 LE Audio 播放，编码为 LC3。</value></data>
   <data name="EarFun_Wind" xml:space="preserve"><value>抗风噪</value></data>
   <data name="EarFun_Anc1" xml:space="preserve"><value>降噪 1</value></data>
   <data name="EarFun_EarAdaptive" xml:space="preserve"><value>耳道智能自适应</value></data>
@@ -1196,4 +1196,20 @@
   <data name="Codec_A2dpNotLoggedDescription" xml:space="preserve"><value>已通过蓝牙 A2DP 连接。Windows 还没有记录这副耳机的编码：播放一段音频并停下后就会显示。</value></data>
   <data name="CodecBadge_Enable" xml:space="preserve"><value>开启（需要管理员授权一次）</value></data>
   <data name="CodecBadge_Enabled" xml:space="preserve"><value>已开启。播放一段音频并停下后，这里会显示 Windows 实际使用的编码。</value></data>
+  <data name="LeAudio_UseClassic" xml:space="preserve"><value>改用传统蓝牙</value></data>
+  <data name="LeAudio_UseLe" xml:space="preserve"><value>改用 LC3</value></data>
+  <data name="LeAudio_StatusUsingLe" xml:space="preserve"><value>Windows 正在通过 LE Audio（LC3）播放。</value></data>
+  <data name="LeAudio_StatusUsingClassic" xml:space="preserve"><value>Windows 正在通过传统蓝牙（A2DP）播放；配对都保留，可以随时改回 LC3。</value></data>
+  <data name="LeAudio_ConfirmAuthorize" xml:space="preserve"><value>切换时，EncoDeck 需要重启 Windows 的蓝牙音频服务（AVCTP 服务），让 Windows 重新选择用 LC3 还是传统蓝牙。接下来会出现一次管理员确认，只给你的账户添加启动和停止这一个服务的权限，以后切换不再需要确认。切换时蓝牙音频会中断几秒，其他蓝牙设备不受影响。卸载安装版时会撤销这项权限。</value></data>
+  <data name="LeAudio_Authorize" xml:space="preserve"><value>授权并切换</value></data>
+  <data name="LeAudio_Stage_ChangingWindowsAudio" xml:space="preserve"><value>正在让 Windows 重新选择音频连接（重启蓝牙音频服务）…</value></data>
+  <data name="LeAudio_Stage_RestoringClassicAudio" xml:space="preserve"><value>正在恢复传统蓝牙音频（A2DP、HFP）…</value></data>
+  <data name="LeAudio_Stage_WaitingForAudio" xml:space="preserve"><value>正在等待 Windows 提供音频输出…</value></data>
+  <data name="LeAudio_Result_SwitchedToClassic" xml:space="preserve"><value>已改用传统蓝牙（A2DP）。所有配对都保留，可以随时改回 LC3。</value></data>
+  <data name="LeAudio_Result_ClassicAudioMissing" xml:space="preserve"><value>Windows 已选择传统蓝牙，但 A2DP 输出没有及时出现。请把耳机放回盒子再取出，或稍后重试。</value></data>
+  <data name="LeAudio_Result_NeedsServiceAccess" xml:space="preserve"><value>需要先授权 EncoDeck 重启蓝牙音频服务。</value></data>
+  <data name="LeAudio_Result_NotSetUp" xml:space="preserve"><value>这副耳机还没有在本电脑上完成 LE Audio 配对，请先点击“切换到 LE Audio”。</value></data>
+  <data name="Panel_AudioTransport.Text" xml:space="preserve"><value>音频连接</value></data>
+  <data name="Panel_AudioTransportClassic.Text" xml:space="preserve"><value>传统蓝牙</value></data>
+  <data name="LeAudio_QuickSwitch.Header" xml:space="preserve"><value>在耳机面板中显示“LC3 / 传统蓝牙”快速切换</value></data>
 </root>

@@ -108,11 +108,25 @@ public sealed partial class LeAudioSettings : UserControl
         bool bothLinks = _bond is { PrimaryConnected: true, SecondaryConnected: true };
 
         bool endpointUnknown = _bond is not null && endpoints is { State: LeAudioAudioEndpointState.Unknown };
+        // Set up for LE Audio: Windows decides between LC3 and Classic, and the card can move it either way.
+        bool switchable = both && _bond!.ClassicBonded;
+        bool usingLe = endpoints?.LeAudioRenderPresent == true;
+        bool usingClassic = !usingLe && endpoints?.ClassicA2dpRender is { IsActive: true, IsDisabled: false };
         string key = unpaired ? "LeAudio_StatusUnpaired" : both ? "LeAudio_StatusLe" : le ? "LeAudio_StatusLeSingle" : "LeAudio_StatusClassic";
         Status.Text = _bond is null ? "" : Loc.Get(key)
+            + (switchable && usingLe ? " " + Loc.Get("LeAudio_StatusUsingLe") : "")
+            + (switchable && usingClassic ? " " + Loc.Get("LeAudio_StatusUsingClassic") : "")
             + (endpointUnknown ? " " + Loc.Get("LeAudio_StatusEndpointUnknown") : "");
         Status.Visibility = Status.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         Switch.Visibility = both ? Visibility.Collapsed : Visibility.Visible;
+        Transport.Visibility = switchable ? Visibility.Visible : Visibility.Collapsed;
+        QuickSwitch.Visibility = Transport.Visibility;
+        _syncingQuickSwitch = true;
+        QuickSwitch.IsOn = App.Instance.Host.Settings.Current.ShowAudioTransportSwitch != false;
+        _syncingQuickSwitch = false;
+        Transport.Content = Loc.Get(usingLe ? "LeAudio_UseClassic" : "LeAudio_UseLe");
+        Transport.Tag = !usingLe;
+        Transport.IsEnabled = !_busy && !_dialogOpen;
         Restore.Visibility = le || unpaired ? Visibility.Visible : Visibility.Collapsed;
         // Disabling is only offered for an A2DP render endpoint, after both LE links were observed.
         DisableClassic.Visibility = endpoints?.ClassicA2dpPresent == true && bothLinks && !_busy && !_dialogOpen
@@ -135,6 +149,32 @@ public sealed partial class LeAudioSettings : UserControl
                 reportLeTransport: token => Features.State.Device?.Address.Value == address ? Features.ReportLeAudioTransportAsync(token) : Task.FromResult(CommandResult.NotConnected)));
     }
 
+    private async void OnTransport(object sender, RoutedEventArgs e)
+    {
+        ulong target = _address;
+        bool toLeAudio = Transport.Tag is true;
+        // Restarting Windows' Bluetooth audio service needs this user's permission once (administrator prompt).
+        if (!WindowsAudioTransport.CanRestartService)
+        {
+            if (!await ConfirmAsync("LeAudio_ConfirmAuthorize", "LeAudio_Authorize") || target != _address) return;
+            try
+            {
+                await WindowsAudioTransport.AuthorizeAsync();
+            }
+            catch (OperationCanceledException)
+            {
+                CardNotice.Show(Notice, InfoBarSeverity.Informational, Loc.Get("LeAudio_Cancelled"));
+                return;
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                CardNotice.ShowError(Notice, ex, Loc.Format("LeAudio_Error", ex.Message));
+                return;
+            }
+        }
+        await RunAsync((address, progress, ct) => LeAudioPairing.SwitchTransportAsync(address, toLeAudio, progress, ct));
+    }
+
     private async void OnRestore(object sender, RoutedEventArgs e)
     {
         ulong target = _address;
@@ -144,6 +184,15 @@ public sealed partial class LeAudioSettings : UserControl
     }
 
     private void OnCancel(object sender, RoutedEventArgs e) => _operation?.Cancel();
+
+    private bool _syncingQuickSwitch;
+
+    private void OnQuickSwitchToggled(object sender, RoutedEventArgs e)
+    {
+        if (_syncingQuickSwitch) return;
+        bool on = QuickSwitch.IsOn;
+        App.Instance.Host.Settings.Update(s => s with { ShowAudioTransportSwitch = on });
+    }
 
     private async void OnDisableClassic(object sender, RoutedEventArgs e)
     {
@@ -264,11 +313,12 @@ public sealed partial class LeAudioSettings : UserControl
 
     private static InfoBarSeverity Severity(LeAudioPairingOutcome outcome) => outcome switch
     {
-        LeAudioPairingOutcome.Paired => InfoBarSeverity.Success,
+        LeAudioPairingOutcome.Paired or LeAudioPairingOutcome.SwitchedToClassic => InfoBarSeverity.Success,
         // Pairings removed on purpose: the next step is pairing again in Windows.
         LeAudioPairingOutcome.Removed => InfoBarSeverity.Informational,
         LeAudioPairingOutcome.PairedWithClassicAudio or LeAudioPairingOutcome.PairedButLeAudioEndpointMissing
-            or LeAudioPairingOutcome.PairedWaitingForLinks or LeAudioPairingOutcome.PrimaryOnly => InfoBarSeverity.Warning,
+            or LeAudioPairingOutcome.PairedWaitingForLinks or LeAudioPairingOutcome.PrimaryOnly
+            or LeAudioPairingOutcome.ClassicAudioMissing or LeAudioPairingOutcome.NeedsServiceAccess or LeAudioPairingOutcome.NotSetUp => InfoBarSeverity.Warning,
         _ => InfoBarSeverity.Error,
     };
 

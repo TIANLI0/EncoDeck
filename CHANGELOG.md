@@ -6,15 +6,17 @@
 
 ### 新增
 
-- EarFun 耳机补齐可读回确认的设置（[#16](https://github.com/TIANLI0/EncoDeck/issues/16)）：按耳禁用触控、通话麦克风（自动／仅左耳／仅右耳，高通方案型号），以及耳机端 LDAC、aptX Adaptive、aptX Lossless 开关。LDAC 与双设备连接不能同时开启，开启任一项会先关闭另一项。
-- EarFun 双设备连接显示耳机记录的已配对设备，可在首页和控制页连接或断开（这台电脑请在 Windows 中断开）；耳机已连接两台设备时需先断开一台。耳机不支持从列表删除设备。
+- Enco X4 / X3 可随时在 LC3（LE Audio）和传统蓝牙之间切换，不删除配对，也不需要配对模式：实验室的 LE Audio 卡片和耳机面板的“音频连接”都能一键切换。切换会重启 Windows 蓝牙音频服务，首次需要管理员授权一次（卸载安装版时撤销）。
+- EarFun 耳机新增按耳禁用触控、通话麦克风选择、LDAC / aptX Adaptive / aptX Lossless 开关，以及双设备连接的已配对设备列表（[#16](https://github.com/TIANLI0/EncoDeck/issues/16)）。
 
 ### 修复
 
-- EarFun Air Pro 4、4+、5、4i、Wave Pro X、Clip 2 开启双设备连接（Clip 任意切换）时耳机会重启，此前 EncoDeck 把随之断开的控制通道报为错误；现在视为已生效，耳机重启后自动重连。
-- EarFun Air Pro 4+ 修改降噪等设置后，耳机已经切换，EncoDeck 却报错并重新连接控制通道（[#16](https://github.com/TIANLI0/EncoDeck/issues/16)）：此前 EncoDeck 必须在 3 秒内收到耳机对写入的应答，收不到就当作通信失步并断开重连。现在应答不再是必需的，改为反复回读，确认耳机已报告新值（切换中的耳机会短暂报告旧值，最多等待 6 秒）；只有耳机连读取都不再回应时才重连。触控手势的修改同样如此。
-- 声音页没有任何可调项目时（如 EarFun 耳机没有可回读的 EQ）显示说明，不再是空白页。
-- 设置中开启“记录控制通道数据（诊断）”后，诊断包现在也包含 EarFun 耳机的收发记录：已知设置的取值，以及无法识别的帧头；其他内容只记录长度。
+- Enco X4 / X3 的 LE Audio 反复掉线、断开后连不回来、游戏中左右声道突然不同步：耳机在传统链路断开时会一并断开 LE 链路，EncoDeck 现在通过传统控制通道保持这条链路。
+- Enco X4 / X3 不再因 1.14.0-beta.4 删除传统配对而忘记这台电脑。
+- 切换到 LE Audio 后 Windows 仍停在传统蓝牙、找不到 LE Audio 扬声器时，EncoDeck 会让 Windows 重新选择。
+- 首页和耳机面板的音频标签按 Windows 实际使用的输出显示 LC3 或 A2DP，切换后立即更新；“LE Audio 左右声道校准”切换后自动恢复，不必重新开启。
+- EarFun 修改设置后误报错误并重连控制通道，开启双设备连接导致耳机重启时报错（[#16](https://github.com/TIANLI0/EncoDeck/issues/16)）。
+- 声音页没有可调项目时显示说明，不再空白；诊断包包含 EarFun 的收发记录。
 
 ## [1.14.0-beta.4] - 2026-10-31
 

@@ -34,6 +34,8 @@ internal static class ProbeApp
                 "le-br-switch" => await WriteCommands.SetLeBrSwitchAsync(options, ct),
                 "monitor" => await MonitorCommand.RunAsync(options, ct),
                 "le-audio" => await LeAudioCommand.RunAsync(options, ct),
+                "le-dual" => await LeDualCommand.RunAsync(options, ct),
+                "bats" => await BatsCommand.RunAsync(options, ct),
                 "le-sync" => await LeSyncCommand.RunAsync(options, ct),
                 "le-sync-selftest" => await LeSyncCommand.SelfTestAsync(options, ct),
                 "le-hook" => await LeHookCommand.RunAsync(options, ct),

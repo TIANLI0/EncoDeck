@@ -48,7 +48,11 @@ public sealed class BluetoothLinkMonitor : ILinkStateSource
         if (_device is not null) _device.ConnectionStatusChanged += OnConnectionStatusChanged;
         foreach (var le in leDevices) le.ConnectionStatusChanged += OnConnectionStatusChanged;
         if (managesLe) _ = MaintainAsync(leDevices);
-        else if (!leDevices.IsDefaultOrEmpty) _ = WatchLeAudioOutputAsync();
+        if (!leDevices.IsDefaultOrEmpty)
+        {
+            LeAudioLink.AudioOutputChanged += OnAudioOutputChanged;
+            _ = WatchLeAudioOutputAsync();
+        }
         // Only the primary bonded so far (e.g. the LE Audio switch is still pairing the other earbud).
         if (leDevices.Length == 1 && !singleUnit) _ = FindSecondaryAsync(SecondaryAttempts);
     }
@@ -229,12 +233,14 @@ public sealed class BluetoothLinkMonitor : ILinkStateSource
 
     private bool IsLeLinkUp() => _leDevices.Any(le => le.ConnectionStatus == BluetoothConnectionStatus.Connected);
 
-    private bool EvaluateLe() => IsLeLinkUp() && (_managesLe || _leAudioOutput);
+    private bool EvaluateLe() => IsLeLinkUp() && _leAudioOutput;
 
     /// <summary>
-    /// For earbuds whose LE Audio Windows decides: whether Windows exposes an active LE Audio output for them while
-    /// an LE link is up. Polled, since the output appears seconds after the link and turning LE Audio off in Windows
-    /// removes it without dropping the link. Read-only.
+    /// Whether Windows exposes an active LE Audio output for the earbuds while an LE link is up. An LE link alone says
+    /// nothing about the audio path: Windows decides between Classic and LE Audio for every dual-mode device, also for
+    /// earbuds EncoDeck switched (they keep their LE links on Classic audio). Polled, since the output appears seconds
+    /// after the link and a switch removes it without dropping the link; <see cref="LeAudioLink.AudioOutputChanged"/>
+    /// looks at once. Read-only.
     /// </summary>
     private async Task WatchLeAudioOutputAsync()
     {
@@ -243,6 +249,7 @@ public sealed class BluetoothLinkMonitor : ILinkStateSource
         {
             while (!token.IsCancellationRequested)
             {
+                var wake = Volatile.Read(ref _wake).Task;
                 bool output = false;
                 var devices = _leDevices;
                 if (!devices.IsDefaultOrEmpty && IsLeLinkUp())
@@ -262,12 +269,20 @@ public sealed class BluetoothLinkMonitor : ILinkStateSource
                     _leAudioOutput = output;
                     OnConnectionStatusChanged(this, EventArgs.Empty);
                 }
-                await Task.Delay(OutputPoll, token).ConfigureAwait(false);
+                await Task.WhenAny(Task.Delay(OutputPoll, token), wake).ConfigureAwait(false);
             }
         }
         catch (Exception ex) when (ex is OperationCanceledException or ObjectDisposedException)
         {
         }
+    }
+
+    private TaskCompletionSource _wake = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    private void OnAudioOutputChanged(ulong address)
+    {
+        if (_leDevices.IsDefaultOrEmpty || _leDevices[0].BluetoothAddress != address) return;
+        Interlocked.Exchange(ref _wake, new(TaskCreationOptions.RunContinuationsAsynchronously)).TrySetResult();
     }
 
     private LeAudioLinkState EvaluateLinks()
@@ -324,6 +339,7 @@ public sealed class BluetoothLinkMonitor : ILinkStateSource
             _sessions = [];
         }
         _lifetime.Cancel();
+        LeAudioLink.AudioOutputChanged -= OnAudioOutputChanged;
         foreach (var session in sessions) session.Dispose();
         foreach (var le in leDevices)
         {

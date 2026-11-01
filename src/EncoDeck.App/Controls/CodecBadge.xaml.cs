@@ -8,8 +8,8 @@ using Microsoft.UI.Xaml.Controls;
 namespace EncoDeck.App.Controls;
 
 /// <summary>
-/// The audio tag beside the connection state. A codec the PC streams with is filled; a link whose codec is not known
-/// ("A2DP", "LE Audio") is outlined. Clicking it explains the tag; while Windows' codec log is off it offers to turn it
+/// The audio tag beside the connection state. A codec the PC streams with is filled ("LC3" on LE Audio); a link whose
+/// codec is not known ("A2DP") is outlined. Clicking it explains the tag; while Windows' codec log is off it offers to turn it
 /// on (<see cref="WindowsA2dpCodecLog.AuthorizeAsync"/>, one administrator prompt).
 /// </summary>
 public sealed partial class CodecBadge : UserControl

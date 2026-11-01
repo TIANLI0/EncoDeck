@@ -39,9 +39,6 @@ public sealed class RfcommChannelConnector(IDeviceProfileRegistry profiles, ILog
                         throw new InvalidOperationException("The earbuds' pairing is being changed.");
                     if (!await LeAudioLink.IsBondedAsync(leOnly.Address, cancellationToken).ConfigureAwait(false))
                         throw new InvalidOperationException("LE Audio 配对已不存在，请重新配对耳机。");
-                    // Windows derives the Classic pairing again whenever the earbuds re-bond over LE.
-                    if (!LeAudioLink.IsPairingOperationRunning(leOnly.Address))
-                        await RemoveClassicPairingAsync(leOnly.Address, cancellationToken).ConfigureAwait(false);
                     return true;
                 },
                 () => OppoGattByteChannel.OpenAsync(leOnly.Address, cancellationToken),
@@ -79,13 +76,12 @@ public sealed class RfcommChannelConnector(IDeviceProfileRegistry profiles, ILog
                             throw new InvalidOperationException("LE Audio 配对不完整：主耳 LE 绑定缺失，请重新切换到 LE Audio。");
                         if (LeAudioLink.IsPairingChanging(device.BluetoothAddress))
                             throw new InvalidOperationException("The earbuds' pairing is being changed.");
-                        // On LE Audio the CTKD Classic pairing only competes with LC3; a running switch removes it itself.
-                        if (bonded && guardsPartialLeBond && !LeAudioLink.IsPairingOperationRunning(device.BluetoothAddress))
-                            await RemoveClassicPairingAsync(device.BluetoothAddress, cancellationToken).ConfigureAwait(false);
                         return bonded;
                     },
                     () => OppoGattByteChannel.OpenAsync(device.BluetoothAddress, cancellationToken),
-                    () => OpenClassicAsync(device, deviceId, serviceUuids, cancellationToken)).ConfigureAwait(false);
+                    () => OpenClassicAsync(device, deviceId, serviceUuids, cancellationToken),
+                    // Connecting RFCOMM to an unpaired device would make Windows pair it over Classic.
+                    () => guardsPartialLeBond && device.DeviceInformation.Pairing.IsPaired).ConfigureAwait(false);
             }
             return await OpenClassicAsync(device, deviceId, serviceUuids, cancellationToken).ConfigureAwait(false);
         }
@@ -119,19 +115,6 @@ public sealed class RfcommChannelConnector(IDeviceProfileRegistry profiles, ILog
         }
         LeAudioOnlyDevices.Remove(device.Address);
         return true;
-    }
-
-    private async Task RemoveClassicPairingAsync(ulong address, CancellationToken cancellationToken)
-    {
-        try
-        {
-            await LeAudioPairing.RemoveClassicPairingAsync(address, message => _logger.LogInformation("{Message}", message), cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException and not OutOfMemoryException)
-        {
-            // GATT control still opens; the next open tries again.
-            _logger.LogInformation("Could not remove the Classic pairing of LE Audio earbuds (0x{Result:X8})", ex.HResult);
-        }
     }
 
     private async Task<ChannelOpenResult> OpenClassicAsync(BluetoothDevice device, string deviceId, IReadOnlyList<Guid> serviceUuids, CancellationToken cancellationToken)

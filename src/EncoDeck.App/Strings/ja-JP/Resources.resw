@@ -800,7 +800,7 @@
   <data name="LeAudio_Summary.Text" xml:space="preserve"><value>クラシック Bluetooth の A2DP ではなく、LE Audio と LC3 コーデックで Windows がこのイヤホンに接続できるようにします。PC の Bluetooth が LE Audio に対応している必要があります。</value></data>
   <data name="LeAudio_NoiseNote.Text" xml:space="preserve"><value>Enco X4 は LE Audio に切り替えると、PC からのノイズコントロール変更を受け付けません。イヤホン本体で変更してください。</value></data>
   <data name="LeAudio_Switch" xml:space="preserve"><value>LE Audio に切り替え</value></data>
-  <data name="LeAudio_Restore" xml:space="preserve"><value>クラシック Bluetooth に戻す</value></data>
+  <data name="LeAudio_Restore" xml:space="preserve"><value>LE Audio のペアリングを削除</value></data>
   <data name="LeAudio_StatusLe" xml:space="preserve"><value>左右両方のイヤホンが LE でペアリング済みです。実際のオーディオ接続は Windows が管理します。</value></data>
   <data name="LeAudio_StatusEndpointUnknown" xml:space="preserve"><value>Windows のオーディオエンドポイントの状態を確認できませんでした。ACL/GATT の準備完了は両耳再生を保証するものではありません。</value></data>
   <data name="LeAudio_DisableClassic" xml:space="preserve"><value>クラシックのオーディオエンドポイントを無効化</value></data>
@@ -916,9 +916,9 @@
   <data name="LeAudio_Help.Header" xml:space="preserve"><value>LE Audio について</value></data>
   <data name="LeAudio_Guide.Content" xml:space="preserve"><value>ガイドと仕組みを読む</value></data>
   <data name="LeAudio_HelpRequirements.Text" xml:space="preserve"><value>Windows 11 24H2 以降と、LE Audio に対応した Bluetooth アダプターおよびドライバー（Intel の「Smart Sound Technology for Bluetooth LE Audio」など）が必要です。[設定] → [Bluetooth とデバイス] → [デバイス] で「利用可能な場合は LE Audio を使用する」をオンにすることをお勧めします。</value></data>
-  <data name="LeAudio_HelpSwitch.Text" xml:space="preserve"><value>このイヤホンは Windows の「デバイスの追加」に LE デバイスとして表示されないため、そこからのペアリングはクラシック Bluetooth になります。EncoDeck はイヤホンの LE アドレスに直接ペアリングし、Windows が関連するクラシックのペアリング情報を生成します。LE Audio 接続中、EncoDeck は GATT による制御のみを使用します。もう片方のイヤホンのアドレスは、1 つ目のイヤホンのアドバタイズから読み取ります。イヤホン本体の設定は一切変更しません。</value></data>
+  <data name="LeAudio_HelpSwitch.Text" xml:space="preserve"><value>このイヤホンは Windows の「デバイスの追加」に LE デバイスとして表示されないため、そこからのペアリングはクラシック Bluetooth になります。EncoDeck はイヤホンの LE アドレスに直接ペアリングし、Windows が関連するクラシックのペアリング情報を生成します。LE Audio 接続中、EncoDeck はこのクラシック ペアリングの制御チャネル（RFCOMM）でイヤホンを制御し、クラシック リンクも維持します。クラシック リンクが切れると、イヤホンは LE リンクも切断するためです。もう片方のイヤホンのアドレスは、1 つ目のイヤホンのアドバタイズから読み取ります。イヤホン本体の設定は一切変更しません。</value></data>
   <data name="LeAudio_HelpLimits.Text" xml:space="preserve"><value>切り替え後、もう片方のイヤホンは Bluetooth 設定に同じ名前で別項目として表示されます。LE Audio 接続中も EncoDeck は GATT でイヤホンを制御するため、ノイズコントロールやバッテリーなどの機能は引き続き使用できます。既知の問題: 再生開始時に、片方のイヤホンがもう片方より約 7.5 ms 遅れ、音が片側に寄ることがあります。すべての音声を数秒間停止してから再生し直すと揃います。</value></data>
-  <data name="LeAudio_HelpRestore.Text" xml:space="preserve"><value>クラシック Bluetooth に戻すには、「クラシック Bluetooth に戻す」をクリックしてこの PC 上のイヤホンのペアリングを削除します。削除後、イヤホンをペアリングモードにして、Windows の Bluetooth 設定の「デバイスの追加」から手動でペアリングしてください。EncoDeck はクラシック Bluetooth のペアリングを自動では行いません。</value></data>
+  <data name="LeAudio_HelpRestore.Text" xml:space="preserve"><value>LE Audio のペアリング後は、「クラシック Bluetooth を使う」と「LC3 を使う」でいつでも切り替えられ、ペアリングは削除されません。切り替えでは Windows の Bluetooth オーディオ サービスを再起動するため、初回だけ許可が必要です。「LE Audio のペアリングを削除」はこの PC 上のイヤホンのペアリングを削除します。削除後、イヤホンをペアリングモードにして、Windows の Bluetooth 設定の「デバイスの追加」から手動でペアリングしてください。EncoDeck はクラシック Bluetooth のペアリングを自動では行いません。</value></data>
   <data name="Honor_Anc_Cozy" xml:space="preserve"><value>快適</value></data>
   <data name="Honor_Anc_General" xml:space="preserve"><value>標準</value></data>
   <data name="Honor_Anc_Ultra" xml:space="preserve"><value>強</value></data>
@@ -1090,7 +1090,7 @@
   <data name="AutoOff_Minutes" xml:space="preserve"><value>{0} 分後</value></data>
   <data name="AutoOff_IdleDescription" xml:space="preserve"><value>選択した時間アイドル状態が続くと、ヘッドホンの電源をオフにします</value></data>
   <data name="Codec_BridgeDescription" xml:space="preserve"><value>A2DP Bridge がこのイヤホンに {0} 音声を送信しています。</value></data>
-  <data name="Codec_LeAudioDescription" xml:space="preserve"><value>LE リンクは接続済みです。音声ストリームと LC3 コーデックは未確認です。</value></data>
+  <data name="Codec_LeAudioDescription" xml:space="preserve"><value>LE Audio で再生しています。コーデックは LC3 です。</value></data>
   <data name="EarFun_Wind" xml:space="preserve"><value>風切り音低減</value></data>
   <data name="EarFun_Anc1" xml:space="preserve"><value>ANC 1</value></data>
   <data name="EarFun_EarAdaptive" xml:space="preserve"><value>外耳道に適応</value></data>
@@ -1196,4 +1196,20 @@
   <data name="Codec_A2dpNotLoggedDescription" xml:space="preserve"><value>Bluetooth A2DP で接続しています。Windows はこのイヤホンのコーデックをまだ記録していません。音声を再生して停止すると、ここに表示されます。</value></data>
   <data name="CodecBadge_Enable" xml:space="preserve"><value>オンにする（管理者の許可が一度必要）</value></data>
   <data name="CodecBadge_Enabled" xml:space="preserve"><value>オンにしました。音声を再生して停止すると、Windows が実際に使うコーデックがここに表示されます。</value></data>
+  <data name="LeAudio_UseClassic" xml:space="preserve"><value>クラシック Bluetooth を使う</value></data>
+  <data name="LeAudio_UseLe" xml:space="preserve"><value>LC3 を使う</value></data>
+  <data name="LeAudio_StatusUsingLe" xml:space="preserve"><value>Windows は LE Audio（LC3）で再生しています。</value></data>
+  <data name="LeAudio_StatusUsingClassic" xml:space="preserve"><value>Windows はクラシック Bluetooth（A2DP）で再生しています。ペアリングはそのままなので、いつでも LC3 に戻せます。</value></data>
+  <data name="LeAudio_ConfirmAuthorize" xml:space="preserve"><value>切り替えるために、EncoDeck は Windows の Bluetooth オーディオ サービス（AVCTP サービス）を再起動し、LC3 とクラシック Bluetooth のどちらを使うかを Windows に選び直させます。管理者の確認が一度だけ表示されます。お使いのアカウントにこのサービスの開始と停止の権限だけを追加し、以降の切り替えでは確認は表示されません。切り替え中は Bluetooth オーディオが数秒止まりますが、他の Bluetooth デバイスは接続されたままです。インストール版をアンインストールすると、この権限は取り消されます。</value></data>
+  <data name="LeAudio_Authorize" xml:space="preserve"><value>許可して切り替え</value></data>
+  <data name="LeAudio_Stage_ChangingWindowsAudio" xml:space="preserve"><value>Windows にオーディオ接続を選び直させています（Bluetooth オーディオ サービスを再起動中）…</value></data>
+  <data name="LeAudio_Stage_RestoringClassicAudio" xml:space="preserve"><value>クラシック Bluetooth オーディオ（A2DP、HFP）を復元しています…</value></data>
+  <data name="LeAudio_Stage_WaitingForAudio" xml:space="preserve"><value>Windows がオーディオ出力を用意するのを待っています…</value></data>
+  <data name="LeAudio_Result_SwitchedToClassic" xml:space="preserve"><value>クラシック Bluetooth（A2DP）に切り替えました。ペアリングはすべて残っているので、いつでも LC3 に戻せます。</value></data>
+  <data name="LeAudio_Result_ClassicAudioMissing" xml:space="preserve"><value>Windows はクラシック Bluetooth を選びましたが、A2DP 出力が時間内に現れませんでした。イヤホンをケースに戻してから取り出すか、しばらくしてから再試行してください。</value></data>
+  <data name="LeAudio_Result_NeedsServiceAccess" xml:space="preserve"><value>先に EncoDeck による Bluetooth オーディオ サービスの再起動を許可してください。</value></data>
+  <data name="LeAudio_Result_NotSetUp" xml:space="preserve"><value>このイヤホンはまだこの PC で LE Audio のペアリングが済んでいません。先に「LE Audio に切り替え」をクリックしてください。</value></data>
+  <data name="Panel_AudioTransport.Text" xml:space="preserve"><value>オーディオ接続</value></data>
+  <data name="Panel_AudioTransportClassic.Text" xml:space="preserve"><value>クラシック</value></data>
+  <data name="LeAudio_QuickSwitch.Header" xml:space="preserve"><value>イヤホン パネルに「LC3 / クラシック」の切り替えを表示</value></data>
 </root>

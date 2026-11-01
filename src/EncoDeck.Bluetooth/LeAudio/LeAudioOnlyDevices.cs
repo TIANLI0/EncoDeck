@@ -10,10 +10,11 @@ namespace EncoDeck.Bluetooth.LeAudio;
 public sealed record LeAudioOnlyDevice(ulong Address, string Name, string DeviceId);
 
 /// <summary>
-/// Remembers earbuds switched to LE Audio whose Classic pairing EncoDeck removed. Pairing LE derives a Classic key
-/// as well (CTKD); with it Windows and the earbuds keep bringing the Classic link up next to LC3, which steals the
-/// audio (A2DP) or drops the LE links. Without the Classic pairing nothing else names the earbuds, so this list
-/// keeps them known by their LE bonds. Persisted in a small JSON file; <see cref="Configure"/> picks the file.
+/// Remembers earbuds switched to LE Audio whose Classic pairing 1.14.0-beta.4 removed. That removal is gone: the
+/// earbuds hold one record per host, CTKD Classic key included, and drop all of it once Classic finds the key
+/// missing, so the LE bonds stopped reconnecting (X4). Without the Classic pairing nothing else names such earbuds,
+/// so this list keeps them known by their LE bonds until they are paired again. Persisted in a small JSON file;
+/// <see cref="Configure"/> picks the file.
 /// </summary>
 public static class LeAudioOnlyDevices
 {

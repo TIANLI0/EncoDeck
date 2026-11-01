@@ -2,6 +2,7 @@
 using System.Runtime.InteropServices;
 using EncoDeck.Bluetooth.Control;
 using EncoDeck.Bluetooth.Discovery;
+using EncoDeck.Bluetooth.LeAudio;
 using EncoDeck.Bluetooth.Rfcomm;
 using EncoDeck.Core.Commands;
 using EncoDeck.Core.Connection;
@@ -99,7 +100,18 @@ public sealed class DeviceManager : IDeviceManager
         _watcher = new PairedDeviceWatcher(_loggers.CreateLogger<PairedDeviceWatcher>());
         _watcher.Changed += OnPairedDevicesChanged;
         _usbWatcher.Changed += OnPairedDevicesChanged;
+        LeAudioLink.PairingOperationEnded += OnLePairingOperationEnded;
     }
+
+    /// <summary>The active earbuds' bonds changed (LE Audio switch): open them again so the link monitor sees the new bonds.</summary>
+    private void OnLePairingOperationEnded(ulong address)
+    {
+        if (_active?.Identity.Address.Value != address) return;
+        _reopenActive = true;
+        _ = ReselectAsync(_lifetime.Token);
+    }
+
+    private volatile bool _reopenActive;
 
     public IReadOnlyList<KnownDevice> KnownDevices
     {
@@ -222,9 +234,11 @@ public sealed class DeviceManager : IDeviceManager
                 ?? candidates.FirstOrDefault(c => c.Identity.DeviceId == _active?.Identity.DeviceId)
                 ?? candidates.OrderByDescending(c => c.Profile.MatchScore(c.Identity)).FirstOrDefault();
 
+            bool reopen = _reopenActive;
+            _reopenActive = false;
             if (choice?.Identity.DeviceId == (_usbIdentity?.DeviceId ?? _active?.Identity.DeviceId)
                 // Windows had no radio for it: open it again (the radio may be back) unless the bridge carries it now.
-                && _active is not { WindowsUnavailable: true, BridgeOnly: false, Link.IsConnected: false }) return;
+                && _active is not { WindowsUnavailable: true, BridgeOnly: false, Link.IsConnected: false } && !reopen) return;
 
             await StopUsbAsync().ConfigureAwait(false);
 
@@ -419,6 +433,7 @@ public sealed class DeviceManager : IDeviceManager
     public async ValueTask DisposeAsync()
     {
         _lifetime.Cancel();
+        LeAudioLink.PairingOperationEnded -= OnLePairingOperationEnded;
         _watcher.Changed -= OnPairedDevicesChanged;
         _watcher.Dispose();
         _usbWatcher.Changed -= OnPairedDevicesChanged;

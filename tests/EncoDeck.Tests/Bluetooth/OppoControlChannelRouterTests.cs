@@ -33,6 +33,52 @@ public class OppoControlChannelRouterTests
         Assert.Equal(status is ChannelOpenStatus.AccessDenied or ChannelOpenStatus.ServiceNotFound ? ChannelOpenStatus.ConnectFailed : status, result.Status);
     }
 
+    [Fact]
+    public async Task LeBondWithClassicBond_OpensClassicFirst()
+    {
+        await using var channel = new FakeByteChannel();
+        var calls = new List<string>();
+        var result = await OppoControlChannelRouter.OpenAsync(
+            () => Task.FromResult(true),
+            () => throw new InvalidOperationException("GATT must not be opened when RFCOMM works."),
+            () => { calls.Add("classic"); return Task.FromResult(new ChannelOpenResult(ChannelOpenStatus.Opened, channel, null, null)); },
+            () => true);
+
+        Assert.Equal(["classic"], calls);
+        Assert.Equal(ChannelOpenStatus.Opened, result.Status);
+    }
+
+    [Theory]
+    [InlineData(ChannelOpenStatus.DeviceUnreachable)]
+    [InlineData(ChannelOpenStatus.ServiceNotFound)]
+    [InlineData(ChannelOpenStatus.ConnectFailed)]
+    public async Task LeBondWithClassicBond_FallsBackToGattWhenRfcommFails(ChannelOpenStatus classicStatus)
+    {
+        await using var channel = new FakeByteChannel();
+        var calls = new List<string>();
+        var result = await OppoControlChannelRouter.OpenAsync(
+            () => Task.FromResult(true),
+            () => { calls.Add("gatt"); return Task.FromResult(new ChannelOpenResult(ChannelOpenStatus.Opened, channel, null, "GATT")); },
+            () => { calls.Add("classic"); return Task.FromResult(ChannelOpenResult.Failed(classicStatus, "RFCOMM")); },
+            () => true);
+
+        Assert.Equal(["classic", "gatt"], calls);
+        Assert.Equal(ChannelOpenStatus.Opened, result.Status);
+    }
+
+    [Fact]
+    public async Task LeBondWithoutClassicBond_OpensGattOnly()
+    {
+        await using var channel = new FakeByteChannel();
+        var result = await OppoControlChannelRouter.OpenAsync(
+            () => Task.FromResult(true),
+            () => Task.FromResult(new ChannelOpenResult(ChannelOpenStatus.Opened, channel, null, "GATT")),
+            () => throw new InvalidOperationException("Classic must not be touched without its bond."),
+            () => false);
+
+        Assert.Equal(ChannelOpenStatus.Opened, result.Status);
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
