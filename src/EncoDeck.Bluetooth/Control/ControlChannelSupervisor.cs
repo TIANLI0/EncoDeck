@@ -248,6 +248,15 @@ public sealed class ControlChannelSupervisor : IAsyncDisposable
         }
     }
 
+    /// <summary>A transport change ends the session unless this session stays valid across it (then it is consumed).</summary>
+    private bool TransportChangeEndsSession(bool keep)
+    {
+        if (Volatile.Read(ref _transportChanged) == 0) return false;
+        if (!keep) return true;
+        Interlocked.Exchange(ref _transportChanged, 0);
+        return false;
+    }
+
     private enum ServeOutcome
     {
         /// <summary>Retry with backoff.</summary>
@@ -305,6 +314,9 @@ public sealed class ControlChannelSupervisor : IAsyncDisposable
         }
 
         _logger.LogInformation("Control channel opened: {Channel}", open.Channel.Description);
+        // OPPO control over Classic RFCOMM does not depend on whether Windows plays LE Audio, and it keeps the Classic
+        // link up: closing it to reconnect drops that link, and the earbuds drop their LE links with it (Enco X4).
+        bool keepOnTransportChange = _profile.Brand == "oppo" && open.Channel is EncoDeck.Bluetooth.Rfcomm.RfcommByteChannel;
 
         // Reconnecting: start from the model and settings the earbuds had (the UI keeps showing them).
         var profile = _store.Current is { Profile: IControllableProfile current } state && state.Device?.DeviceId == _identity.DeviceId && current.Brand == _profile.Brand ? current : _profile;
@@ -325,7 +337,7 @@ public sealed class ControlChannelSupervisor : IAsyncDisposable
                 return ServeOutcome.Failed;
             }
 
-            if (!_link.IsConnected || ct.IsCancellationRequested || Volatile.Read(ref _transportChanged) != 0) return ServeOutcome.EndedByLinkOrUser;
+            if (!_link.IsConnected || ct.IsCancellationRequested || TransportChangeEndsSession(keepOnTransportChange)) return ServeOutcome.EndedByLinkOrUser;
             if (closed.IsCompleted)
             {
                 AdvanceService(open.ServiceUuid);
@@ -351,7 +363,7 @@ public sealed class ControlChannelSupervisor : IAsyncDisposable
                 }
                 if (!_link.IsConnected) return ServeOutcome.EndedByLinkOrUser;
                 if (TakeManualRetry()) return ServeOutcome.EndedByLinkOrUser;
-                if (Volatile.Read(ref _transportChanged) != 0) return ServeOutcome.EndedByLinkOrUser;
+                if (TransportChangeEndsSession(keepOnTransportChange)) return ServeOutcome.EndedByLinkOrUser;
                 // Spurious wake (e.g. duplicate link-up event): keep serving.
             }
         }
