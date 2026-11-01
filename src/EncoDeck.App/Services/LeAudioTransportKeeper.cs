@@ -13,7 +13,8 @@ namespace EncoDeck.App.Services;
 /// links whenever this PC's Classic link ends (EncoDeck restarted or updated, sleep, the case closed) and Windows then
 /// falls back to Classic audio. When the user's choice is LE Audio (Windows' preference, set by the switch) and LC3
 /// is still missing a while after control reconnected, this runs the same switch once per connection. Only after the
-/// one-time permission was granted, so it never shows a prompt by itself.
+/// one-time permission was granted, so it never shows a prompt by itself. On LE Audio it also removes a Classic output
+/// left next to it.
 /// </summary>
 public sealed class LeAudioTransportKeeper : IDisposable
 {
@@ -27,6 +28,8 @@ public sealed class LeAudioTransportKeeper : IDisposable
     private CancellationTokenSource? _pending;
     private ulong? _attempted;
     private bool _running;
+    // Earbuds already checked for a Classic output next to LE Audio during this LE Audio session.
+    private ulong? _classicChecked;
 
     public LeAudioTransportKeeper(IDeviceStateStore store, IDeviceManager devices, ILogger logger)
     {
@@ -41,10 +44,16 @@ public sealed class LeAudioTransportKeeper : IDisposable
     {
         var state = e.Current;
         ulong? candidate = NeedsLeAudio(state) ? state.Device!.Address.Value : null;
+        ulong? onLeAudio = IsSwitchable(state) && state.IsLeAudio ? state.Device!.Address.Value : null;
         lock (_gate)
         {
             // The switch itself reconnects the earbuds; only that is not a new connection.
             if (_running) return;
+            if (onLeAudio != _classicChecked)
+            {
+                _classicChecked = onLeAudio;
+                if (onLeAudio is { } address) _ = RemoveClassicBesideLeAsync(address);
+            }
             // A new connection may try again.
             if (!state.Connection.IsLinkUp()) _attempted = null;
             if (candidate is null || candidate == _attempted)
@@ -61,10 +70,35 @@ public sealed class LeAudioTransportKeeper : IDisposable
 
     /// <summary>Set up for both (LE bonds plus the derived Classic bond), control up, and not playing over LE Audio.</summary>
     private static bool NeedsLeAudio(DeviceState state) =>
-        state is { Connection: DeviceConnectionState.ControlReady, IsLeAudio: false, Profile: OppoDeviceProfile { Definition.SupportsLeAudioPairing: true } }
+        state is { Connection: DeviceConnectionState.ControlReady, IsLeAudio: false } && IsSwitchable(state);
+
+    private static bool IsSwitchable(DeviceState state) =>
+        state is { Profile: OppoDeviceProfile { Definition.SupportsLeAudioPairing: true } }
         && state.LeAudioLinks is { PrimaryBonded: true, SecondaryBonded: true }
         && state.Device is { Transport: DeviceTransport.Bluetooth } device
         && LeAudioOnlyDevices.Find(device.DeviceId) is null;
+
+    /// <summary>
+    /// Once per LE Audio session: a Classic "Headphones" output next to LE Audio (left by a switch to Classic, or brought
+    /// by the derived Classic bond) would move the earbuds to A2DP when chosen; remove its services.
+    /// </summary>
+    private async Task RemoveClassicBesideLeAsync(ulong address)
+    {
+        try
+        {
+            // The LE Audio output can appear a few seconds before Windows finishes with Classic.
+            await Task.Delay(TimeSpan.FromSeconds(5), _lifetime.Token).ConfigureAwait(false);
+            if (await LeAudioPairing.RemoveClassicAudioBesideLeAsync(address, _lifetime.Token).ConfigureAwait(false))
+                _logger.LogInformation("Removed the Classic audio output next to LE Audio");
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            _logger.LogWarning(ex, "Could not remove the Classic audio output next to LE Audio");
+        }
+    }
 
     private async Task RecoverAsync(ulong address, CancellationToken cancellationToken)
     {

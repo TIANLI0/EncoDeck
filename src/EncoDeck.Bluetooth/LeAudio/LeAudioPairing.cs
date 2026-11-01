@@ -481,12 +481,29 @@ public static class LeAudioPairing
             // LE Audio did not come: leave Classic audio usable rather than no audio at all.
             if (toLeAudio && !ready)
                 await WindowsAudioTransport.SetClassicAudioAsync(primary, enabled: true, cancellationToken).ConfigureAwait(false);
+            else if (toLeAudio)
+                await RemoveClassicAudioBesideLeAsync(primary, cancellationToken).ConfigureAwait(false);
         }
         Log($"Transport switch to {(toLeAudio ? "LE Audio" : "Classic")}: output ready={ready}");
         LeAudioLink.NotifyAudioOutputChanged(primary);
         return new(toLeAudio
             ? ready ? LeAudioPairingOutcome.Paired : LeAudioPairingOutcome.PairedButLeAudioEndpointMissing
             : ready ? LeAudioPairingOutcome.SwitchedToClassic : LeAudioPairingOutcome.ClassicAudioMissing);
+    }
+
+    /// <summary>
+    /// On LE Audio, removes Windows' Classic audio services when their "Headphones" output still sits next to the LE
+    /// Audio one. Windows removes them itself only when it chose LE Audio on its own; services installed again for
+    /// Classic (<see cref="SwitchTransportAsync"/>) or brought by the derived Classic bond stay. Playing to that output
+    /// would move the earbuds to A2DP. Returns whether anything was removed.
+    /// </summary>
+    public static async Task<bool> RemoveClassicAudioBesideLeAsync(ulong primary, CancellationToken cancellationToken)
+    {
+        var endpoints = await LeAudioClassicAudioEndpoint.InspectAsync(primary, cancellationToken).ConfigureAwait(false);
+        if (!endpoints.LeAudioRenderPresent || !endpoints.ClassicA2dpPresent) return false;
+        Log("Classic A2DP output next to LE Audio: removing Classic audio services");
+        await WindowsAudioTransport.SetClassicAudioAsync(primary, enabled: false, cancellationToken).ConfigureAwait(false);
+        return true;
     }
 
     /// <summary>Waits for the LE Audio render endpoint, or an active Classic A2DP one.</summary>

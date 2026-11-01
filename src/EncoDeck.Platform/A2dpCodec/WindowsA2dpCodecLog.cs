@@ -7,13 +7,14 @@ namespace EncoDeck.Platform.A2dpCodec;
 
 /// <summary>The codec Windows' A2DP driver streamed to a device with, as its log records it.</summary>
 /// <param name="Address">The device's Bluetooth address.</param>
-/// <param name="At">When that stream ended (Windows records the codec then).</param>
+/// <param name="At">When Windows configured that codec or ended a stream with it (it records the codec then).</param>
 public sealed record WindowsA2dpCodec(ulong Address, string Codec, DateTimeOffset At);
 
 /// <summary>
-/// Reads the A2DP codec from Windows itself instead of the earbuds' own report. Windows' A2DP driver logs every stream
-/// it ends (<c>A2dpStreaming</c> of the Microsoft.Windows.Bluetooth.BthA2dp ETW provider: the standard codec id, or the
-/// vendor and vendor codec id). Recording that log needs administrator rights once: <see cref="AuthorizeAsync"/>
+/// Reads the A2DP codec from Windows itself instead of the earbuds' own report. Windows' A2DP driver logs the codec it
+/// configures for a stream (<c>AvdtpSetConfigInfo</c>) and every stream it ends (<c>A2dpStreaming</c>) in the
+/// Microsoft.Windows.Bluetooth.BthA2dp ETW provider: the standard codec id, or the vendor and vendor codec id. It also
+/// lists the codecs the earbuds offer (<c>A2dpAvailableRemoteCodec</c>), which are not read. Recording that log needs administrator rights once: <see cref="AuthorizeAsync"/>
 /// registers a boot-time trace session (an autologger, a few small buffers) that writes a 1 MB circular file anyone can
 /// read; from then on EncoDeck only reads that file, without rights or a running service of its own.
 /// </summary>
@@ -101,7 +102,12 @@ public static partial class WindowsA2dpCodecLog
             if (*(Guid*)(record + ProviderIdOffset) != Provider) return;
             if (Property(record, "A2dpStandardCodecId") is not { } standard) return;
             if (Property(record, "A2dpIsSink") is not (null or 0)) return;
-            ulong address = Property(record, "BTDeviceAddress") ?? 0;
+            // A2dpAvailableRemoteCodec lists every codec the earbuds offer (SBC, AAC, LHDC… within milliseconds), not
+            // the one in use: only the configuration Windows set (AvdtpSetConfigInfo, accepted) and an ended stream
+            // (A2dpStreaming, with its duration) name it.
+            bool configured = Property(record, "InitiatorStreamEndPointID") is not null && Property(record, "ResultCode") is 0;
+            if (!configured && Property(record, "DurationInMilliseconds") is null) return;
+            ulong address = Property(record, "BTDeviceAddress") ?? Property(record, "BTDeviceAddressRemote") ?? 0;
             string? codec = CodecName(standard, Property(record, "A2dpVendorId") ?? 0, Property(record, "A2dpVendorCodecId") ?? 0);
             if (address == 0 || codec is null) return;
             var found = (List<WindowsA2dpCodec>)GCHandle.FromIntPtr(*(nint*)(record + UserContextOffset)).Target!;
