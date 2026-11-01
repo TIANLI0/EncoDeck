@@ -2,7 +2,9 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using EncoDeck.Platform.LeAudioCodec;
+using EncoDeck.Platform.LeAudioSync;
 using EncoDeck.Platform.Packaging;
+using EncoDeck.Platform.Settings;
 using Microsoft.Extensions.Logging;
 
 namespace EncoDeck.App.Services;
@@ -10,7 +12,9 @@ namespace EncoDeck.App.Services;
 /// <summary>
 /// Labs LE Audio bitrate: starts this executable elevated with <see cref="ApplyArgument"/> to hook Windows' Bluetooth
 /// audio service (<see cref="LeAudioCodecHook"/>), serves that elevated child, and watches the link the hook records so
-/// the user learns when an applied choice actually took effect. Not offered in the Store package.
+/// the user learns when an applied choice actually took effect. The service loses the hook when it restarts (reboot,
+/// Bluetooth turned off); while LE Audio earbuds are connected the choice is then put back through the scheduled task
+/// the apply registered (<see cref="LeAudioHookRestoreTask"/>), without another prompt. Not offered in the Store package.
 /// </summary>
 public sealed class LeAudioCodecCompanion : IDisposable
 {
@@ -22,13 +26,28 @@ public sealed class LeAudioCodecCompanion : IDisposable
 
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(2);
 
+    /// <summary>A restore that did not take is tried again after this, a few times per service process.</summary>
+    private static readonly TimeSpan RestoreRetry = TimeSpan.FromSeconds(30);
+    private const int RestoreAttempts = 3;
+
+    private readonly LeAudioSyncCompanion _leAudio;
+    private readonly ISettingsStore _settings;
     private readonly ILogger _logger;
     private readonly object _gate = new();
     private readonly CancellationTokenSource _cts = new();
     private DateTime _linkWritten;
     private (LeAudioCodecPreset Preset, LeAudioLatencyMode Mode, DateTimeOffset Since)? _expected;
+    private int _restorePid;
+    private int _restoreAttempts;
+    private DateTimeOffset _lastRestore;
+    private bool _rebuildAfterRestore;
 
-    public LeAudioCodecCompanion(ILogger logger) => _logger = logger;
+    public LeAudioCodecCompanion(LeAudioSyncCompanion leAudio, ISettingsStore settings, ILogger logger)
+    {
+        _leAudio = leAudio;
+        _settings = settings;
+        _logger = logger;
+    }
 
     public static bool Available => !PackageIdentity.IsPackaged;
 
@@ -72,6 +91,7 @@ public sealed class LeAudioCodecCompanion : IDisposable
                 {
                     _logger.LogDebug(ex, "Could not read the LE Audio link record");
                 }
+                Restore();
             }
             while (await timer.WaitForNextTickAsync(ct).ConfigureAwait(false));
         }
@@ -99,6 +119,36 @@ public sealed class LeAudioCodecCompanion : IDisposable
         if (switched) Switched?.Invoke(this, link);
     }
 
+    /// <summary>
+    /// Puts an applied choice back once the service that had it is gone, while LE Audio (LC3) earbuds are connected, and
+    /// then rebuilds the link the calibration holds, which was set up before the hook returned.
+    /// </summary>
+    private void Restore()
+    {
+        LeAudioCodecApplied applied = LeAudioCodecHook.ReadApplied();
+        if (_rebuildAfterRestore && applied.Active)
+        {
+            _rebuildAfterRestore = false;
+            var guard = _leAudio.Guard;
+            if (_settings.Current.LeAudioSyncGuard && guard.Status.State is LeAudioSyncState.NeedsCheck or LeAudioSyncState.Aligned or LeAudioSyncState.Checking)
+                guard.Rebuild();
+        }
+        if (applied.IsWindowsDefault || applied.Active || !_leAudio.LeAudioConnected) return;
+        int pid = LeAudioCodecHook.ServicePid;
+        if (pid == 0) return;
+        if (pid != _restorePid)
+        {
+            _restorePid = pid;
+            _restoreAttempts = 0;
+        }
+        if (_restoreAttempts >= RestoreAttempts || DateTimeOffset.UtcNow - _lastRestore < RestoreRetry) return;
+        _restoreAttempts++;
+        _lastRestore = DateTimeOffset.UtcNow;
+        bool started = LeAudioHookRestoreTask.Run();
+        _logger.LogInformation("LE Audio settings lost with the Bluetooth audio service; restore {Result}", started ? "started" : "unavailable (apply again)");
+        _rebuildAfterRestore |= started;
+    }
+
     public void Dispose()
     {
         _cts.Cancel();
@@ -123,29 +173,67 @@ public sealed class LeAudioCodecCompanion : IDisposable
     /// <summary>Command-line flag of the elevated child: calls must not take over the link.</summary>
     private const string NoCallArgument = "nocall";
 
-    /// <summary>Runs in the elevated child, before any window or single-instance check.</summary>
-    public static int RunElevatedApply(string? presetId, string? mode, string? noCall)
-    {
-        if (LeAudioCodecPreset.Find(presetId ?? "") is not { } preset) return LeAudioCodecHook.Result.Failed;
-        string log = Path.Combine(LeAudioCodecHook.HookDirectory, "apply.log");
-        bool noCallMode = string.Equals(noCall, NoCallArgument, StringComparison.OrdinalIgnoreCase);
-        // Off the UI thread: the apply awaits a download and must not wait on the dispatcher it blocks.
-        return Task.Run(() => LeAudioCodecHook.ApplyElevatedAsync(preset, ParseMode(mode), noCallMode, LeAudioCodecHook.BundledDll, line =>
-        {
-            try { File.AppendAllText(log, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} {line}{Environment.NewLine}"); }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
-        })).GetAwaiter().GetResult();
-    }
+    /// <summary>
+    /// Command-line option of the elevated child: <c>sync=</c> and the LE addresses (hex, comma separated, the primary
+    /// first) of the earbuds that get the Intel sync schedule.
+    /// </summary>
+    private const string SyncArgument = "sync=";
 
     /// <summary>
-    /// Shows the administrator prompt and applies <paramref name="preset"/>, <paramref name="mode"/> and
-    /// <paramref name="noCallMode"/>; returns the child's result code. A declined prompt throws
+    /// Runs in the elevated child, before any window or single-instance check. <paramref name="arguments"/> follow
+    /// <see cref="ApplyArgument"/>: the preset id, the mode, then optionally <c>nocall</c>, <c>sync=</c>addresses and
+    /// <see cref="LeAudioHookRestoreTask.RestoreArgument"/> (started by the restore task, which stays as it is). Otherwise
+    /// a choice other than Windows' own registers the restore task with the same arguments, and Windows' own removes it.
+    /// </summary>
+    public static int RunElevatedApply(IReadOnlyList<string> arguments)
+    {
+        if (LeAudioCodecPreset.Find(arguments.ElementAtOrDefault(0) ?? "") is not { } preset) return LeAudioCodecHook.Result.Failed;
+        string logPath = Path.Combine(LeAudioCodecHook.HookDirectory, "apply.log");
+        void Log(string line)
+        {
+            try { File.AppendAllText(logPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} {line}{Environment.NewLine}"); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        }
+        var options = arguments.Skip(2).ToList();
+        bool noCallMode = options.Contains(NoCallArgument, StringComparer.OrdinalIgnoreCase);
+        bool restore = options.Contains(LeAudioHookRestoreTask.RestoreArgument, StringComparer.OrdinalIgnoreCase);
+        var syncTargets = ParseAddresses(options.FirstOrDefault(o => o.StartsWith(SyncArgument, StringComparison.OrdinalIgnoreCase))?[SyncArgument.Length..]);
+        var mode = ParseMode(arguments.ElementAtOrDefault(1));
+        // Off the UI thread: the apply awaits a download and must not wait on the dispatcher it blocks.
+        int result = Task.Run(() => LeAudioCodecHook.ApplyElevatedAsync(preset, mode, noCallMode, LeAudioCodecHook.BundledDll, Log, syncTargets))
+            .GetAwaiter().GetResult();
+        if (restore)
+        {
+            Log($"restored: result {result}");
+        }
+        else if (result is LeAudioCodecHook.Result.Ok or LeAudioCodecHook.Result.SyncUnsupported && Environment.ProcessPath is { } exe)
+        {
+            if (preset.IsWindowsDefault && mode == LeAudioLatencyMode.Auto && !noCallMode && syncTargets.Count == 0)
+                LeAudioHookRestoreTask.Unregister(Log);
+            else
+                LeAudioHookRestoreTask.Register(exe, string.Join(' ', [ApplyArgument, .. arguments, LeAudioHookRestoreTask.RestoreArgument]), Log);
+        }
+        return result;
+    }
+
+    /// <summary>Hex addresses separated by commas; anything unreadable is left out.</summary>
+    internal static IReadOnlyList<ulong> ParseAddresses(string? text) =>
+        (text ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(part => ulong.TryParse(part, System.Globalization.NumberStyles.HexNumber, null, out ulong address) ? address : 0)
+            .Where(address => address != 0)
+            .ToList();
+
+    /// <summary>
+    /// Shows the administrator prompt and applies <paramref name="preset"/>, <paramref name="mode"/>,
+    /// <paramref name="noCallMode"/> and the Intel sync schedule for <paramref name="syncTargets"/> (the LE addresses of one
+    /// set of earbuds, none for no schedule); returns the child's result code. A declined prompt throws
     /// <see cref="OperationCanceledException"/>.
     /// </summary>
-    public static async Task<int> ApplyAsync(LeAudioCodecPreset preset, LeAudioLatencyMode mode, bool noCallMode)
+    public static async Task<int> ApplyAsync(LeAudioCodecPreset preset, LeAudioLatencyMode mode, bool noCallMode, IReadOnlyList<ulong>? syncTargets = null)
     {
         string exe = Environment.ProcessPath ?? throw new InvalidOperationException("Unknown executable path.");
-        string arguments = $"{ApplyArgument} {preset.Id} {ModeArgument(mode)}" + (noCallMode ? $" {NoCallArgument}" : "");
+        string arguments = $"{ApplyArgument} {preset.Id} {ModeArgument(mode)}" + (noCallMode ? $" {NoCallArgument}" : "")
+            + (syncTargets is { Count: > 0 } ? $" {SyncArgument}{string.Join(',', syncTargets.Select(a => a.ToString("X", System.Globalization.CultureInfo.InvariantCulture)))}" : "");
         var start = new ProcessStartInfo(exe, arguments)
         {
             UseShellExecute = true,

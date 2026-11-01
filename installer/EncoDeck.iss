@@ -205,6 +205,17 @@ begin
   DeleteFile(Marker);
 end;
 
+// Labs LE Audio settings registered a task that restores them after the Bluetooth audio service restarts
+// (LeAudioHookRestoreTask.cs, with the administrator prompt of Apply): delete it.
+procedure RemoveLeHookTask();
+var
+  ErrorCode: Integer;
+begin
+  if not FileExists(ExpandConstant('{commonappdata}\{#AppName}\LeHook\state.txt')) or UninstallSilent() then Exit;
+  ShellExec('runas', ExpandConstant('{sys}\schtasks.exe'), '/Delete /TN "EncoDeck\LE Audio hook" /F',
+    '', SW_HIDE, ewWaitUntilTerminated, ErrorCode);
+end;
+
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   DataDir: String;
@@ -216,6 +227,7 @@ begin
   RegDeleteValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run', '{#AppName}');
   RemoveCodecLog();
   RemoveServiceAccess();
+  RemoveLeHookTask();
 
   DataDir := ExpandConstant('{localappdata}\{#AppName}');
   if DirExists(DataDir) and not UninstallSilent() then

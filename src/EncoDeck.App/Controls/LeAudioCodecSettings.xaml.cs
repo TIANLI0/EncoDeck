@@ -17,6 +17,9 @@ namespace EncoDeck.App.Controls;
 /// </summary>
 public sealed partial class LeAudioCodecSettings : UserControl
 {
+    /// <summary>Earbud models the Intel sync schedule was verified on; no other earbuds are offered it.</summary>
+    private static readonly HashSet<string> SyncScheduleModels = new(StringComparer.OrdinalIgnoreCase) { "oppo-enco-x4" };
+
     private LeAudioCodecSupport? _support;
     private bool _busy;
     private bool _refreshQueued;
@@ -54,6 +57,16 @@ public sealed partial class LeAudioCodecSettings : UserControl
 
     private LeAudioLatencyMode SelectedMode => (Mode.SelectedItem as ComboBoxItem)?.Tag is LeAudioLatencyMode mode ? mode : LeAudioLatencyMode.Auto;
 
+    /// <summary>
+    /// The LE Audio earbuds' address when they may get the Intel sync schedule: Intel LE Audio offload on this PC and a
+    /// model it was verified on.
+    /// </summary>
+    private static ulong? SyncScheduleAddress =>
+        LeAudio.Support == LeAudioSyncSupport.Supported
+        && App.Instance.Host.Store.Current.Profile?.ModelId is { } model && SyncScheduleModels.Contains(model)
+            ? LeAudio.LeAudioAddress
+            : null;
+
     private void OnChanged(object? sender, EventArgs e)
     {
         if (_refreshQueued) return;
@@ -82,16 +95,21 @@ public sealed partial class LeAudioCodecSettings : UserControl
         if (Visibility == Visibility.Collapsed) return;
 
         LeAudioCodecApplied applied = LeAudioCodecHook.ReadApplied();
+        ulong? syncAddress = SyncScheduleAddress;
+        SyncPanel.Visibility = syncAddress is null ? Visibility.Collapsed : Visibility.Visible;
         if (selectApplied)
         {
             Preset.SelectedItem = Preset.Items.OfType<ComboBoxItem>().FirstOrDefault(i => Equals(i.Tag, applied.Preset));
             Mode.SelectedItem = Mode.Items.OfType<ComboBoxItem>().FirstOrDefault(i => Equals(i.Tag, applied.Mode));
             NoCall.IsOn = applied.NoCallMode;
+            // On by default for eligible earbuds, unless the hook already serves other earbuds.
+            SyncSchedule.IsOn = applied.SyncTarget == 0 || applied.SyncTarget == syncAddress;
         }
-        Preset.IsEnabled = Mode.IsEnabled = NoCall.IsEnabled = Apply.IsEnabled = !_busy;
+        Preset.IsEnabled = Mode.IsEnabled = NoCall.IsEnabled = SyncSchedule.IsEnabled = Apply.IsEnabled = !_busy;
 
         string choice = $"{LeAudioCodecText.Preset(applied.Preset)} · {Loc.Get($"LeAudioCodec_ModeName_{applied.Mode}")}"
-            + (applied.NoCallMode ? $" · {Loc.Get("LeAudioCodec_NoCallName")}" : "");
+            + (applied.NoCallMode ? $" · {Loc.Get("LeAudioCodec_NoCallName")}" : "")
+            + (applied.SyncTarget != 0 ? $" · {Loc.Get("LeAudioCodec_SyncName")}" : "");
         Status.Text = Codec.Pending ? Loc.Get("LeAudioCodec_Status_Pending")
             : applied.IsWindowsDefault ? Loc.Get("LeAudioCodec_Status_Default")
             : Loc.Format(applied.Active ? "LeAudioCodec_Status_Active" : "LeAudioCodec_Status_Lost", choice);
@@ -121,17 +139,31 @@ public sealed partial class LeAudioCodecSettings : UserControl
         LeAudioLatencyMode mode = SelectedMode;
         bool noCall = NoCall.IsOn;
         bool hadNoCall = LeAudioCodecHook.ReadApplied() is { NoCallMode: true, Active: true };
+        ulong? syncAddress = SyncSchedule.IsOn ? SyncScheduleAddress : null;
         _busy = true;
         Apply.Content = Loc.Get("LeAudioCodec_Applying");
         CardNotice.Hide(Notice);
         Refresh(selectApplied: false);
         try
         {
-            int result = await LeAudioCodecCompanion.ApplyAsync(preset, mode, noCall);
-            if (result == LeAudioCodecHook.Result.Ok)
+            // Windows prepares a stream earbud by earbud: the schedule has to name every earbud of the set.
+            IReadOnlyList<ulong>? syncTargets = null;
+            if (syncAddress is { } address)
             {
-                // Confirmed (card and notification) once Windows sets up the next LE Audio stream with it.
-                Codec.Expect(preset, mode);
+                try { syncTargets = await LeAudioLink.GetSetAddressesAsync(address); }
+                catch (Exception ex) when (ex is ArgumentException or UnauthorizedAccessException or System.Runtime.InteropServices.COMException)
+                {
+                    CardNotice.Show(Notice, InfoBarSeverity.Error, Loc.Format("LeAudioCodec_Result_SyncAddresses", ex.Message));
+                    return;
+                }
+            }
+            int result = await LeAudioCodecCompanion.ApplyAsync(preset, mode, noCall, syncTargets);
+            if (result is LeAudioCodecHook.Result.Ok or LeAudioCodecHook.Result.SyncUnsupported)
+            {
+                // Confirmed (card and notification) once Windows sets up the next LE Audio stream with it. The sync
+                // schedule sets its own transport, so only the preset has to match then.
+                bool syncApplied = syncTargets is { Count: > 0 } && result == LeAudioCodecHook.Result.Ok;
+                Codec.Expect(preset, syncApplied ? LeAudioLatencyMode.Auto : mode);
                 // Rebuild now when the calibration holds the link (and check it again, since every rebuild draws a new
                 // left/right alignment).
                 var sync = LeAudio.Guard;
@@ -143,7 +175,8 @@ public sealed partial class LeAudioCodecSettings : UserControl
                 if (noCall != hadNoCall && await SetMicrophoneAsync(enabled: !noCall) is { } error)
                     message += " " + Loc.Format("LeAudio_MicFailed", error);
                 if (noCall && !hadNoCall) message += " " + Loc.Get("LeAudioCodec_Result_NoCallReconnect");
-                CardNotice.Show(Notice, InfoBarSeverity.Success, message);
+                if (result == LeAudioCodecHook.Result.SyncUnsupported) message += " " + Loc.Get("LeAudioCodec_Result_SyncUnsupported");
+                CardNotice.Show(Notice, result == LeAudioCodecHook.Result.Ok ? InfoBarSeverity.Success : InfoBarSeverity.Warning, message);
             }
             else
             {

@@ -11,6 +11,14 @@
 // Both read the user's choice from HKLM\SOFTWARE\EncoDeck\LeHook for every new stream; with nothing chosen they
 // only record.
 //
+// Intel sync schedule: on Intel LE Audio offload, the controller sometimes carries the first CIS's frames one ISO
+// interval later than the second's (one earbud plays 7.5 ms late). Asking for 13 retransmissions within 15 ms makes the
+// controller give each CIS four subevents per event, which keeps the DSP's frame hand-off clear of that window. It is
+// applied only to earbuds listed in SyncTargets (their LE addresses): GetPreferredConfigurationFromCapabilities is
+// called for every earbud of the set, on the codec object FindQosSettings then runs on, and the earbud's address comes
+// from AscsDeviceServiceImpl::GetRemoteDeviceAddress (offset and first bytes in AddressRva/AddressCode, called only on
+// objects whose virtual table holds it).
+//
 // No Windows build is built in: the elevated injector (EncoDeck's --le-hook-apply, or EncoDeck.Probe le-hook apply)
 // finds both functions in the installed Microsoft.Bluetooth.Audio.dll from its public symbols, and writes each one's
 // offset and first whole instructions to HKLM (Hook0Rva/Hook0Prologue, Hook1Rva/Hook1Prologue). LeHookEnable patches
@@ -50,6 +58,23 @@
 #define QOS_MAX_SDU 0x10
 #define QOS_RETRANSMISSIONS 0x12
 #define QOS_MAX_LATENCY 0x14
+
+// The Intel sync schedule (7.5 ms frames): verified on Intel AX211 offload to give four subevents per CIS event.
+#define SYNC_FRAME_US 7500
+#define SYNC_RETRANSMISSIONS 13
+#define SYNC_MAX_LATENCY_MS 15
+
+// AscsDeviceServiceImpl::GetRemoteDeviceAddress() const returns a BluetoothLEAddress through a hidden result pointer:
+//   +0x00 virtual table, +0x08 address (48 bits), +0x10 address type.
+typedef void *(*GetAddressFn)(void *self, uint8_t *result);
+#define ADDRESS_RESULT_SIZE 0x18
+#define ADDRESS_VALUE 0x08
+#define MAX_ADDRESS_CODE 16
+#define VTABLE_SLOTS 64
+#define MAX_SYNC_TARGETS 8
+// A codec object's earbuds count for the FindQosSettings that follows within this time.
+#define CODEC_TARGET_WINDOW_MS 10000
+#define TRACKED_CODECS 8
 
 // LC3 codec specific configuration LTV types and values (Bluetooth Assigned Numbers 6.12.5).
 #define LTV_SAMPLING_FREQUENCY 0x01
@@ -94,6 +119,21 @@ typedef LONG (*AssignModeFn)(void *globals, void *pin, const GUID *mode, void *f
 static const GUID ModeCommunications = {0x98951333, 0xb9cd, 0x48b1, {0xa0, 0xa3, 0xff, 0x40, 0x68, 0x2d, 0x73, 0xf7}};
 static void **g_assignSlot;
 static AssignModeFn g_assignOriginal;
+
+// The address reader, once its recorded bytes matched at LeHookEnable; the Intel sync schedule needs it.
+static GetAddressFn g_getAddress;
+static uint8_t *g_moduleBase;
+static size_t g_moduleSize;
+
+// Codec objects whose earbuds were seen in GetPreferredConfigurationFromCapabilities, and whether any was a target.
+typedef struct
+{
+    void *codec;
+    ULONGLONG at;
+    BOOL target;
+} CodecDevices;
+static CodecDevices g_codecs[TRACKED_CODECS];
+static SRWLOCK g_codecLock = SRWLOCK_INIT;
 
 static LONG g_installed;
 static SRWLOCK g_logLock = SRWLOCK_INIT;
@@ -173,6 +213,77 @@ static BOOL IsReadWrite(const void *p, size_t size)
     if (!VirtualQuery(p, &info, sizeof info) || info.State != MEM_COMMIT) return FALSE;
     if (!(info.Protect & (PAGE_READWRITE | PAGE_EXECUTE_READWRITE))) return FALSE;
     return (const uint8_t *)p + size <= (const uint8_t *)info.BaseAddress + info.RegionSize;
+}
+
+// The earbud's LE address behind an AscsDeviceService reference, or FALSE when the reader is unavailable or the object
+// is not an AscsDeviceServiceImpl (its virtual table, inside Microsoft.Bluetooth.Audio.dll, must hold the reader).
+static BOOL ReadDeviceAddress(void *ascs, uint64_t *address)
+{
+    if (!g_getAddress || !ascs || !IsReadWrite(ascs, sizeof(void *))) return FALSE;
+    uint8_t *vtable = *(uint8_t **)ascs;
+    if (vtable < g_moduleBase || vtable + VTABLE_SLOTS * sizeof(void *) > g_moduleBase + g_moduleSize) return FALSE;
+    BOOL found = FALSE;
+    for (int i = 0; i < VTABLE_SLOTS && !found; i++) found = ((void **)vtable)[i] == (void *)g_getAddress;
+    if (!found) return FALSE;
+    uint8_t result[ADDRESS_RESULT_SIZE] = {0};
+    g_getAddress(ascs, result);
+    memcpy(address, result + ADDRESS_VALUE, sizeof *address);
+    *address &= 0xFFFFFFFFFFFFull;
+    return TRUE;
+}
+
+// SyncTargets: REG_BINARY, little-endian 64-bit LE addresses of the earbuds that get the Intel sync schedule.
+static BOOL IsSyncTarget(uint64_t address)
+{
+    uint64_t targets[MAX_SYNC_TARGETS];
+    DWORD size = sizeof targets;
+    if (RegGetValueW(HKEY_LOCAL_MACHINE, CONFIG_KEY, L"SyncTargets", RRF_RT_REG_BINARY, NULL, targets, &size) != ERROR_SUCCESS)
+        return FALSE;
+    for (DWORD i = 0; i < size / sizeof targets[0]; i++)
+        if ((targets[i] & 0xFFFFFFFFFFFFull) == address) return TRUE;
+    return FALSE;
+}
+
+// Called for every earbud of a set while Windows prepares a stream on this codec object.
+static void NoteCodecDevice(void *codec, void *ascs, uint32_t location)
+{
+    uint64_t address = 0;
+    BOOL known = ReadDeviceAddress(ascs, &address);
+    BOOL target = known && IsSyncTarget(address);
+    ULONGLONG now = GetTickCount64();
+    AcquireSRWLockExclusive(&g_codecLock);
+    CodecDevices *slot = NULL, *oldest = &g_codecs[0];
+    for (int i = 0; i < TRACKED_CODECS && !slot; i++)
+    {
+        if (g_codecs[i].codec == codec) slot = &g_codecs[i];
+        else if (g_codecs[i].at < oldest->at) oldest = &g_codecs[i];
+    }
+    // A stale entry (or a reused address of a freed codec) starts over.
+    if (!slot || now - slot->at > CODEC_TARGET_WINDOW_MS)
+    {
+        if (!slot) slot = oldest;
+        slot->codec = codec;
+        slot->target = FALSE;
+    }
+    slot->target = slot->target || target;
+    slot->at = now;
+    ReleaseSRWLockExclusive(&g_codecLock);
+    // Only the last two bytes of the address go to the log.
+    if (known)
+        Log("device: location 0x%x earbud ..:%02X:%02X%s", location, (unsigned)(address >> 8) & 0xFF, (unsigned)address & 0xFF,
+            target ? " (sync target)" : "");
+}
+
+// Whether the earbuds this codec object was just prepared for include a sync target.
+static BOOL IsCodecForSyncTarget(void *codec)
+{
+    BOOL target = FALSE;
+    ULONGLONG now = GetTickCount64();
+    AcquireSRWLockShared(&g_codecLock);
+    for (int i = 0; i < TRACKED_CODECS; i++)
+        if (g_codecs[i].codec == codec && now - g_codecs[i].at <= CODEC_TARGET_WINDOW_MS) target = g_codecs[i].target;
+    ReleaseSRWLockShared(&g_codecLock);
+    return target;
 }
 
 static void RewriteCodec(uint8_t *result, uint32_t location)
@@ -257,7 +368,7 @@ static void RecordLink(uint32_t interval, unsigned maxSdu, unsigned latency, uns
     ReleaseSRWLockExclusive(&g_logLock);
 }
 
-static void RewriteQos(uint8_t *result)
+static void RewriteQos(uint8_t *result, BOOL syncTarget)
 {
     if (!result) return;
     uint8_t *begin = *(uint8_t **)(result + 0x00);
@@ -294,8 +405,15 @@ static void RewriteQos(uint8_t *result)
             *retransmissions = 13;
             *latency = *interval == 10000 ? 100 : 75;
         }
-        Log("qos: %u us, max SDU %u, latency %u ms, %u retransmissions -> %u us, max SDU %u, latency %u ms, %u retransmissions",
-            oldInterval, oldSdu, oldLatency, oldRetransmissions, *interval, *maxSdu, *latency, *retransmissions);
+        BOOL sync = syncTarget && *interval == SYNC_FRAME_US;
+        if (sync)
+        {
+            *retransmissions = SYNC_RETRANSMISSIONS;
+            *latency = SYNC_MAX_LATENCY_MS;
+        }
+        Log("qos: %u us, max SDU %u, latency %u ms, %u retransmissions -> %u us, max SDU %u, latency %u ms, %u retransmissions%s",
+            oldInterval, oldSdu, oldLatency, oldRetransmissions, *interval, *maxSdu, *latency, *retransmissions,
+            sync ? " (Intel sync schedule)" : "");
         RecordLink(*interval, *maxSdu, *latency, *retransmissions);
     }
 }
@@ -344,6 +462,7 @@ static BOOL WriteSlot(void **slot, void *value)
 static void *HookGetPreferred(void *self, void *result, void *pacs, void *ascs, uint32_t location)
 {
     void *returned = ((GetPreferredFn)(void *)g_hooks[0].trampoline)(self, result, pacs, ascs, location);
+    NoteCodecDevice(self, ascs, location);
     RewriteCodec((uint8_t *)result, location);
     return returned;
 }
@@ -351,7 +470,7 @@ static void *HookGetPreferred(void *self, void *result, void *pacs, void *ascs, 
 static void *HookFindQos(void *self, void *result)
 {
     void *returned = ((FindQosFn)(void *)g_hooks[1].trampoline)(self, result);
-    RewriteQos((uint8_t *)result);
+    RewriteQos((uint8_t *)result, IsCodecForSyncTarget(self));
     return returned;
 }
 
@@ -410,6 +529,18 @@ __declspec(dllexport) DWORD WINAPI LeHookEnable(LPVOID unused)
         hook->length = length;
         memcpy(hook->prologue, prologue, length);
     }
+    // The address reader for the Intel sync schedule; without it (or when its bytes differ) no earbud is a target.
+    {
+        uint8_t code[MAX_ADDRESS_CODE];
+        DWORD rva = 0, size = sizeof rva, length = sizeof code;
+        BOOL ok = RegGetValueW(HKEY_LOCAL_MACHINE, CONFIG_KEY, L"AddressRva", RRF_RT_REG_DWORD, NULL, &rva, &size) == ERROR_SUCCESS &&
+                  RegGetValueW(HKEY_LOCAL_MACHINE, CONFIG_KEY, L"AddressCode", RRF_RT_REG_BINARY, NULL, code, &length) == ERROR_SUCCESS &&
+                  length > 0 && rva + length <= nt->OptionalHeader.SizeOfImage && memcmp((uint8_t *)module + rva, code, length) == 0;
+        g_moduleBase = (uint8_t *)module;
+        g_moduleSize = nt->OptionalHeader.SizeOfImage;
+        g_getAddress = ok ? (GetAddressFn)(void *)((uint8_t *)module + rva) : NULL;
+        if (!ok) Log("enable: earbud address reader not found; Intel sync schedule unavailable");
+    }
 
     for (size_t i = 0; i < HOOK_COUNT; i++)
     {
@@ -448,8 +579,12 @@ __declspec(dllexport) DWORD WINAPI LeHookEnable(LPVOID unused)
         Log("enable: mode declaration import not found; NoCallMode unavailable");
     }
     InterlockedExchange(&g_installed, 1);
-    Log("enabled: frame %lu us, %lu octets, latency mode %lu, no call mode %lu (0 = keep Windows' choice)",
-        ReadConfig(L"FrameDurationUs"), ReadConfig(L"OctetsPerFrame"), ReadConfig(L"LatencyMode"), ReadConfig(L"NoCallMode"));
+    DWORD targetsSize = 0;
+    if (RegGetValueW(HKEY_LOCAL_MACHINE, CONFIG_KEY, L"SyncTargets", RRF_RT_REG_BINARY, NULL, NULL, &targetsSize) != ERROR_SUCCESS)
+        targetsSize = 0;
+    Log("enabled: frame %lu us, %lu octets, latency mode %lu, no call mode %lu (0 = keep Windows' choice), %lu sync targets",
+        ReadConfig(L"FrameDurationUs"), ReadConfig(L"OctetsPerFrame"), ReadConfig(L"LatencyMode"), ReadConfig(L"NoCallMode"),
+        (unsigned long)(targetsSize / sizeof(uint64_t)));
     return 0;
 }
 

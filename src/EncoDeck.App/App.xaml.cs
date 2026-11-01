@@ -85,10 +85,7 @@ public partial class App : Application
         int codec = Array.FindIndex(commandLine, a => string.Equals(a, LeAudioCodecCompanion.ApplyArgument, StringComparison.OrdinalIgnoreCase));
         if (codec >= 0)
         {
-            Environment.Exit(LeAudioCodecCompanion.RunElevatedApply(
-                codec + 1 < commandLine.Length ? commandLine[codec + 1] : null,
-                codec + 2 < commandLine.Length ? commandLine[codec + 2] : null,
-                codec + 3 < commandLine.Length ? commandLine[codec + 3] : null));
+            Environment.Exit(LeAudioCodecCompanion.RunElevatedApply(commandLine[(codec + 1)..]));
             return;
         }
         // The MSIX StartupTask launches without arguments; treat it like the Run entry's --background.

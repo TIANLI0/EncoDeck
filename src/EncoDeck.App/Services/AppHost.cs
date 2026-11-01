@@ -39,7 +39,7 @@ public sealed class AppHost : IAsyncDisposable
         StoreUpdates = new StoreUpdateService(loggers.CreateLogger<StoreUpdateService>());
         Bridge = new A2dpBridgeCompanion(Path.Combine(paths.Root, "Components"), store, settings, loggers.CreateLogger<A2dpBridgeCompanion>());
         LeAudioSync = new LeAudioSyncCompanion(store, settings, loggers.CreateLogger<LeAudioSyncCompanion>());
-        LeAudioCodec = new LeAudioCodecCompanion(loggers.CreateLogger<LeAudioCodecCompanion>());
+        LeAudioCodec = new LeAudioCodecCompanion(LeAudioSync, settings, loggers.CreateLogger<LeAudioCodecCompanion>());
         WindowsCodec = new WindowsCodecCompanion(paths.Root, store, loggers.CreateLogger<WindowsCodecCompanion>());
         LeAudioTransport = new LeAudioTransportKeeper(store, devices, loggers.CreateLogger<LeAudioTransportKeeper>());
         if (devices is DeviceManager manager)
