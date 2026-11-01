@@ -173,7 +173,7 @@ public sealed partial class LeAudioSettings : UserControl
             }
         }
         await RunAsync((address, progress, ct) => LeAudioPairing.SwitchTransportAsync(address, toLeAudio, progress, ct,
-            token => App.Instance.Host.Devices.ReconnectClassicLinkAsync(address, token)));
+            token => App.Instance.Host.Devices.ReconnectClassicLinkAsync(address, token), makeDefault: true));
     }
 
     private async void OnRestore(object sender, RoutedEventArgs e)

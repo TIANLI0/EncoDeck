@@ -426,14 +426,18 @@ public static class LeAudioPairing
     /// LE links are down: the earbuds drop LE whenever this PC's Classic link ends (e.g. EncoDeck restarted) and only
     /// bring it back when Classic reconnects; without LE, Windows cannot choose LE Audio.
     /// </param>
+    /// <param name="makeDefault">
+    /// Make the earbuds' new output Windows' default playback device even when it was another device (the user asked for
+    /// this switch, so they mean to listen on the earbuds). Otherwise it is restored only if the earbuds were the default.
+    /// </param>
     public static async Task<LeAudioPairingResult> SwitchTransportAsync(ulong primary, bool toLeAudio, IProgress<LeAudioPairingStage>? progress, CancellationToken cancellationToken,
-        Func<CancellationToken, Task>? reconnectClassic = null)
+        Func<CancellationToken, Task>? reconnectClassic = null, bool makeDefault = false)
     {
         // The card, the earbuds panel and the automatic recovery can all start one; the next waits for the first.
         await TransportSwitchGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            return await SwitchTransportCoreAsync(primary, toLeAudio, progress, reconnectClassic, cancellationToken).ConfigureAwait(false);
+            return await SwitchTransportCoreAsync(primary, toLeAudio, progress, reconnectClassic, makeDefault, cancellationToken).ConfigureAwait(false);
         }
         finally { TransportSwitchGate.Release(); }
     }
@@ -441,12 +445,15 @@ public static class LeAudioPairing
     private static readonly SemaphoreSlim TransportSwitchGate = new(1, 1);
 
     private static async Task<LeAudioPairingResult> SwitchTransportCoreAsync(ulong primary, bool toLeAudio, IProgress<LeAudioPairingStage>? progress,
-        Func<CancellationToken, Task>? reconnectClassic, CancellationToken cancellationToken)
+        Func<CancellationToken, Task>? reconnectClassic, bool makeDefault, CancellationToken cancellationToken)
     {
         var state = await GetStateAsync(primary, cancellationToken).ConfigureAwait(false);
         if (!state.PrimaryBonded || !state.SecondaryBonded || !state.ClassicBonded) return new(LeAudioPairingOutcome.NotSetUp);
         if (!WindowsAudioTransport.CanRestartService) return new(LeAudioPairingOutcome.NeedsServiceAccess);
         Log($"Transport switch to {(toLeAudio ? "LE Audio" : "Classic")}; LE links up={state.BothConnected}");
+        // While the service restarts the earbuds' output goes away and Windows falls back to another device (often the
+        // PC's speakers); put the new output back as default if the earbuds were it.
+        bool wasDefault = makeDefault || IsEarbudsDefault(state.AudioEndpoints);
 
         progress?.Report(LeAudioPairingStage.ChangingWindowsAudio);
         WindowsAudioTransport.SetPreference(toLeAudio ? AudioTransportPreference.LeAudio : AudioTransportPreference.Classic);
@@ -484,7 +491,8 @@ public static class LeAudioPairing
             else if (toLeAudio)
                 await RemoveClassicAudioBesideLeAsync(primary, cancellationToken).ConfigureAwait(false);
         }
-        Log($"Transport switch to {(toLeAudio ? "LE Audio" : "Classic")}: output ready={ready}");
+        if (ready && wasDefault) await MakeDefaultAsync(primary, toLeAudio, cancellationToken).ConfigureAwait(false);
+        Log($"Transport switch to {(toLeAudio ? "LE Audio" : "Classic")}: output ready={ready}; was default={wasDefault}");
         LeAudioLink.NotifyAudioOutputChanged(primary);
         return new(toLeAudio
             ? ready ? LeAudioPairingOutcome.Paired : LeAudioPairingOutcome.PairedButLeAudioEndpointMissing
@@ -501,9 +509,41 @@ public static class LeAudioPairing
     {
         var endpoints = await LeAudioClassicAudioEndpoint.InspectAsync(primary, cancellationToken).ConfigureAwait(false);
         if (!endpoints.LeAudioRenderPresent || !endpoints.ClassicA2dpPresent) return false;
-        Log("Classic A2DP output next to LE Audio: removing Classic audio services");
+        bool wasDefault = IsEarbudsDefault(endpoints);
+        Log($"Classic A2DP output next to LE Audio: removing Classic audio services; default={wasDefault}");
         await WindowsAudioTransport.SetClassicAudioAsync(primary, enabled: false, cancellationToken).ConfigureAwait(false);
+        if (wasDefault) await MakeDefaultAsync(primary, toLeAudio: true, cancellationToken).ConfigureAwait(false);
         return true;
+    }
+
+    /// <summary>Whether Windows' default playback device is one of the earbuds' outputs (LE Audio or Classic A2DP).</summary>
+    private static bool IsEarbudsDefault(LeAudioEndpointInspection? endpoints)
+    {
+        try
+        {
+            return WindowsAudioEndpointPlatform.IsDefaultRender(endpoints?.LeAudioRender)
+                || WindowsAudioEndpointPlatform.IsDefaultRender(endpoints?.ClassicA2dpRender);
+        }
+        catch (Exception ex) when (ex is COMException or InvalidCastException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>Makes the earbuds' LE Audio (or Classic A2DP) output the default playback device.</summary>
+    private static async Task MakeDefaultAsync(ulong primary, bool toLeAudio, CancellationToken cancellationToken)
+    {
+        var endpoints = await LeAudioClassicAudioEndpoint.InspectAsync(primary, cancellationToken).ConfigureAwait(false);
+        var target = toLeAudio ? endpoints.LeAudioRender : endpoints.ClassicA2dpRender;
+        try
+        {
+            bool set = target is not null && WindowsAudioEndpointPlatform.SetDefaultRender(target);
+            Log($"Default playback device set to the earbuds' {(toLeAudio ? "LE Audio" : "A2DP")} output: {set}");
+        }
+        catch (Exception ex) when (ex is COMException or InvalidCastException)
+        {
+            Log($"Setting the default playback device failed: 0x{ex.HResult:X8}");
+        }
     }
 
     /// <summary>Waits for the LE Audio render endpoint, or an active Classic A2DP one.</summary>

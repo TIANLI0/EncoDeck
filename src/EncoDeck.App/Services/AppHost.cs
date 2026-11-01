@@ -7,6 +7,7 @@ using EncoDeck.Core.Profiles;
 using EncoDeck.Core.State;
 using EncoDeck.Platform.A2dpBridge;
 using EncoDeck.Platform.Cache;
+using EncoDeck.Platform.LeAudioSync;
 using EncoDeck.Platform.Logging;
 using EncoDeck.Platform.Packaging;
 using EncoDeck.Platform.Paths;
@@ -167,12 +168,17 @@ public sealed class AppHost : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        // EncoDeck's own LE Audio stream goes before the control channel: closing control ends the earbuds' Classic
+        // link and they drop LE with it, and an LE link dropped mid-stream can leave Windows' LE Audio output unusable
+        // ("device in use") until Bluetooth restarts (Enco X4 on Intel). Give Windows a moment to close the stream.
+        LeAudioTransport.Dispose();
+        bool streaming = LeAudioSync.Guard.Status.State is not (LeAudioSyncState.Off or LeAudioSyncState.Unsupported or LeAudioSyncState.WaitingForDevice);
+        await LeAudioSync.DisposeAsync();
+        if (streaming) await Task.Delay(500);
         await Devices.DisposeAsync();
         await Bridge.DisposeAsync();
-        await LeAudioSync.DisposeAsync();
         LeAudioCodec.Dispose();
         WindowsCodec.Dispose();
-        LeAudioTransport.Dispose();
         await ResourceSync.DisposeAsync();
         await Updates.DisposeAsync();
         ResourceClient.Dispose();

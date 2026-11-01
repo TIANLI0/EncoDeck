@@ -2,6 +2,13 @@
 
 本文件记录 EncoDeck 每个版本的用户可见变化，格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。每个版本按“新增 / 改进 / 修复 / 移除”分类。
 
+## [Unreleased]
+
+### 修复
+
+- Enco X4 / X3 手动切换 LC3 / 传统蓝牙后，耳机的新输出成为 Windows 默认播放设备；此前切换期间 Windows 会改用电脑扬声器，之后不再改回。
+- EncoDeck 退出或升级时先关闭自己的 LE Audio 音频流，再断开耳机，避免 Windows 的 LC3 输出卡死（所有程序都无法往耳机播放，需关开一次蓝牙才能恢复）。
+
 ## [1.14.0-beta.6] - 2026-11-01
 
 ### 修复
