@@ -2,6 +2,15 @@
 
 本文件记录 EncoDeck 每个版本的用户可见变化，格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。每个版本按“新增 / 改进 / 修复 / 移除”分类。
 
+## [1.14.0-beta.6] - 2026-11-01
+
+### 修复
+
+- Enco X4 / X3：EncoDeck 重启、升级或电脑唤醒后，耳机不再既没有 LC3 也没有声音；EncoDeck 会主动重新连接耳机，选择了 LC3 时自动回到 LC3。
+- 切换到 LC3 时若 LE 链路已断开，不再报“没有找到 LE Audio 渲染端点”。
+- LC3 下 Windows 播放设备中不再残留传统的“耳机”输出。
+- “从 Windows 读取音频编码”不再把耳机支持的编码当成实际编码（此前可能显示 Windows 并未使用的 LHDC）。
+
 ## [1.14.0-beta.5] - 2026-11-01
 
 ### 新增
