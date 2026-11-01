@@ -225,7 +225,7 @@ public static class LeAudioPairing
         bool transportReportAttempted = false;
         async Task PrepareSecondaryAsync(CancellationToken ct)
         {
-            if (transportReportAttempted || !withoutLeBrSwitch || reportLeTransport is null) return;
+            if (transportReportAttempted || reportLeTransport is null) return;
             // Called after native primary PairAsync returns, before set-member PairAsync starts.
             // Opening control earlier would race CTKD and could select the Classic transport.
             // Native pairing may complete before the paired AEP is published. Do not release
@@ -246,7 +246,7 @@ public static class LeAudioPairing
             progress?.Report(LeAudioPairingStage.PairingSecondary);
         }
 
-        Func<CancellationToken, Task>? prepareMembers = withoutLeBrSwitch && reportLeTransport is not null
+        Func<CancellationToken, Task>? prepareMembers = reportLeTransport is not null
             ? PrepareSecondaryAsync : null;
         var setPairing = useSetPairing ? new LeAudioSetPairing(primary, advert.Secondary.Value, Log, prepareMembers) : null;
         Log($"LE pairing strategy: {(useSetPairing ? "Windows set discovery + explicit peer fallback" : "legacy explicit addresses")}");
@@ -286,7 +286,9 @@ public static class LeAudioPairing
 
         // Without set pairing, prepare LE control before the explicit peer attempt too. The 0x1F
         // transport report follows the phone's sequence; its effect on X3 bonding needs hardware validation.
-        if (withoutLeBrSwitch && reportLeTransport is not null
+        // Not gated on withoutLeBrSwitch: on X3 the 0x0433 answer is Unsupported, and gating skipped the
+        // report and the pairingChange release, so the explicit peer pair failed with 0x8000000E.
+        if (reportLeTransport is not null
             && !await IsLeBondedAsync(secondary, cancellationToken).ConfigureAwait(false))
         {
             await PrepareSecondaryAsync(cancellationToken).ConfigureAwait(false);
