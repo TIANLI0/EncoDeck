@@ -11,6 +11,7 @@ using EncoDeck.Core.Profiles;
 using EncoDeck.Core.State;
 using EncoDeck.Protocol.Brands;
 using EncoDeck.Protocol.Oppo;
+using EncoDeck.Protocol.Oppo.Models;
 using EncoDeck.Protocol.Transport;
 using EncoDeck.Bluetooth.Usb;
 using EncoDeck.Protocol.Brands.Usb;
@@ -41,6 +42,13 @@ public interface IDeviceManager : IDeviceCommandService, IAdvancedDeviceCommands
 
     /// <summary>Call after the system resumes from sleep: re-validates the control channel.</summary>
     void NotifySystemResumed();
+
+    /// <summary>
+    /// Closes the active earbuds' control channel and link watch, waits until their Classic link is down, then opens
+    /// them again (control reconnects Classic). Earbuds EncoDeck switches to LE Audio bring their LE links back when
+    /// this PC reconnects Classic (Enco X4); a quick reopen while Classic is still up does not. No-op for other devices.
+    /// </summary>
+    Task ReconnectClassicLinkAsync(ulong address, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -168,10 +176,43 @@ public sealed class DeviceManager : IDeviceManager
         await ReselectAsync(cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task ReconnectClassicLinkAsync(ulong address, CancellationToken cancellationToken = default)
+    {
+        await _selectionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (_active is not { } active || active.Identity.Address.Value != address) return;
+            _active = null;
+            await active.DisposeAsync().ConfigureAwait(false);
+            // Windows lets an idle Classic link go a second or two after its last channel closes.
+            using var classic = await Windows.Devices.Bluetooth.BluetoothDevice.FromBluetoothAddressAsync(address).AsTask(cancellationToken).ConfigureAwait(false);
+            var waited = System.Diagnostics.Stopwatch.StartNew();
+            while (classic?.ConnectionStatus == Windows.Devices.Bluetooth.BluetoothConnectionStatus.Connected && waited.Elapsed < TimeSpan.FromSeconds(15))
+                await Task.Delay(250, cancellationToken).ConfigureAwait(false);
+            _logger.LogInformation("Classic link {State} after {Ms} ms; opening the earbuds again",
+                classic?.ConnectionStatus.ToString() ?? "unknown", waited.ElapsedMilliseconds);
+        }
+        finally { _selectionGate.Release(); }
+        await ReselectAsync(cancellationToken).ConfigureAwait(false);
+    }
+
     public void NotifySystemResumed()
     {
         // Sockets opened before sleep are often dead without an error; force a clean reconnect.
         _active?.Supervisor.RequestReconnect();
+        PageIfStranded();
+    }
+
+    /// <summary>
+    /// Earbuds EncoDeck switches to LE Audio drop their LE links whenever this PC's Classic link ends, and with neither
+    /// link up they wait to be paged (Enco X4). Page them once at the moments they are likely in use; never periodically,
+    /// so earbuds in the case or with a phone are left alone.
+    /// </summary>
+    private void PageIfStranded()
+    {
+        if (_active is { Link: { IsConnected: false, IsLeAudioBonded: true } } active
+            && _profiles.Match(active.Identity) is OppoDeviceProfile { Definition.SupportsLeAudioPairing: true })
+            active.Supervisor.RequestPage();
     }
 
     private void OnPairedDevicesChanged(object? sender, EventArgs e)
@@ -336,6 +377,7 @@ public sealed class DeviceManager : IDeviceManager
             supervisor.CaseLidOpened += (_, _) => ActiveDeviceCaseLidOpened?.Invoke(this, identity);
             _active = new ActiveDevice(identity, supervised, supervisor, windowsUnavailable, bridgeOnly);
             supervisor.Start();
+            PageIfStranded();
             KnownDevicesChanged?.Invoke(this, EventArgs.Empty);
         }
         catch (OperationCanceledException)
@@ -427,6 +469,7 @@ public sealed class DeviceManager : IDeviceManager
         if (_usbIdentity is not null) return RefreshUsbAsync(cancellationToken, forceSettings: true);
         if (_active is null) return Task.FromResult(CommandResult.NotConnected);
         _active.Supervisor.RequestReconnect();
+        PageIfStranded();
         return Task.FromResult(CommandResult.Ok);
     }
 

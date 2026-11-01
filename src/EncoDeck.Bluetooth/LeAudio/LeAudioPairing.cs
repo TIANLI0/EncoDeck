@@ -27,6 +27,8 @@ public enum LeAudioPairingStage
     ChangingWindowsAudio,
     /// <summary>Installing Windows' Classic audio services for the earbuds again.</summary>
     RestoringClassicAudio,
+    /// <summary>The LE links are down: reconnecting Classic so the earbuds bring them back.</summary>
+    ReconnectingLeAudio,
     /// <summary>Waiting for Windows to offer the chosen audio output.</summary>
     WaitingForAudio,
 }
@@ -419,40 +421,66 @@ public static class LeAudioPairing
     /// (<see cref="WindowsAudioTransport"/>) and waits for the chosen output. The earbuds follow whichever audio Windows
     /// opens; no earbud command is needed (Enco X4, both directions).
     /// </summary>
-    public static async Task<LeAudioPairingResult> SwitchTransportAsync(ulong primary, bool toLeAudio, IProgress<LeAudioPairingStage>? progress, CancellationToken cancellationToken)
+    /// <param name="reconnectClassic">
+    /// Drops and reconnects the earbuds' Classic link (<c>IDeviceManager.ReconnectClassicLinkAsync</c>). Needed when the
+    /// LE links are down: the earbuds drop LE whenever this PC's Classic link ends (e.g. EncoDeck restarted) and only
+    /// bring it back when Classic reconnects; without LE, Windows cannot choose LE Audio.
+    /// </param>
+    public static async Task<LeAudioPairingResult> SwitchTransportAsync(ulong primary, bool toLeAudio, IProgress<LeAudioPairingStage>? progress, CancellationToken cancellationToken,
+        Func<CancellationToken, Task>? reconnectClassic = null)
     {
-        // The card and the earbuds panel can both start one; the second waits for the first.
+        // The card, the earbuds panel and the automatic recovery can all start one; the next waits for the first.
         await TransportSwitchGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            return await SwitchTransportCoreAsync(primary, toLeAudio, progress, cancellationToken).ConfigureAwait(false);
+            return await SwitchTransportCoreAsync(primary, toLeAudio, progress, reconnectClassic, cancellationToken).ConfigureAwait(false);
         }
         finally { TransportSwitchGate.Release(); }
     }
 
     private static readonly SemaphoreSlim TransportSwitchGate = new(1, 1);
 
-    private static async Task<LeAudioPairingResult> SwitchTransportCoreAsync(ulong primary, bool toLeAudio, IProgress<LeAudioPairingStage>? progress, CancellationToken cancellationToken)
+    private static async Task<LeAudioPairingResult> SwitchTransportCoreAsync(ulong primary, bool toLeAudio, IProgress<LeAudioPairingStage>? progress,
+        Func<CancellationToken, Task>? reconnectClassic, CancellationToken cancellationToken)
     {
         var state = await GetStateAsync(primary, cancellationToken).ConfigureAwait(false);
         if (!state.PrimaryBonded || !state.SecondaryBonded || !state.ClassicBonded) return new(LeAudioPairingOutcome.NotSetUp);
         if (!WindowsAudioTransport.CanRestartService) return new(LeAudioPairingOutcome.NeedsServiceAccess);
-        Log($"Transport switch to {(toLeAudio ? "LE Audio" : "Classic")}");
+        Log($"Transport switch to {(toLeAudio ? "LE Audio" : "Classic")}; LE links up={state.BothConnected}");
 
         progress?.Report(LeAudioPairingStage.ChangingWindowsAudio);
         WindowsAudioTransport.SetPreference(toLeAudio ? AudioTransportPreference.LeAudio : AudioTransportPreference.Classic);
         bool ready;
-        // Windows waits only a limited time for LE Audio after the restart: keep both LE links up meanwhile.
+        // Windows waits only a limited time for LE Audio once it decides: keep both LE links up meanwhile.
         using (toLeAudio ? await HoldLeLinksAsync(primary, cancellationToken).ConfigureAwait(false) : null)
         {
-            await WindowsAudioTransport.RestartServiceAsync(cancellationToken).ConfigureAwait(false);
-            if (!toLeAudio)
+            if (toLeAudio && !state.BothConnected)
             {
-                progress?.Report(LeAudioPairingStage.RestoringClassicAudio);
-                await WindowsAudioTransport.EnableClassicAudioAsync(primary, cancellationToken).ConfigureAwait(false);
+                progress?.Report(LeAudioPairingStage.ReconnectingLeAudio);
+                // A2DP keeps the Classic link busy; without it the link can drop, and reconnecting it brings LE back.
+                await WindowsAudioTransport.SetClassicAudioAsync(primary, enabled: false, cancellationToken).ConfigureAwait(false);
+                if (reconnectClassic is not null) await reconnectClassic(cancellationToken).ConfigureAwait(false);
+                bool linked = await WaitForLeLinksAsync(primary, TimeSpan.FromSeconds(20), cancellationToken).ConfigureAwait(false);
+                Log($"LE links after reconnecting Classic: {linked}");
             }
-            progress?.Report(LeAudioPairingStage.WaitingForAudio);
-            ready = await WaitForAudioAsync(primary, toLeAudio, cancellationToken).ConfigureAwait(false);
+            // With LE back, Windows may already have chosen LE Audio by itself (it was still deciding).
+            ready = toLeAudio && WindowsAudioTransport.ReadApplied() == AudioTransportPreference.LeAudio
+                && await WaitForAudioAsync(primary, toLeAudio: true, TimeSpan.FromSeconds(8), cancellationToken).ConfigureAwait(false);
+            if (!ready)
+            {
+                progress?.Report(LeAudioPairingStage.ChangingWindowsAudio);
+                await WindowsAudioTransport.RestartServiceAsync(cancellationToken).ConfigureAwait(false);
+                if (!toLeAudio)
+                {
+                    progress?.Report(LeAudioPairingStage.RestoringClassicAudio);
+                    await WindowsAudioTransport.SetClassicAudioAsync(primary, enabled: true, cancellationToken).ConfigureAwait(false);
+                }
+                progress?.Report(LeAudioPairingStage.WaitingForAudio);
+                ready = await WaitForAudioAsync(primary, toLeAudio, TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
+            }
+            // LE Audio did not come: leave Classic audio usable rather than no audio at all.
+            if (toLeAudio && !ready)
+                await WindowsAudioTransport.SetClassicAudioAsync(primary, enabled: true, cancellationToken).ConfigureAwait(false);
         }
         Log($"Transport switch to {(toLeAudio ? "LE Audio" : "Classic")}: output ready={ready}");
         LeAudioLink.NotifyAudioOutputChanged(primary);
@@ -461,16 +489,31 @@ public static class LeAudioPairing
             : ready ? LeAudioPairingOutcome.SwitchedToClassic : LeAudioPairingOutcome.ClassicAudioMissing);
     }
 
-    /// <summary>Waits up to 30 s for the LE Audio render endpoint, or an active Classic A2DP one.</summary>
-    private static async Task<bool> WaitForAudioAsync(ulong primary, bool toLeAudio, CancellationToken cancellationToken)
+    /// <summary>Waits for the LE Audio render endpoint, or an active Classic A2DP one.</summary>
+    private static async Task<bool> WaitForAudioAsync(ulong primary, bool toLeAudio, CancellationToken cancellationToken) =>
+        await WaitForAudioAsync(primary, toLeAudio, TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
+
+    private static async Task<bool> WaitForAudioAsync(ulong primary, bool toLeAudio, TimeSpan timeout, CancellationToken cancellationToken)
     {
         var deadline = System.Diagnostics.Stopwatch.StartNew();
         while (true)
         {
             var endpoints = await LeAudioClassicAudioEndpoint.InspectAsync(primary, cancellationToken).ConfigureAwait(false);
             if (toLeAudio ? endpoints.LeAudioRenderPresent : endpoints.ClassicA2dpRender is { IsActive: true, IsDisabled: false }) return true;
-            if (deadline.Elapsed >= TimeSpan.FromSeconds(30)) return false;
+            if (deadline.Elapsed >= timeout) return false;
             await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>Waits until both earbuds' LE links are connected.</summary>
+    private static async Task<bool> WaitForLeLinksAsync(ulong primary, TimeSpan timeout, CancellationToken cancellationToken)
+    {
+        var deadline = System.Diagnostics.Stopwatch.StartNew();
+        while (true)
+        {
+            if ((await GetStateAsync(primary, cancellationToken).ConfigureAwait(false)).BothConnected) return true;
+            if (deadline.Elapsed >= timeout) return false;
+            await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken).ConfigureAwait(false);
         }
     }
 

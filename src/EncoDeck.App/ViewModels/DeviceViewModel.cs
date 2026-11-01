@@ -284,7 +284,9 @@ public sealed partial class DeviceViewModel : ObservableObject
         {
             if (!EncoDeck.Bluetooth.LeAudio.WindowsAudioTransport.CanRestartService)
                 await EncoDeck.Bluetooth.LeAudio.WindowsAudioTransport.AuthorizeAsync();
-            var result = await EncoDeck.Bluetooth.LeAudio.LeAudioPairing.SwitchTransportAsync(device.Address.Value, toLeAudio, null, CancellationToken.None);
+            ulong address = device.Address.Value;
+            var result = await EncoDeck.Bluetooth.LeAudio.LeAudioPairing.SwitchTransportAsync(address, toLeAudio, null, CancellationToken.None,
+                token => App.Instance.Host.Devices.ReconnectClassicLinkAsync(address, token));
             if (result.Outcome is not (EncoDeck.Bluetooth.LeAudio.LeAudioPairingOutcome.Paired or EncoDeck.Bluetooth.LeAudio.LeAudioPairingOutcome.SwitchedToClassic))
             {
                 ErrorMessage = Loc.Get($"LeAudio_Result_{result.Outcome}");

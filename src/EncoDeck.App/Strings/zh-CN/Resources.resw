@@ -1212,4 +1212,5 @@
   <data name="Panel_AudioTransport.Text" xml:space="preserve"><value>音频连接</value></data>
   <data name="Panel_AudioTransportClassic.Text" xml:space="preserve"><value>传统蓝牙</value></data>
   <data name="LeAudio_QuickSwitch.Header" xml:space="preserve"><value>在耳机面板中显示“LC3 / 传统蓝牙”快速切换</value></data>
+  <data name="LeAudio_Stage_ReconnectingLeAudio" xml:space="preserve"><value>LE 链路已断开，正在重新连接传统链路，让耳机恢复 LE…</value></data>
 </root>

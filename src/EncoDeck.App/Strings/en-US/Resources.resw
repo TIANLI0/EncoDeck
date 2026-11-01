@@ -1212,4 +1212,5 @@ Afterwards Windows lists two entries with the same name (one is the other earbud
   <data name="Panel_AudioTransport.Text" xml:space="preserve"><value>Audio connection</value></data>
   <data name="Panel_AudioTransportClassic.Text" xml:space="preserve"><value>Classic</value></data>
   <data name="LeAudio_QuickSwitch.Header" xml:space="preserve"><value>Show the LC3 / Classic switch in the earbuds panel</value></data>
+  <data name="LeAudio_Stage_ReconnectingLeAudio" xml:space="preserve"><value>The LE links are down; reconnecting Classic so the earbuds bring them back…</value></data>
 </root>

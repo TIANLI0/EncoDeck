@@ -188,10 +188,11 @@ public static class WindowsAudioTransport
     }
 
     /// <summary>
-    /// Installs Windows' Classic audio services for the earbuds again (A2DP first). Windows removes them when it chooses
-    /// LE Audio and does not bring them back when it later chooses Classic. Each takes about 3 s; no rights needed.
+    /// Installs (or removes) Windows' Classic audio services for the earbuds, A2DP first. Windows removes them when it
+    /// chooses LE Audio and does not bring them back when it later chooses Classic; removing them ends A2DP, so the
+    /// Classic link can drop and reconnect. Each takes about 3 s; no rights needed.
     /// </summary>
-    public static Task EnableClassicAudioAsync(ulong address, CancellationToken cancellationToken) => Task.Run(() =>
+    public static Task SetClassicAudioAsync(ulong address, bool enabled, CancellationToken cancellationToken) => Task.Run(() =>
     {
         var find = new FindRadioParams { Size = Marshal.SizeOf<FindRadioParams>() };
         IntPtr search = BluetoothFindFirstRadio(ref find, out IntPtr radio);
@@ -206,8 +207,8 @@ public static class WindowsAudioTransport
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var service = guid;
-                // Already enabled (or not offered) is fine; only the end state matters.
-                _ = BluetoothSetServiceState(radio, ref info, ref service, ServiceEnable);
+                // Already in that state (or not offered) is fine; only the end state matters.
+                _ = BluetoothSetServiceState(radio, ref info, ref service, enabled ? ServiceEnable : ServiceDisable);
             }
         }
         finally { CloseHandle(radio); }
@@ -293,6 +294,7 @@ public static class WindowsAudioTransport
     private const int ErrorServiceNotActive = 1062;
     private const int ErrorCannotAcceptControl = 1061;
     private const uint ServiceEnable = 1;
+    private const uint ServiceDisable = 0;
 
     [StructLayout(LayoutKind.Sequential)]
     private struct ServiceStatus

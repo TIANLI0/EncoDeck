@@ -106,6 +106,19 @@ public sealed class ControlChannelSupervisor : IAsyncDisposable
         Wake();
     }
 
+    private int _pageRequested;
+
+    /// <summary>
+    /// With the link down, tries to open control once anyway: connecting Classic RFCOMM pages the earbuds. For earbuds
+    /// on LE Audio that only come back when this PC reconnects Classic (Enco X4); asked for at moments when they are
+    /// likely in use (EncoDeck started, the system resumed, a reconnect), never periodically.
+    /// </summary>
+    public void RequestPage()
+    {
+        Interlocked.Exchange(ref _pageRequested, 1);
+        Wake();
+    }
+
     private int _transportChanged;
     private int _linkDetailsChanged;
 
@@ -167,6 +180,13 @@ public sealed class ControlChannelSupervisor : IAsyncDisposable
                 linkWasUp = false;
                 firstIteration = false;
                 SetConnection(everLinked ? DeviceConnectionState.Disconnected : DeviceConnectionState.PairedNotConnected);
+                if (Interlocked.Exchange(ref _pageRequested, 0) == 1)
+                {
+                    _logger.LogInformation("Link down: paging the earbuds once over Classic control");
+                    // Serves the session if it opens; otherwise back to waiting for the link.
+                    await ConnectAndServeAsync(ct).ConfigureAwait(false);
+                    continue;
+                }
                 await WaitAsync(wake, null, ct).ConfigureAwait(false);
                 continue;
             }

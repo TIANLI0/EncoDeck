@@ -40,6 +40,7 @@ public sealed class AppHost : IAsyncDisposable
         LeAudioSync = new LeAudioSyncCompanion(store, settings, loggers.CreateLogger<LeAudioSyncCompanion>());
         LeAudioCodec = new LeAudioCodecCompanion(loggers.CreateLogger<LeAudioCodecCompanion>());
         WindowsCodec = new WindowsCodecCompanion(paths.Root, store, loggers.CreateLogger<WindowsCodecCompanion>());
+        LeAudioTransport = new LeAudioTransportKeeper(store, devices, loggers.CreateLogger<LeAudioTransportKeeper>());
         if (devices is DeviceManager manager)
         {
             manager.BridgeConnector = new A2dpBridgeChannelConnector(() => Bridge.Monitor, loggers.CreateLogger<A2dpBridgeChannelConnector>());
@@ -93,6 +94,9 @@ public sealed class AppHost : IAsyncDisposable
 
     /// <summary>The A2DP codec Windows logs, shown instead of the earbuds' report once authorized.</summary>
     public WindowsCodecCompanion WindowsCodec { get; }
+
+    /// <summary>Puts earbuds switched to LC3 back on LC3 after they lost it (EncoDeck restarted, sleep, case closed).</summary>
+    public LeAudioTransportKeeper LeAudioTransport { get; }
 
     public StartupRegistration Startup { get; } = new();
 
@@ -156,6 +160,7 @@ public sealed class AppHost : IAsyncDisposable
         LeAudioSync.Start();
         LeAudioCodec.Start();
         WindowsCodec.Start();
+        LeAudioTransport.Start();
         // The Store updates the MSIX build; GitHub Releases are for the installer build only.
         if (!PackageIdentity.IsPackaged) Updates.Start();
     }
@@ -167,6 +172,7 @@ public sealed class AppHost : IAsyncDisposable
         await LeAudioSync.DisposeAsync();
         LeAudioCodec.Dispose();
         WindowsCodec.Dispose();
+        LeAudioTransport.Dispose();
         await ResourceSync.DisposeAsync();
         await Updates.DisposeAsync();
         ResourceClient.Dispose();

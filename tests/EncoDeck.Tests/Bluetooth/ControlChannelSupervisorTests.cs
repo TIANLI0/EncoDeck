@@ -252,6 +252,24 @@ public class ControlChannelSupervisorTests
     }
 
     [Fact]
+    public async Task LinkDown_PageRequest_TriesControlExactlyOnce()
+    {
+        var link = new FakeLink(false);
+        var connector = new FakeConnector { FailWith = ChannelOpenStatus.DeviceUnreachable };
+        var (supervisor, store) = Create(link, connector);
+        await using var _ = supervisor;
+        supervisor.Start();
+        await WaitFor(store, DeviceConnectionState.PairedNotConnected);
+        Assert.Equal(0, connector.Attempts);
+
+        supervisor.RequestPage();
+        await OppoDeviceControllerTests.WaitUntil(() => connector.Attempts == 1, 3000);
+        // Earbuds out of reach: no retry loop while the link stays down.
+        await Task.Delay(300, TestContext.Current.CancellationToken);
+        Assert.Equal(1, connector.Attempts);
+    }
+
+    [Fact]
     public async Task LinkAlreadyUp_ConnectsToReady()
     {
         var link = new FakeLink(true);

@@ -1212,4 +1212,5 @@
   <data name="Panel_AudioTransport.Text" xml:space="preserve"><value>オーディオ接続</value></data>
   <data name="Panel_AudioTransportClassic.Text" xml:space="preserve"><value>クラシック</value></data>
   <data name="LeAudio_QuickSwitch.Header" xml:space="preserve"><value>イヤホン パネルに「LC3 / クラシック」の切り替えを表示</value></data>
+  <data name="LeAudio_Stage_ReconnectingLeAudio" xml:space="preserve"><value>LE リンクが切れています。クラシック リンクを再接続して、イヤホンの LE を復帰させています…</value></data>
 </root>
