@@ -500,6 +500,12 @@ public sealed partial class DeviceViewModel : ObservableObject
             AddToggle(profile, DeviceToggle.IndicatorLight);
             AddToggle(profile, DeviceToggle.PromptTone);
         }
+        if (profile is EncoDeck.Protocol.Brands.EarFun.EarFunProfile earfun)
+        {
+            AddToggle(profile, DeviceToggle.Ldac, earfun.Model.Has("dual") ? "Toggle_Ldac_EarFun_Description" : null);
+            AddToggle(profile, DeviceToggle.AptXAdaptive);
+            AddToggle(profile, DeviceToggle.AptXLossless);
+        }
 
         bool Has(NoiseControlMode mode) => profile.NoiseControlOptions.Any(o => o.Mode == mode && IsAllowed(o.Support));
         HasOffMode = Has(NoiseControlMode.Off);
@@ -508,7 +514,7 @@ public sealed partial class DeviceViewModel : ObservableObject
         HasAdaptiveMode = Has(NoiseControlMode.Adaptive);
     }
 
-    private void AddToggle(IDeviceProfile profile, DeviceToggle toggle)
+    private void AddToggle(IDeviceProfile profile, DeviceToggle toggle, string? descriptionKey = null)
     {
         bool offered = profile is OppoDeviceProfile { Definition: var model }
             ? model.FeatureSwitches.Any(f => f.Toggle == toggle && f.Support == CapabilitySupport.Supported)
@@ -517,7 +523,7 @@ public sealed partial class DeviceViewModel : ObservableObject
                     || moondrop.Capabilities.IsAvailable(EncoDeck.Protocol.Brands.Moondrop.MoondropProfile.ToggleCapability(toggle), _settings.Current.EnableExperimentalFeatures))
             : profile is UsbHeadsetProfile usb && usb.Toggles.Contains(toggle);
         if (!offered) return;
-        Toggles.Add(new DeviceToggleViewModel(toggle, Loc.Get($"Toggle_{toggle}"), Loc.Get($"Toggle_{toggle}_Description")));
+        Toggles.Add(new DeviceToggleViewModel(toggle, Loc.Get($"Toggle_{toggle}"), Loc.Get(descriptionKey ?? $"Toggle_{toggle}_Description")));
     }
 
     private void ApplyNoise(DeviceState state, IDeviceProfile? profile)

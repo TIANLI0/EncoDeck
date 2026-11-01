@@ -87,8 +87,8 @@ public sealed partial class HomePage : Page
 
     private void SyncDevices(FeaturesViewModel f, bool ready)
     {
-        // The connected-device list is read with OPPO's multi-connect commands.
-        bool list = f.Has(DeviceCapability.DualDeviceConnection) && f.Model is not null;
+        // The connected-device list is read with OPPO's multi-connect commands, or EarFun's paired-host list.
+        bool list = f.Has(DeviceCapability.DualDeviceConnection) && (f.Model is not null || f.IsEarFunHostList);
         bool toggle = f.Has(DeviceCapability.DualDeviceConnection) && f.HasSwitch(DeviceToggle.DualDeviceConnection);
         bool available = list || toggle;
         DevicesCard.Visibility = available ? Visibility.Visible : Visibility.Collapsed;
@@ -185,7 +185,7 @@ public sealed partial class HomePage : Page
             VerticalAlignment = VerticalAlignment.Stretch,
             VerticalContentAlignment = VerticalAlignment.Top,
             Padding = new Thickness(4, 8, 4, 8),
-            IsEnabled = ready && !busy,
+            IsEnabled = ready && !busy && (connected || Features.CanConnectAnother),
         };
         AutomationProperties.SetName(cell, $"{name.Text}, {status.Text}");
         ToolTipService.SetToolTip(cell, Loc.Get(device.IsThisDevice ? "Home_DeviceThisPc_Hint" : connected ? "Dual_Disconnect" : "Dual_Connect"));

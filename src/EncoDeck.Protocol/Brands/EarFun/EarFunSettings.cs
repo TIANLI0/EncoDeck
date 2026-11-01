@@ -1,13 +1,49 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // EarKit a77acd18890a5f28746c2303bfff0e23fff8d8ca (MIT): GAIA/EF command and model facts.
+using System.Text;
 using EncoDeck.Core.State;
 
 namespace EncoDeck.Protocol.Brands.EarFun;
 
-public enum EarFunSetting { Firmware, Battery, RightBattery, Case, Charging, CaseCharging, Noise, Game, Dual, Wear, Prompt, Find, Spatial, Sub, Ambient, AutoOff }
+public enum EarFunSetting { Firmware, Battery, RightBattery, Case, Charging, CaseCharging, Noise, Game, Dual, Wear, Prompt, Find, Spatial, Sub, Ambient, AutoOff, Mic, Quality, TouchLock }
+
+/// <summary>One paired host from the dual-connection list. <see cref="Mac"/> is the partial address the earbuds report.</summary>
+public sealed record EarFunSource(byte Number, string Name, byte[] Mac, bool Connected);
 
 public static class EarFunSettings
 {
+    // Dual-connection list and host commands (no write/read pair): list, connect, disconnect, active-player list.
+    public static ushort DeviceList(EarFunModel model) => model.Gaia ? (ushort)0x032C : (ushort)0x2150;
+    public static ushort ConnectHost(EarFunModel model) => model.Gaia ? (ushort)0x0329 : (ushort)0x2165;
+    public static ushort DisconnectHost(EarFunModel model) => model.Gaia ? (ushort)0x032A : (ushort)0x2175;
+    public const ushort PlayList = 0x0358;
+
+    /// <summary>Entry layout: number, 19-byte name, then 3 (GAIA) or 4 (EF) address bytes and the connection state.</summary>
+    public static EarFunSource? Source(EarFunModel model, byte[] p)
+    {
+        if (p.Length < 26 || p[25] > 1) return null;
+        var name = p.AsSpan(1, 19);
+        int end = name.IndexOf((byte)0);
+        return new(p[0], Encoding.UTF8.GetString(end < 0 ? name : name[..end]).Trim(), model.Gaia ? p[22..25] : p[21..25], p[25] == 1);
+    }
+
+    /// <summary>Codec switches in the quality byte. aptX bit 0 is never offered, only preserved.</summary>
+    public static IReadOnlyDictionary<DeviceToggle, byte> CodecBits(EarFunModel model)
+    {
+        var bits = new Dictionary<DeviceToggle, byte>();
+        if (!model.Has("quality")) return bits;
+        if (model.Has("ldac")) bits[DeviceToggle.Ldac] = model.Gaia ? (byte)8 : (byte)4;
+        if (model.Has("aptx")) { bits[DeviceToggle.AptXAdaptive] = 2; bits[DeviceToggle.AptXLossless] = 16; }
+        return bits;
+    }
+
+    /// <summary>Touch lock as one value, 0 none, 1 both, 2 left, 3 right: GAIA's own byte, EF's two side flags.</summary>
+    public static byte[] TouchLockPayload(EarFunModel model, int value) =>
+        model.Gaia ? [(byte)value] : [value is 1 or 2 ? (byte)1 : (byte)0, value is 1 or 3 ? (byte)1 : (byte)0];
+    public static int? TouchLockValue(EarFunModel model, byte[] p) => model.Gaia
+        ? p is [<= 3 and var v, ..] ? v : null
+        : p is [<= 1 and var l, <= 1 and var r] ? (l, r) switch { (0, 0) => 0, (1, 1) => 1, (1, 0) => 2, _ => 3 } : null;
+
     public static (ushort Read, ushort Write) Command(EarFunModel model, EarFunSetting setting) => (model.Gaia, setting) switch
     {
         (true, EarFunSetting.Firmware) => (0x0309, 0), (false, EarFunSetting.Firmware) => (0x1010, 0),
@@ -25,6 +61,9 @@ public static class EarFunSettings
         (true, EarFunSetting.Sub) => (0x033B, 0x033A), (false, EarFunSetting.Sub) => (0x2310, 0x2315),
         (true, EarFunSetting.Ambient) => (0x033D, 0x033C), (false, EarFunSetting.Ambient) => (0x2300, 0x2305),
         (true, EarFunSetting.AutoOff) => (0x0348, 0x0347), (false, EarFunSetting.AutoOff) => (0x2130, 0x2135),
+        (true, EarFunSetting.Mic) => (0x0331, 0x0330), (false, EarFunSetting.Mic) => (0x2200, 0x2205),
+        (true, EarFunSetting.Quality) => (0x032F, 0x032E), (false, EarFunSetting.Quality) => (0x2100, 0x2105),
+        (true, EarFunSetting.TouchLock) => (0x0335, 0x0334), (false, EarFunSetting.TouchLock) => (0x2060, 0x2065),
         _ => (0, 0),
     };
 
@@ -55,6 +94,8 @@ public static class EarFunSettings
             EarFunSetting.Sub => [C(0,"Strong"), C(1,"Wind")],
             EarFunSetting.Ambient => [C(model.Gaia ? 0 : 1,"Default"), C(model.Gaia ? 1 : 2,"Natural")],
             EarFunSetting.AutoOff => [new(255,"EarFun_Never"), .. AutoOff(model).Select(p => new DeviceOptionChoice(p.Wire, "EarFun_Minutes", p.Minutes.ToString(System.Globalization.CultureInfo.InvariantCulture)))],
+            EarFunSetting.Mic => [C(0,"MicAuto"), C(1,"MicLeft"), C(2,"MicRight")],
+            EarFunSetting.TouchLock => [C(0,"TouchLockOff"), C(1,"TouchLockBoth"), C(2,"TouchLockLeft"), C(3,"TouchLockRight")],
             _ => [],
         };
         return choices.Any(c => c.Value == value) ? new("earfun-" + setting.ToString().ToLowerInvariant(), "EarFun_" + setting, value, choices) : null;

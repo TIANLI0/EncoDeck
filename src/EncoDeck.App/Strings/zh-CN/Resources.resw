@@ -144,6 +144,8 @@
   <data name="Sound_DeviceEq.Text" xml:space="preserve"><value>耳机端 EQ</value></data>
   <data name="Sound_BandEditor.Text" xml:space="preserve"><value>自定义曲线</value></data>
   <data name="Sound_Spatial.Text" xml:space="preserve"><value>空间音频</value></data>
+  <data name="Sound_Empty_Title.Text" xml:space="preserve"><value>暂无可用的声音设置</value></data>
+  <data name="Sound_Empty_Body.Text" xml:space="preserve"><value>EncoDeck 暂时无法调整这副耳机的 EQ、低音或空间音频。</value></data>
   <data name="Controls_Title.Text" xml:space="preserve"><value>控制</value></data>
   <data name="Controls_Settings.Text" xml:space="preserve"><value>更多设置</value></data>
   <data name="Devices_Capabilities.Text" xml:space="preserve"><value>功能支持情况</value></data>
@@ -765,6 +767,11 @@
   <data name="Cap_ChannelSwap" xml:space="preserve"><value>左右声道交换</value></data>
   <data name="Toggle_Ldac" xml:space="preserve"><value>LDAC</value></data>
   <data name="Toggle_Ldac_Description" xml:space="preserve"><value>耳机端 LDAC 开关。此开关不会为 Windows 安装 LDAC 编码器。</value></data>
+  <data name="Toggle_AptXAdaptive" xml:space="preserve"><value>aptX Adaptive</value></data>
+  <data name="Toggle_AptXAdaptive_Description" xml:space="preserve"><value>耳机端 aptX Adaptive 开关。此开关不会为 Windows 安装 aptX 编码器，作用于支持该编码的手机等音源。</value></data>
+  <data name="Toggle_AptXLossless" xml:space="preserve"><value>aptX Lossless</value></data>
+  <data name="Toggle_AptXLossless_Description" xml:space="preserve"><value>耳机端 aptX Lossless 开关。此开关不会为 Windows 安装 aptX 编码器，作用于支持该编码的手机等音源。</value></data>
+  <data name="Toggle_Ldac_EarFun_Description" xml:space="preserve"><value>耳机端 LDAC 开关，与双设备连接不能同时开启，开启任一项会关闭另一项。此开关不会为 Windows 安装 LDAC 编码器。</value></data>
   <data name="Toggle_Lc3" xml:space="preserve"><value>LC3</value></data>
   <data name="Toggle_Lc3_Description" xml:space="preserve"><value>耳机端 LC3 编码开关，不改变 Windows 蓝牙传输方式。</value></data>
   <data name="Toggle_ChannelSwap" xml:space="preserve"><value>交换左右声道</value></data>
@@ -1101,6 +1108,15 @@
   <data name="EarFun_Sub" xml:space="preserve"><value>降噪子模式</value></data>
   <data name="EarFun_Ambient" xml:space="preserve"><value>通透子模式</value></data>
   <data name="EarFun_AutoOff" xml:space="preserve"><value>自动关机</value></data>
+  <data name="EarFun_Mic" xml:space="preserve"><value>通话麦克风</value></data>
+  <data name="EarFun_MicAuto" xml:space="preserve"><value>自动</value></data>
+  <data name="EarFun_MicLeft" xml:space="preserve"><value>仅左耳</value></data>
+  <data name="EarFun_MicRight" xml:space="preserve"><value>仅右耳</value></data>
+  <data name="EarFun_TouchLock" xml:space="preserve"><value>禁用触控</value></data>
+  <data name="EarFun_TouchLockOff" xml:space="preserve"><value>不禁用</value></data>
+  <data name="EarFun_TouchLockBoth" xml:space="preserve"><value>双耳</value></data>
+  <data name="EarFun_TouchLockLeft" xml:space="preserve"><value>仅左耳</value></data>
+  <data name="EarFun_TouchLockRight" xml:space="preserve"><value>仅右耳</value></data>
   <data name="EarFun_CallTriple" xml:space="preserve"><value>通话中三击</value></data>
   <data name="EarFun_CallHold" xml:space="preserve"><value>通话中长按</value></data>
   <data name="EarFun_Button0Tap" xml:space="preserve"><value>音量 + · 单击</value></data>

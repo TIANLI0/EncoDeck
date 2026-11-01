@@ -381,6 +381,8 @@ public sealed partial class SoundPage : Page
             SyncBandEditor();
             SyncBass(f, ready);
             SyncSpatial(f, ready);
+            EmptyCard.Visibility = Show(ready && EqCard.Visibility == Visibility.Collapsed
+                && BassCard.Visibility == Visibility.Collapsed && SpatialCard.Visibility == Visibility.Collapsed);
             LayoutColumns();
         }
         finally

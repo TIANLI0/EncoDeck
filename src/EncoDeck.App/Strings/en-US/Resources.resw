@@ -144,6 +144,8 @@
   <data name="Sound_DeviceEq.Text" xml:space="preserve"><value>Earbud EQ</value></data>
   <data name="Sound_BandEditor.Text" xml:space="preserve"><value>Custom curve</value></data>
   <data name="Sound_Spatial.Text" xml:space="preserve"><value>Spatial Audio</value></data>
+  <data name="Sound_Empty_Title.Text" xml:space="preserve"><value>No sound settings available</value></data>
+  <data name="Sound_Empty_Body.Text" xml:space="preserve"><value>EncoDeck can't adjust EQ, bass or spatial audio on these earbuds yet.</value></data>
   <data name="Controls_Title.Text" xml:space="preserve"><value>Controls</value></data>
   <data name="Controls_Settings.Text" xml:space="preserve"><value>More settings</value></data>
   <data name="Devices_Capabilities.Text" xml:space="preserve"><value>Feature support</value></data>
@@ -765,6 +767,11 @@
   <data name="Cap_ChannelSwap" xml:space="preserve"><value>Left / right channel swap</value></data>
   <data name="Toggle_Ldac" xml:space="preserve"><value>LDAC</value></data>
   <data name="Toggle_Ldac_Description" xml:space="preserve"><value>Device-side LDAC switch. This does not install an LDAC encoder in Windows.</value></data>
+  <data name="Toggle_AptXAdaptive" xml:space="preserve"><value>aptX Adaptive</value></data>
+  <data name="Toggle_AptXAdaptive_Description" xml:space="preserve"><value>Device-side aptX Adaptive switch. This does not install an aptX encoder in Windows; it affects phones and other sources that support it.</value></data>
+  <data name="Toggle_AptXLossless" xml:space="preserve"><value>aptX Lossless</value></data>
+  <data name="Toggle_AptXLossless_Description" xml:space="preserve"><value>Device-side aptX Lossless switch. This does not install an aptX encoder in Windows; it affects phones and other sources that support it.</value></data>
+  <data name="Toggle_Ldac_EarFun_Description" xml:space="preserve"><value>Device-side LDAC switch; it cannot be on together with dual connection, so turning on either turns the other off. This does not install an LDAC encoder in Windows.</value></data>
   <data name="Toggle_Lc3" xml:space="preserve"><value>LC3</value></data>
   <data name="Toggle_Lc3_Description" xml:space="preserve"><value>Device-side LC3 codec switch. This does not change the Windows Bluetooth transport.</value></data>
   <data name="Toggle_ChannelSwap" xml:space="preserve"><value>Swap left / right channels</value></data>
@@ -1101,6 +1108,15 @@ Afterwards Windows lists two entries with the same name (one is the other earbud
   <data name="EarFun_Sub" xml:space="preserve"><value>ANC sub-mode</value></data>
   <data name="EarFun_Ambient" xml:space="preserve"><value>Transparency sub-mode</value></data>
   <data name="EarFun_AutoOff" xml:space="preserve"><value>Automatic power off</value></data>
+  <data name="EarFun_Mic" xml:space="preserve"><value>Call microphone</value></data>
+  <data name="EarFun_MicAuto" xml:space="preserve"><value>Automatic</value></data>
+  <data name="EarFun_MicLeft" xml:space="preserve"><value>Left earbud only</value></data>
+  <data name="EarFun_MicRight" xml:space="preserve"><value>Right earbud only</value></data>
+  <data name="EarFun_TouchLock" xml:space="preserve"><value>Disable touch controls</value></data>
+  <data name="EarFun_TouchLockOff" xml:space="preserve"><value>Off</value></data>
+  <data name="EarFun_TouchLockBoth" xml:space="preserve"><value>Both earbuds</value></data>
+  <data name="EarFun_TouchLockLeft" xml:space="preserve"><value>Left earbud</value></data>
+  <data name="EarFun_TouchLockRight" xml:space="preserve"><value>Right earbud</value></data>
   <data name="EarFun_CallTriple" xml:space="preserve"><value>Triple-tap during calls</value></data>
   <data name="EarFun_CallHold" xml:space="preserve"><value>Hold during calls</value></data>
   <data name="EarFun_Button0Tap" xml:space="preserve"><value>Volume + · single press</value></data>

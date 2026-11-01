@@ -4,7 +4,7 @@
 
 ## EarFun / ATVEL
 
-新增 23 条 GAIA / EF 型号记录，包含 **EarFun Air Pro 4+ (TW700)**、Air Pro 4、4+AI、5、3、4i、Free Pro 3、Free 2S、Air S、Air 2 NC、Air Life、OpenJump、Clip、Clip 2、Wave Pro X、Wave Life、Tune Pro、Wave Pro 2 及硬件变体、ATVEL Tune S5 ProX。电量和固件只读；控制功能按型号直接提供，无需开启实验性功能，每次写入都读回确认。仍在收集真机反馈；EQ 不开放。协议事实取自 [EarKit](https://github.com/ChuiFeng-wind/EarKit/tree/a77acd18890a5f28746c2303bfff0e23fff8d8ca)（MIT），经 Windows 已配对设备的 SPP RFCOMM 控制。按型号提供降噪／通透及子模式、游戏模式、双设备开关、入耳检测、固定空间音频、25% 步进的提示音量、自动关机、查找和触控手势。EarFun 只经传统蓝牙控制，EncoDeck 不维持它的 LE 链路；只有 Windows 为它提供了 LE Audio 输出时才显示 LE Audio。暂不提供 EQ、音质编码切换、麦克风选择、设备列表切换、恢复出厂、OTA 和专用 BLE／COM 回退。13 条精确官网照片由 EncoAPI 提供，缺图不借用其他型号；未取得经核查的官方开盖动画。
+新增 23 条 GAIA / EF 型号记录，包含 **EarFun Air Pro 4+ (TW700)**、Air Pro 4、4+AI、5、3、4i、Free Pro 3、Free 2S、Air S、Air 2 NC、Air Life、OpenJump、Clip、Clip 2、Wave Pro X、Wave Life、Tune Pro、Wave Pro 2 及硬件变体、ATVEL Tune S5 ProX。电量和固件只读；控制功能按型号直接提供，无需开启实验性功能，每次写入都读回确认。仍在收集真机反馈；EQ 不开放。协议事实取自 [EarKit](https://github.com/ChuiFeng-wind/EarKit/tree/a77acd18890a5f28746c2303bfff0e23fff8d8ca)（MIT），经 Windows 已配对设备的 SPP RFCOMM 控制。按型号提供降噪／通透及子模式、游戏模式、双设备开关、入耳检测、固定空间音频、25% 步进的提示音量、自动关机、查找、触控手势、按耳禁用触控、通话麦克风（高通方案型号）、耳机端 LDAC／aptX Adaptive／aptX Lossless 开关，以及已配对设备列表（查看、连接、断开）。LDAC 与双设备连接互斥，开启任一项会先关闭另一项；Air Pro 4、4+、5、4i、Wave Pro X、Clip 2 开启双设备连接（Clip 任意切换）时耳机会重启，EncoDeck 随后自动重连。设备列表只含部分地址和截短的名称，耳机不支持从列表删除设备。EarFun 只经传统蓝牙控制，EncoDeck 不维持它的 LE 链路；只有 Windows 为它提供了 LE Audio 输出时才显示 LE Audio。EQ 没有可读回的设备状态，暂不开放；不提供恢复出厂、OTA 和专用 BLE／COM 回退。13 条精确官网照片由 EncoAPI 提供，缺图不借用其他型号；未取得经核查的官方开盖动画。
 
 ## OPPO / 一加 / realme / DIZO
 

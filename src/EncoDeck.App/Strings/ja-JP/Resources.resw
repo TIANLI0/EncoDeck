@@ -144,6 +144,8 @@
   <data name="Sound_DeviceEq.Text" xml:space="preserve"><value>イヤホンのイコライザー</value></data>
   <data name="Sound_BandEditor.Text" xml:space="preserve"><value>カスタムカーブ</value></data>
   <data name="Sound_Spatial.Text" xml:space="preserve"><value>空間オーディオ</value></data>
+  <data name="Sound_Empty_Title.Text" xml:space="preserve"><value>利用できるサウンド設定はありません</value></data>
+  <data name="Sound_Empty_Body.Text" xml:space="preserve"><value>EncoDeck はこのイヤホンの EQ、低音、空間オーディオをまだ調整できません。</value></data>
   <data name="Controls_Title.Text" xml:space="preserve"><value>操作</value></data>
   <data name="Controls_Settings.Text" xml:space="preserve"><value>その他の設定</value></data>
   <data name="Devices_Capabilities.Text" xml:space="preserve"><value>機能の対応状況</value></data>
@@ -765,6 +767,11 @@
   <data name="Cap_ChannelSwap" xml:space="preserve"><value>左右チャンネル入れ替え</value></data>
   <data name="Toggle_Ldac" xml:space="preserve"><value>LDAC</value></data>
   <data name="Toggle_Ldac_Description" xml:space="preserve"><value>デバイス側の LDAC スイッチです。Windows に LDAC エンコーダーがインストールされるわけではありません。</value></data>
+  <data name="Toggle_AptXAdaptive" xml:space="preserve"><value>aptX Adaptive</value></data>
+  <data name="Toggle_AptXAdaptive_Description" xml:space="preserve"><value>デバイス側の aptX Adaptive スイッチです。Windows に aptX エンコーダーがインストールされるわけではなく、対応するスマートフォンなどの接続元で使われます。</value></data>
+  <data name="Toggle_AptXLossless" xml:space="preserve"><value>aptX Lossless</value></data>
+  <data name="Toggle_AptXLossless_Description" xml:space="preserve"><value>デバイス側の aptX Lossless スイッチです。Windows に aptX エンコーダーがインストールされるわけではなく、対応するスマートフォンなどの接続元で使われます。</value></data>
+  <data name="Toggle_Ldac_EarFun_Description" xml:space="preserve"><value>デバイス側の LDAC スイッチです。マルチポイント接続と同時にはオンにできないため、どちらかをオンにするともう一方はオフになります。Windows に LDAC エンコーダーがインストールされるわけではありません。</value></data>
   <data name="Toggle_Lc3" xml:space="preserve"><value>LC3</value></data>
   <data name="Toggle_Lc3_Description" xml:space="preserve"><value>デバイス側の LC3 コーデックスイッチです。Windows の Bluetooth 転送方式は変更されません。</value></data>
   <data name="Toggle_ChannelSwap" xml:space="preserve"><value>左右チャンネルを入れ替え</value></data>
@@ -1101,6 +1108,15 @@
   <data name="EarFun_Sub" xml:space="preserve"><value>ノイズキャンセリングの種類</value></data>
   <data name="EarFun_Ambient" xml:space="preserve"><value>外音取り込みの種類</value></data>
   <data name="EarFun_AutoOff" xml:space="preserve"><value>自動電源オフ</value></data>
+  <data name="EarFun_Mic" xml:space="preserve"><value>通話マイク</value></data>
+  <data name="EarFun_MicAuto" xml:space="preserve"><value>自動</value></data>
+  <data name="EarFun_MicLeft" xml:space="preserve"><value>左イヤホンのみ</value></data>
+  <data name="EarFun_MicRight" xml:space="preserve"><value>右イヤホンのみ</value></data>
+  <data name="EarFun_TouchLock" xml:space="preserve"><value>タッチ操作を無効化</value></data>
+  <data name="EarFun_TouchLockOff" xml:space="preserve"><value>オフ</value></data>
+  <data name="EarFun_TouchLockBoth" xml:space="preserve"><value>両方のイヤホン</value></data>
+  <data name="EarFun_TouchLockLeft" xml:space="preserve"><value>左イヤホン</value></data>
+  <data name="EarFun_TouchLockRight" xml:space="preserve"><value>右イヤホン</value></data>
   <data name="EarFun_CallTriple" xml:space="preserve"><value>通話中に3回タップ</value></data>
   <data name="EarFun_CallHold" xml:space="preserve"><value>通話中に長押し</value></data>
   <data name="EarFun_Button0Tap" xml:space="preserve"><value>音量 + · 1回押す</value></data>

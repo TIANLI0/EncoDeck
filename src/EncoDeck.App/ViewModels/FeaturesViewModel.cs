@@ -311,7 +311,16 @@ public sealed class FeaturesViewModel
 
     public bool IsPreferredKnown => State.PreferredDevice is not null;
 
-    public bool CanManageSourceDevices => Model?.SupportsMultiConnectOperations == true || (IsVivo && Has(DeviceCapability.DualDeviceConnection));
+    public bool CanManageSourceDevices => Model?.SupportsMultiConnectOperations == true || (IsVivo && Has(DeviceCapability.DualDeviceConnection)) || IsEarFunHostList;
+
+    /// <summary>EarFun models with a paired-host list: connect and disconnect, but no remove command.</summary>
+    public bool IsEarFunHostList => State.Profile is EncoDeck.Protocol.Brands.EarFun.EarFunProfile earfun && earfun.Model.Has("list")
+        && Has(DeviceCapability.DualDeviceConnection);
+
+    public bool CanRemoveSourceDevices => CanManageSourceDevices && !IsEarFunHostList;
+
+    /// <summary>OPPO drops a device to connect a third; EarFun refuses, so its connect waits for a free slot.</summary>
+    public bool CanConnectAnother => !IsEarFunHostList || SourceDevices.Count(d => d.IsConnected) < 2;
 
     /// <summary>Only the OPPO protocol has a preferred-device setting.</summary>
     public bool HasPreferredDevice => Model?.SupportsMultiConnectOperations == true;

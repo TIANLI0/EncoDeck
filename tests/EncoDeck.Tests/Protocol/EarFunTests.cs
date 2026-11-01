@@ -10,6 +10,7 @@ using EncoDeck.Core.Resources;
 using EncoDeck.Core.State;
 using EncoDeck.Protocol.Brands;
 using EncoDeck.Protocol.Brands.EarFun;
+using EncoDeck.Protocol.Oppo;
 using EncoDeck.Protocol.Transport;
 using EncoDeck.Tests.Fakes;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -116,22 +117,37 @@ public class EarFunTests
             [0x034D] = [2], [0x0315] = [0], [0x0313] = [0], [0x0326] = [0], [0x034A] = [0], [0x0339] = [0],
             [0x0333] = [0], [0x033B] = [0], [0x033D] = [0], [0x0348] = [255],
             [0x030B] = [1,1,1,2,2,3,2,4,3,5,3,6,17,7,17,0xE1],
+            // Call microphone auto; quality: aptX bit 0 and aptX Adaptive on; touch lock off.
+            [0x0331] = [0], [0x032F] = [3], [0x0335] = [0],
         } : new() {
             [0x1010] = Encoding.ASCII.GetBytes("TW230_v1.0.0"), [0x1014] = [80,70], [0x1018] = [50], [0x1016] = [10], [0x1020] = [1],
             [0x1024] = [2], [0x2080] = [1], [0x2030] = [1], [0x2140] = [1], [0x2120] = [5], [0x2050] = [0,0],
             [0x2310] = [1], [0x2300] = [1], [0x2130] = [255], [0x2070] = [1,2,3,4,5,6,7,0xE1],
+            [0x2100] = [0], [0x2060] = [0,0],
         };
         private static readonly Dictionary<ushort, ushort> Reads = new() {
             [0x0314]=0x0315, [0x0312]=0x0313, [0x0327]=0x0326, [0x0349]=0x034A, [0x0338]=0x0339, [0x0332]=0x0333,
-            [0x033A]=0x033B, [0x033C]=0x033D, [0x0347]=0x0348,
+            [0x033A]=0x033B, [0x033C]=0x033D, [0x0347]=0x0348, [0x0330]=0x0331, [0x032E]=0x032F, [0x0334]=0x0335,
             [0x2085]=0x2080, [0x2035]=0x2030, [0x2145]=0x2140, [0x2125]=0x2120, [0x2055]=0x2050,
-            [0x2315]=0x2310, [0x2305]=0x2300, [0x2135]=0x2130,
+            [0x2315]=0x2310, [0x2305]=0x2300, [0x2135]=0x2130, [0x2105]=0x2100, [0x2065]=0x2060,
         };
+        // Paired hosts as the list reports them: number, name, partial address (3 bytes GAIA, 4 bytes EF), connected.
+        public List<(byte Number, string Name, byte[] Mac, bool Connected)> Hosts { get; } = [];
+        // Reads of the list before a connect or disconnect shows up.
+        public int HostSwitchReads { get; set; }
+        private (byte Number, bool Connected, int Reads)? _hostSwitch;
+        // Earbuds that restart to apply dual connection: the link drops right after the write.
+        public bool RestartOnDual { get; set; }
         public bool ApplyWrites { get; set; } = true;
         public bool Silence { get; set; }
         public byte Status { get; set; }
+        // Air Pro 4+ behaviour assumed for issue 16: writes apply without a reply, and a few reads still report the old value.
+        public bool AckWrites { get; set; } = true;
+        public int SwitchReads { get; set; }
+        private readonly Dictionary<ushort, (byte[] Value, int Reads)> _switching = [];
         public List<byte[]> Written { get; } = [];
         public void Push(ushort command, byte[] payload) => _inner.Receive(Reply(gaia, command, payload));
+        public void PushRaw(byte[] bytes) => _inner.Receive(bytes);
         public ValueTask WriteAsync(ReadOnlyMemory<byte> data, CancellationToken cancellationToken)
         {
             byte[] frame = data.ToArray(); Written.Add(frame);
@@ -139,11 +155,51 @@ public class EarFunTests
             ushort command = gaia ? (ushort)((frame[6] << 8) | frame[7]) : (ushort)((frame[1] << 8) | frame[2]);
             if (gaia && frame[5] != 10 || Silence) return ValueTask.CompletedTask;
             byte[] payload = frame.AsSpan(start, frame[3]).ToArray();
+            if (_switching.TryGetValue(command, out var switching))
+            {
+                if (switching.Reads == 0) { Values[command] = switching.Value; _switching.Remove(command); }
+                else _switching[command] = switching with { Reads = switching.Reads - 1 };
+            }
+            if (RestartOnDual && command == (gaia ? 0x0327 : 0x2145) && payload is [1 or 2])
+            {
+                if (AckWrites) _inner.Receive(Reply(gaia, command, [], Status));
+                _inner.RemoteClose();
+                return ValueTask.CompletedTask;
+            }
+            if (command == (gaia ? 0x032C : 0x2150))
+            {
+                if (_hostSwitch is { } pending)
+                {
+                    if (pending.Reads == 0)
+                    {
+                        int i = Hosts.FindIndex(h => h.Number == pending.Number);
+                        Hosts[i] = Hosts[i] with { Connected = pending.Connected };
+                        _hostSwitch = null;
+                    }
+                    else _hostSwitch = pending with { Reads = pending.Reads - 1 };
+                }
+                foreach (var host in Hosts)
+                {
+                    byte[] entry = new byte[26];
+                    entry[0] = host.Number;
+                    Encoding.UTF8.GetBytes(host.Name).CopyTo(entry, 1);
+                    host.Mac.CopyTo(entry, gaia ? 22 : 21);
+                    entry[25] = host.Connected ? (byte)1 : (byte)0;
+                    _inner.Receive(Reply(gaia, command, entry));
+                }
+                return ValueTask.CompletedTask;
+            }
+            if (command is 0x0329 or 0x032A or 0x2165 or 0x2175)
+            {
+                _hostSwitch = (payload[0], command is 0x0329 or 0x2165, HostSwitchReads);
+                if (AckWrites) _inner.Receive(Reply(gaia, command, [], Status));
+                return ValueTask.CompletedTask;
+            }
             if (Values.TryGetValue(command, out var value)) _inner.Receive(Reply(gaia, command, value));
             else if (Reads.TryGetValue(command, out var read))
             {
-                if (ApplyWrites && Status == 0) Values[read] = payload;
-                _inner.Receive(Reply(gaia, command, [], Status));
+                if (ApplyWrites && Status == 0) _switching[read] = (payload, SwitchReads);
+                if (AckWrites) _inner.Receive(Reply(gaia, command, [], Status));
             }
             else if (command == (gaia ? 0x030A : 0x2075))
             {
@@ -157,7 +213,7 @@ public class EarFunTests
                         Values[0x030B][4 * gesture + 2 * side + 1] = payload[offset + 1];
                     }
                 }
-                _inner.Receive(Reply(gaia, command, [], Status));
+                if (AckWrites) _inner.Receive(Reply(gaia, command, [], Status));
             }
             return ValueTask.CompletedTask;
         }
@@ -165,12 +221,25 @@ public class EarFunTests
         public ValueTask DisposeAsync() => _inner.DisposeAsync();
     }
 
-    private static (IDeviceController Controller, DeviceStateStore Store) Create(Device device, string code, Func<bool>? experimental = null)
+    private static (IDeviceController Controller, DeviceStateStore Store) Create(Device device, string code, Func<bool>? experimental = null, IProtocolTrace? trace = null,
+        string deviceId = "earfun-test")
     {
         var profile = new EarFunProfile(EarFunProfiles.Models.Single(m => m.Id == code));
-        var identity = new DeviceIdentity("earfun-test", profile.DisplayName, new BluetoothAddress(1));
+        var identity = new DeviceIdentity(deviceId, profile.DisplayName, new BluetoothAddress(1));
         var store = new DeviceStateStore(); store.Reset(DeviceState.Empty with { Device = identity, Profile = profile });
-        return (profile.CreateController(device, new(identity, store, experimental ?? (() => true), NullLoggerFactory.Instance, TimeProvider.System)), store);
+        return (profile.CreateController(device, new(identity, store, experimental ?? (() => true), NullLoggerFactory.Instance, TimeProvider.System, trace)), store);
+    }
+
+    private sealed class RecordingTrace : IProtocolTrace
+    {
+        private readonly List<string> _lines = [];
+        public IReadOnlyList<string> Lines { get { lock (_lines) return [.. _lines]; } }
+        public void OnFrame(FrameDirection direction, OppoFrame frame, DateTimeOffset timestamp) { }
+        public void OnRawReceived(ReadOnlySpan<byte> data, DateTimeOffset timestamp) { }
+        public void OnBrandFrame(FrameDirection direction, string summary, DateTimeOffset timestamp)
+        {
+            lock (_lines) _lines.Add($"{(direction == FrameDirection.Sent ? "TX" : "RX")} {summary}");
+        }
     }
     private static async Task Wait(Func<bool> predicate)
     {
@@ -231,6 +300,52 @@ public class EarFunTests
         Assert.False(store.Current.Toggles[DeviceToggle.InEarDetection].Value);
         Assert.True((await controller.SetToggleAsync(DeviceToggle.InEarDetection, true, Ct)).IsSuccess);
         Assert.Equal(new byte[] { 0 }, device.Values[0x034A]);
+    }
+
+    [Fact]
+    public async Task UnacknowledgedWritesAreConfirmedByLaterReadbackWithoutDroppingTheSession()
+    {
+        // Issue 16: the Air Pro 4+ switched ANC, but EncoDeck waited for a reply, reported an error and reconnected.
+        var device = new Device(true) { AckWrites = false, SwitchReads = 2 };
+        var (controller, store) = Create(device, "TW700"); await using var owner = controller;
+        Assert.True(await controller.InitializeAsync(Ct)); await Wait(() => store.Current.KeyFunctions is not null);
+        Assert.True((await controller.SetNoiseControlAsync(new(NoiseControlMode.NoiseCancellation), Ct)).IsSuccess);
+        Assert.Equal(NoiseControlMode.NoiseCancellation, store.Current.NoiseControl!.Value.Mode);
+        var target = store.Current.KeyFunctions!.Value[0] with { Function = 5 };
+        Assert.True((await controller.SetKeyFunctionAsync(target, Ct)).IsSuccess);
+        Assert.Equal(target, store.Current.KeyFunctions.Value[0]);
+        Assert.False(controller.Closed.IsCompleted);
+    }
+
+    [Fact]
+    public async Task EarbudsThatStopAnsweringReadsStillEndTheSession()
+    {
+        var device = new Device(true); var (controller, store) = Create(device, "TW700"); await using var owner = controller;
+        Assert.True(await controller.InitializeAsync(Ct)); await Wait(() => store.Current.KeyFunctions is not null);
+        device.Silence = true;
+        Assert.Equal(CommandStatus.Timeout, (await controller.SetToggleAsync(DeviceToggle.GamingMode, true, Ct)).Status);
+        Assert.True(controller.Closed.IsCompleted);
+    }
+
+    [Fact]
+    public async Task TrafficLogShowsSettingValuesAndOnlyHeadersOfUnknownFrames()
+    {
+        var trace = new RecordingTrace();
+        var device = new Device(true); var (controller, store) = Create(device, "TW700", trace: trace); await using var owner = controller;
+        Assert.True(await controller.InitializeAsync(Ct)); await Wait(() => store.Current.KeyFunctions is not null);
+        Assert.True((await controller.SetNoiseControlAsync(new(NoiseControlMode.Transparency), Ct)).IsSuccess);
+        device.Push(0x032C, Encoding.ASCII.GetBytes("phone name"));
+        await Wait(() => trace.Lines.Any(l => l.Contains("032C", StringComparison.Ordinal)));
+        device.PushRaw([255, 4, 0, 3, 0, 0x1D, 0x40, 1, 0x70, 0x68, 0x6F]);
+        device.PushRaw([0x70, 0x68, 0x6F, 0x6E, 0x65]);
+        await Wait(() => trace.Lines.Count(l => l.Contains("no EarFun frame", StringComparison.Ordinal)) == 2);
+        Assert.Contains("TX EARFUN GAIA 0314 02", trace.Lines);
+        Assert.Contains("RX EARFUN GAIA 0314 status 00 ", trace.Lines);
+        Assert.Contains("RX EARFUN GAIA 0315 status 00 02", trace.Lines);
+        Assert.Contains("RX EARFUN GAIA 032C status 00 <10 bytes>", trace.Lines);
+        Assert.Contains("RX EARFUN no EarFun frame in 11 bytes, head FF040003001D4001", trace.Lines);
+        Assert.Contains("RX EARFUN no EarFun frame in 5 bytes", trace.Lines);
+        Assert.DoesNotContain(trace.Lines, l => l.Contains("70686F", StringComparison.Ordinal));
     }
 
     [Theory]
@@ -336,5 +451,109 @@ public class EarFunTests
         await Wait(() => store.Current.Battery.Case?.Value.Level == 60);
         Assert.Equal("LDAC", store.Current.WindowsCodec);
         Assert.DoesNotContain(device.Written, frame => frame[6] == 3 && frame[7] == 0x4D);
+    }
+
+    [Theory]
+    [InlineData("TW700", new[] { DeviceToggle.Ldac, DeviceToggle.AptXAdaptive, DeviceToggle.AptXLossless })]
+    [InlineData("TW500", new[] { DeviceToggle.AptXAdaptive, DeviceToggle.AptXLossless })]
+    [InlineData("TW230", new[] { DeviceToggle.Ldac })]
+    [InlineData("TW205", new DeviceToggle[0])]
+    [InlineData("HP220", new DeviceToggle[0])]
+    public void CodecSwitchesFollowTheModel(string code, DeviceToggle[] codecs)
+    {
+        var profile = new EarFunProfile(EarFunProfiles.Models.Single(m => m.Id == code));
+        Assert.Equal(codecs.Order(), profile.Toggles.Where(t => t is DeviceToggle.Ldac or DeviceToggle.AptXAdaptive or DeviceToggle.AptXLossless).Order());
+        Assert.Equal(codecs.Contains(DeviceToggle.Ldac), profile.Capabilities.IsAvailable(DeviceCapability.Ldac, false));
+    }
+
+    [Fact]
+    public async Task MicTouchLockAndCodecBitsAreReadAndConfirmedByReadback()
+    {
+        var device = new Device(true); var (controller, store) = Create(device, "TW700"); await using var owner = controller;
+        Assert.True(await controller.InitializeAsync(Ct));
+        await Wait(() => store.Current.Options.ContainsKey("earfun-mic") && store.Current.Options.ContainsKey("earfun-touchlock")
+            && store.Current.Toggles.ContainsKey(DeviceToggle.AptXLossless));
+        Assert.True(store.Current.Toggles[DeviceToggle.AptXAdaptive].Value);
+        Assert.False(store.Current.Toggles[DeviceToggle.Ldac].Value);
+        Assert.False(store.Current.Toggles[DeviceToggle.AptXLossless].Value);
+        Assert.True((await controller.SetOptionAsync("earfun-mic", 2, Ct)).IsSuccess);
+        Assert.Equal(new byte[] { 2 }, device.Values[0x0331]);
+        Assert.True((await controller.SetOptionAsync("earfun-touchlock", 3, Ct)).IsSuccess);
+        Assert.Equal(3, store.Current.Options["earfun-touchlock"].Value.Value);
+        Assert.Equal(CommandStatus.Unsupported, (await controller.SetOptionAsync("earfun-mic", 3, Ct)).Status);
+        // The other bits, including aptX bit 0 that EncoDeck never offers, are kept.
+        Assert.True((await controller.SetToggleAsync(DeviceToggle.AptXLossless, true, Ct)).IsSuccess);
+        Assert.Equal(new byte[] { 3 | 16 }, device.Values[0x032F]);
+        Assert.True((await controller.SetToggleAsync(DeviceToggle.AptXAdaptive, false, Ct)).IsSuccess);
+        Assert.Equal(new byte[] { 1 | 16 }, device.Values[0x032F]);
+        Assert.False(store.Current.Toggles[DeviceToggle.AptXAdaptive].Value);
+    }
+
+    [Fact]
+    public async Task EfTouchLockUsesSideFlagsAndLdacItsOwnBit()
+    {
+        var device = new Device(false); var (controller, store) = Create(device, "TW230"); await using var owner = controller;
+        Assert.True(await controller.InitializeAsync(Ct));
+        await Wait(() => store.Current.Options.ContainsKey("earfun-touchlock") && store.Current.Toggles.ContainsKey(DeviceToggle.Ldac));
+        Assert.False(store.Current.Options.ContainsKey("earfun-mic"));
+        Assert.True((await controller.SetOptionAsync("earfun-touchlock", 2, Ct)).IsSuccess);
+        Assert.Equal(new byte[] { 1, 0 }, device.Values[0x2060]);
+        device.Values[0x2140] = [1];
+        Assert.True((await controller.SetToggleAsync(DeviceToggle.Ldac, true, Ct)).IsSuccess);
+        Assert.Equal(new byte[] { 4 }, device.Values[0x2100]);
+    }
+
+    [Fact]
+    public async Task LdacAndDualConnectionTurnEachOtherOff()
+    {
+        var device = new Device(true); device.Values[0x032F] = [8];
+        var (controller, store) = Create(device, "TW700"); await using var owner = controller;
+        Assert.True(await controller.InitializeAsync(Ct)); await Wait(() => store.Current.Toggles.ContainsKey(DeviceToggle.Ldac));
+        Assert.True((await controller.SetToggleAsync(DeviceToggle.DualDeviceConnection, true, Ct)).IsSuccess);
+        Assert.Equal(new byte[] { 0 }, device.Values[0x032F]);
+        Assert.Equal(new byte[] { 1 }, device.Values[0x0326]);
+        Assert.True((await controller.SetToggleAsync(DeviceToggle.Ldac, true, Ct)).IsSuccess);
+        Assert.Equal(new byte[] { 0 }, device.Values[0x0326]);
+        Assert.Equal(new byte[] { 8 }, device.Values[0x032F]);
+        Assert.False(store.Current.Toggles[DeviceToggle.DualDeviceConnection].Value);
+        Assert.True(store.Current.Toggles[DeviceToggle.Ldac].Value);
+    }
+
+    [Fact]
+    public async Task DualConnectionThatRestartsTheEarbudsIsNotAnError()
+    {
+        var device = new Device(true) { RestartOnDual = true, AckWrites = false };
+        var (controller, store) = Create(device, "TW700"); await using var owner = controller;
+        Assert.True(await controller.InitializeAsync(Ct)); await Wait(() => store.Current.Toggles.ContainsKey(DeviceToggle.DualDeviceConnection));
+        Assert.True((await controller.SetToggleAsync(DeviceToggle.DualDeviceConnection, true, Ct)).IsSuccess);
+        Assert.True(controller.Closed.IsCompleted);
+    }
+
+    [Fact]
+    public async Task PairedHostsAreListedAndConnectedOnlyAfterTheListConfirms()
+    {
+        var device = new Device(true) { HostSwitchReads = 1 };
+        device.Hosts.AddRange([((byte)1, "Desk PC", [0xCC, 0xBB, 0xAA], true), ((byte)2, "Phone", [1, 2, 3], false), ((byte)3, "Tablet", [4, 5, 6], false)]);
+        var (controller, store) = Create(device, "TW700", deviceId: "Bluetooth#Bluetooth00:11:22:aa:bb:cc-01:02:03:04:05:06");
+        await using var owner = controller;
+        Assert.True(await controller.InitializeAsync(Ct)); await Wait(() => store.Current.SourceDevices?.Value.Count == 3);
+        var hosts = store.Current.SourceDevices!.Value;
+        // The partial address matches this PC's adapter in reversed byte order.
+        Assert.True(hosts[0].IsThisDevice);
+        Assert.False(hosts[1].IsThisDevice);
+        Assert.Equal("Phone", hosts[1].Name);
+        Assert.NotEqual(6, hosts[1].Address.Length);
+
+        Assert.True((await controller.MultiConnectAsync(MultiConnectOperation.Connect, hosts[1].Address, Ct)).IsSuccess);
+        Assert.True(store.Current.SourceDevices!.Value.Single(d => d.Name == "Phone").IsConnected);
+        int written = device.Written.Count(f => f[7] == 0x29);
+        Assert.Equal(CommandStatus.Rejected, (await controller.MultiConnectAsync(MultiConnectOperation.Connect, hosts[2].Address, Ct)).Status);
+        Assert.Equal(written, device.Written.Count(f => f[7] == 0x29));
+        Assert.Equal(CommandStatus.Rejected, (await controller.MultiConnectAsync(MultiConnectOperation.Disconnect, hosts[0].Address, Ct)).Status);
+        Assert.Equal(CommandStatus.Unsupported, (await controller.MultiConnectAsync(MultiConnectOperation.Remove, hosts[2].Address, Ct)).Status);
+        device.HostSwitchReads = 0;
+        Assert.True((await controller.MultiConnectAsync(MultiConnectOperation.Disconnect, hosts[1].Address, Ct)).IsSuccess);
+        Assert.False(store.Current.SourceDevices!.Value.Single(d => d.Name == "Phone").IsConnected);
+        Assert.False(controller.Closed.IsCompleted);
     }
 }

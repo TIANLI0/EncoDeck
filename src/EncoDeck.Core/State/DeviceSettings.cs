@@ -44,6 +44,10 @@ public enum DeviceToggle
     TouchControls,
     /// <summary>Headset-side Bluetooth do-not-disturb while the 2.4 GHz link is in use.</summary>
     DoNotDisturb,
+    /// <summary>Device-side aptX Adaptive switch; not a Windows codec installation.</summary>
+    AptXAdaptive,
+    /// <summary>Device-side aptX Lossless switch; not a Windows codec installation.</summary>
+    AptXLossless,
 }
 
 /// <summary>Firmware / model information read from the device.</summary>

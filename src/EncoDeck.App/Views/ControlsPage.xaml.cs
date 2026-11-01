@@ -403,8 +403,8 @@ public sealed partial class ControlsPage : Page
         bool busy = device.State is 1 or 4;
         if (Features.CanConnectSourceDevices && !device.IsConnected && !busy)
         {
-            actions.Children.Add(ActionButton("Dual_Connect", device, ready, OnConnectSourceClick));
-            if (Features.CanManageSourceDevices) actions.Children.Add(ActionButton("Dual_Remove", device, ready, OnRemoveSourceClick));
+            actions.Children.Add(ActionButton("Dual_Connect", device, ready && Features.CanConnectAnother, OnConnectSourceClick));
+            if (Features.CanRemoveSourceDevices) actions.Children.Add(ActionButton("Dual_Remove", device, ready, OnRemoveSourceClick));
         }
         else if (Features.CanManageSourceDevices && device.IsConnected && !device.IsThisDevice)
         {

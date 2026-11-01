@@ -14,6 +14,14 @@
                 Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
                 CloseButtonCommand="{x:Bind ViewModel.DismissErrorCommand}" />
 
+            <!-- Connected earbuds with none of the cards below (EarFun: no EQ readback), instead of a blank page. -->
+            <Border x:Name="EmptyCard" Style="{StaticResource CardStyle}" Visibility="Collapsed">
+                <StackPanel Spacing="4">
+                    <TextBlock x:Uid="Sound_Empty_Title" Text="No sound settings available" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                    <TextBlock x:Uid="Sound_Empty_Body" Text="EncoDeck can't adjust EQ, bass or spatial audio on these earbuds yet." TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" />
+                </StackPanel>
+            </Border>
+
             <!-- EQ on the left; BassWave and spatial audio beside it (stacked when narrow). -->
             <Grid x:Name="SoundColumns" ColumnSpacing="16" RowSpacing="16" SizeChanged="OnColumnsSizeChanged">
                 <Grid.ColumnDefinitions>

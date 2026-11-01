@@ -50,14 +50,14 @@ public abstract class RequestReplyController(IDuplexByteChannel channel, Control
         }
     }
 
-    protected async Task<BrandPacket?> ExchangeAsync(byte[] bytes, Func<BrandPacket, bool> match, CancellationToken ct)
+    protected async Task<BrandPacket?> ExchangeAsync(byte[] bytes, Func<BrandPacket, bool> match, CancellationToken ct, TimeSpan? timeout = null)
     {
         var completion = new TaskCompletionSource<BrandPacket>(TaskCreationOptions.RunContinuationsAsynchronously);
         lock (_pendingGate) { _pending = completion; _match = match; }
         try
         {
             if (!await WriteAsync(bytes, ct).ConfigureAwait(false)) return null;
-            var winner = await Task.WhenAny(completion.Task, Closed, Task.Delay(TimeSpan.FromSeconds(3), ct)).ConfigureAwait(false);
+            var winner = await Task.WhenAny(completion.Task, Closed, Task.Delay(timeout ?? TimeSpan.FromSeconds(3), ct)).ConfigureAwait(false);
             ct.ThrowIfCancellationRequested();
             return winner == completion.Task ? await completion.Task.ConfigureAwait(false) : null;
         }
