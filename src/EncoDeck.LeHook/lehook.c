@@ -12,8 +12,10 @@
 // only record.
 //
 // Intel sync schedule: on Intel LE Audio offload, the controller sometimes carries the first CIS's frames one ISO
-// interval later than the second's (one earbud plays 7.5 ms late). Asking for 13 retransmissions within 15 ms makes the
-// controller give each CIS four subevents per event, which keeps the DSP's frame hand-off clear of that window. It is
+// interval later than the second's (one earbud plays 7.5 ms late). With a flush timeout under 7 ISO intervals the DSP's
+// frame hand-off drifts against the CIG and crosses into that window during playback (seen at FT 1, 2, 3 and 5);
+// asking for 20 retransmissions within 75 ms gets three subevents per CIS event and FT 7, where the alignment a link
+// starts with holds for as long as the link does, and fewer links start late than with Windows' own 13 / 75 ms. It is
 // applied only to earbuds listed in SyncTargets (their LE addresses): GetPreferredConfigurationFromCapabilities is
 // called for every earbud of the set, on the codec object FindQosSettings then runs on, and the earbud's address comes
 // from AscsDeviceServiceImpl::GetRemoteDeviceAddress (offset and first bytes in AddressRva/AddressCode, called only on
@@ -59,10 +61,11 @@
 #define QOS_RETRANSMISSIONS 0x12
 #define QOS_MAX_LATENCY 0x14
 
-// The Intel sync schedule (7.5 ms frames): verified on Intel AX211 offload to give four subevents per CIS event.
+// The Intel sync schedule (7.5 ms frames): verified on Intel 8087:0033 offload to give three subevents per CIS event and
+// FT 7 (transport latency about 50 ms).
 #define SYNC_FRAME_US 7500
-#define SYNC_RETRANSMISSIONS 13
-#define SYNC_MAX_LATENCY_MS 15
+#define SYNC_RETRANSMISSIONS 20
+#define SYNC_MAX_LATENCY_MS 75
 
 // AscsDeviceServiceImpl::GetRemoteDeviceAddress() const returns a BluetoothLEAddress through a hidden result pointer:
 //   +0x00 virtual table, +0x08 address (48 bits), +0x10 address type.
