@@ -298,6 +298,48 @@ public class DeviceStateCacheTests
     }
 
     [Fact]
+    public void SentEqCurve_IsKeptAcrossRestartsButReadCurvesAreNot()
+    {
+        string dir = Directory.CreateTempSubdirectory("encodeck-test").FullName;
+        try
+        {
+            string path = Path.Combine(dir, "cache.json");
+            var at = DateTimeOffset.Parse("2026-11-02T10:00:00Z");
+            CustomEqualizer Curve(int gain) => new(1, "", -12, 12, true, [new EqualizerBand(31, gain), new EqualizerBand(63, -gain)]);
+
+            var store1 = new DeviceStateStore();
+            var cache1 = new DeviceStateCache(path, store1, NullLogger<DeviceStateCache>.Instance);
+            cache1.Start();
+            store1.Reset(DeviceState.Empty with { Device = X4 });
+            store1.TryUpdate(X4.DeviceId, s => s with
+            {
+                Battery = s.Battery with { Case = Observed.From(new BatteryReading(70, false), at, StateSource.QueryResponse) },
+                CustomEqualizers = Observed.From<IReadOnlyList<CustomEqualizer>>([Curve(5)], at, StateSource.Sent),
+            });
+            // A curve the device reports is read again next time, never restored.
+            store1.TryUpdate(X4.DeviceId, s => s with { CustomEqualizers = Observed.From<IReadOnlyList<CustomEqualizer>>([Curve(2)], at.AddMinutes(1), StateSource.QueryResponse) });
+            cache1.Dispose();
+
+            var store2 = new DeviceStateStore();
+            var cache2 = new DeviceStateCache(path, store2, NullLogger<DeviceStateCache>.Instance);
+            cache2.Start();
+            store2.Reset(DeviceState.Empty with { Device = X4 });
+            var restored = store2.Current.CustomEqualizers!;
+            Assert.Equal(StateSource.Cache, restored.Source);
+            Assert.Equal(at, restored.Timestamp);
+            var curve = restored.Value[0];
+            Assert.Equal((1, "", -12, 12, true), (curve.Id, curve.Name, curve.MinGain, curve.MaxGain, curve.IsSelected));
+            Assert.Equal([5, -5], restored.Value[0].Bands.Select(b => b.Gain));
+            Assert.Equal([31, 63], restored.Value[0].Bands.Select(b => b.FrequencyHz));
+            cache2.Dispose();
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
     public void Reconnecting_TheSameDevice_RestoresLastReadings()
     {
         string dir = Directory.CreateTempSubdirectory("encodeck-test").FullName;

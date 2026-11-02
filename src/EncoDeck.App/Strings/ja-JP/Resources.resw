@@ -149,6 +149,16 @@
   <data name="Controls_Title.Text" xml:space="preserve"><value>操作</value></data>
   <data name="Controls_Settings.Text" xml:space="preserve"><value>その他の設定</value></data>
   <data name="Devices_Capabilities.Text" xml:space="preserve"><value>機能の対応状況</value></data>
+  <data name="Devices_Info.Text" xml:space="preserve"><value>デバイス情報</value></data>
+  <data name="Devices_Firmware.Header" xml:space="preserve"><value>ファームウェア</value></data>
+  <data name="Devices_ProductId.Header" xml:space="preserve"><value>製品 ID</value></data>
+  <data name="Devices_FactoryReset.Header" xml:space="preserve"><value>工場出荷時設定に戻す</value></data>
+  <data name="Devices_FactoryReset.Description" xml:space="preserve"><value>イヤホンのすべての設定とペアリング記録を消去します。その後、Windows の Bluetooth 設定でイヤホンを削除し、もう一度ペアリングしてください。</value></data>
+  <data name="Devices_FactoryResetButton.Content" xml:space="preserve"><value>初期化…</value></data>
+  <data name="Devices_FactoryReset_Title" xml:space="preserve"><value>工場出荷時設定に戻しますか？</value></data>
+  <data name="Devices_FactoryReset_Message" xml:space="preserve"><value>{0} のすべての設定が消去され、この PC を含め、ペアリングしたすべてのスマートフォンとコンピューターの記録が削除されます。イヤホンは再起動して切断されます。この PC で再び使うには、Windows の Bluetooth 設定でイヤホンを削除してから、ペアリングモードにしてもう一度ペアリングしてください。</value></data>
+  <data name="Devices_FactoryReset_Confirm" xml:space="preserve"><value>初期化する</value></data>
+  <data name="Devices_FactoryReset_Done" xml:space="preserve"><value>送信しました。イヤホンは再起動してペアリング記録を消去します。Windows の Bluetooth 設定でイヤホンを削除してから、もう一度ペアリングしてください。</value></data>
   <data name="Devices_Title.Text" xml:space="preserve"><value>デバイス</value></data>
   <data name="Devices_Paired.Text" xml:space="preserve"><value>ペアリング済みのイヤホン</value></data>
   <data name="Devices_None.Text" xml:space="preserve"><value>EncoDeck が対応しているペアリング済みのイヤホンがありません。Windows の Bluetooth 設定でペアリングしてください。</value></data>
@@ -765,6 +775,7 @@
   <data name="Cap_Ldac" xml:space="preserve"><value>LDAC</value></data>
   <data name="Cap_Lc3" xml:space="preserve"><value>LC3</value></data>
   <data name="Cap_ChannelSwap" xml:space="preserve"><value>左右チャンネル入れ替え</value></data>
+  <data name="Cap_FactoryReset" xml:space="preserve"><value>工場出荷時設定に戻す</value></data>
   <data name="Toggle_Ldac" xml:space="preserve"><value>LDAC</value></data>
   <data name="Toggle_Ldac_Description" xml:space="preserve"><value>デバイス側の LDAC スイッチです。Windows に LDAC エンコーダーがインストールされるわけではありません。</value></data>
   <data name="Toggle_AptXAdaptive" xml:space="preserve"><value>aptX Adaptive</value></data>
@@ -1007,6 +1018,30 @@
   <data name="Nothing_Eq_EnhanceVocals" xml:space="preserve"><value>ボーカル強調</value></data>
   <data name="Nothing_Eq_Classical" xml:space="preserve"><value>クラシック</value></data>
   <data name="Eq_DeviceCustom" xml:space="preserve"><value>カスタム EQ</value></data>
+  <data name="Eq_BandPreset.PlaceholderText" xml:space="preserve"><value>プリセットを適用</value></data>
+  <data name="Eq_WriteOnlyNote.Text" xml:space="preserve"><value>このイヤホンは現在の EQ を報告しません。ここに表示されるのは EncoDeck が最後に送信したカーブです。他のアプリで変更しても反映されず、どの帯域を動かしてもカーブ全体が再送信されます。</value></data>
+  <data name="EarFunEq_Flat" xml:space="preserve"><value>フラット</value></data>
+  <data name="EarFunEq_Rock" xml:space="preserve"><value>ロック</value></data>
+  <data name="EarFunEq_Pop" xml:space="preserve"><value>ポップ</value></data>
+  <data name="EarFunEq_Country" xml:space="preserve"><value>カントリー</value></data>
+  <data name="EarFunEq_RnB" xml:space="preserve"><value>R&amp;B</value></data>
+  <data name="EarFunEq_Classical" xml:space="preserve"><value>クラシック</value></data>
+  <data name="EarFunEq_Jazz" xml:space="preserve"><value>ジャズ</value></data>
+  <data name="EarFunEq_Electronic" xml:space="preserve"><value>エレクトロニック</value></data>
+  <data name="EarFunEq_Dance" xml:space="preserve"><value>ダンス</value></data>
+  <data name="EarFunEq_HipHop" xml:space="preserve"><value>ヒップホップ</value></data>
+  <data name="EarFunEq_Metal" xml:space="preserve"><value>メタル</value></data>
+  <data name="EarFunEq_Blues" xml:space="preserve"><value>ブルース</value></data>
+  <data name="EarFunEq_Soul" xml:space="preserve"><value>ソウル</value></data>
+  <data name="EarFunEq_Hits" xml:space="preserve"><value>ヒット</value></data>
+  <data name="EarFunEq_Latin" xml:space="preserve"><value>ラテン</value></data>
+  <data name="EarFunEq_Natural" xml:space="preserve"><value>ナチュラル</value></data>
+  <data name="EarFunEq_VocalBoost" xml:space="preserve"><value>ボーカル強調</value></data>
+  <data name="EarFunEq_VocalReduce" xml:space="preserve"><value>ボーカル抑制</value></data>
+  <data name="EarFunEq_BassBoost" xml:space="preserve"><value>低音強調</value></data>
+  <data name="EarFunEq_BassReduce" xml:space="preserve"><value>低音抑制</value></data>
+  <data name="EarFunEq_TrebleBoost" xml:space="preserve"><value>高音強調</value></data>
+  <data name="EarFunEq_TrebleReduce" xml:space="preserve"><value>高音抑制</value></data>
   <data name="Eq_DevicePreset" xml:space="preserve"><value>プリセット {0}</value></data>
   <data name="Sennheiser_EqOff" xml:space="preserve"><value>オフ</value></data>
   <data name="Sennheiser_EqPodcast" xml:space="preserve"><value>ポッドキャスト</value></data>

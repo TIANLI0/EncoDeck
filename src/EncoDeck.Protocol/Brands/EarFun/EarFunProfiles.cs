@@ -74,7 +74,7 @@ public static class EarFunProfiles
 /// Features follow the model definition, like every other brand; readback supplies the current values and confirms
 /// each write. <paramref name="observed"/> lists the settings these earbuds answered, which refresh polls.
 /// </summary>
-public sealed class EarFunProfile(EarFunModel model, IReadOnlySet<ushort>? observed = null) : IControllableProfile, IBrandGestureProfile
+public sealed class EarFunProfile(EarFunModel model, IReadOnlySet<ushort>? observed = null) : IControllableProfile, IBrandGestureProfile, IBandEqualizerProfile
 {
     private const string Evidence = "EarKit protocol port, by model.";
     public EarFunModel Model => model;
@@ -95,7 +95,10 @@ public sealed class EarFunProfile(EarFunModel model, IReadOnlySet<ushort>? obser
         {
             var b = DeviceCapabilities.CreateBuilder()
                 .Set(DeviceCapability.BatteryLevel, CapabilitySupport.Supported, Evidence)
-                .Set(DeviceCapability.FirmwareInformation, CapabilitySupport.Supported, Evidence);
+                .Set(DeviceCapability.FirmwareInformation, CapabilitySupport.Supported, Evidence)
+                // Every model takes the user curve and the reset command (EarKit); neither is read back.
+                .Set(DeviceCapability.CustomEqualizer, CapabilitySupport.Supported, Evidence)
+                .Set(DeviceCapability.FactoryReset, CapabilitySupport.Supported, Evidence);
             foreach (var (capability, feature) in new[] {
                 (DeviceCapability.NoiseCancellation, "noise"), (DeviceCapability.GamingMode, "game"),
                 (DeviceCapability.DualDeviceConnection, "dual"), (DeviceCapability.InEarDetection, "ear"),
@@ -114,8 +117,9 @@ public sealed class EarFunProfile(EarFunModel model, IReadOnlySet<ushort>? obser
     ];
     public IReadOnlyList<NoiseControlOption> NoiseControlOptions =>
         [.. EarFunSettings.NoiseModes(model).Select(p => new NoiseControlOption(p.State.Mode, p.State.LevelId, p.Label, p.Key, CapabilitySupport.Supported))];
-    // EarKit has EQ writes, but no device EQ readback. Never advertise saved host values as confirmed device EQ.
+    // No device presets: the EQ is the single user curve, written without readback (EarFunEqualizer).
     public IReadOnlyList<EqualizerPreset> EqualizerPresets => [];
+    public BandEqualizerSpec BandEqualizer => EarFunEqualizer.Spec(model);
     public int MatchScore(DeviceIdentity identity) => EarFunProfiles.Named(identity.Name) == model ? 100 : 0;
     public IDeviceController CreateController(IDuplexByteChannel channel, ControllerContext context) => new EarFunDeviceController(channel, context, this);
 }

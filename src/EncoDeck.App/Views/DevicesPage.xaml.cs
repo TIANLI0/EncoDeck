@@ -21,6 +21,7 @@ public sealed partial class DevicesPage : Page
             App.Instance.Host.Settings.Changed += OnSettingsChanged;
             Build();
             BuildCapabilities();
+            BuildInfo();
         };
         Unloaded += (_, _) =>
         {
@@ -51,6 +52,49 @@ public sealed partial class DevicesPage : Page
     private void OnViewModelChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(DeviceViewModel.ProfileKey)) BuildCapabilities();
+        if (e.PropertyName is nameof(DeviceViewModel.FirmwareVersionText) or nameof(DeviceViewModel.ProductIdText) or nameof(DeviceViewModel.CanFactoryReset)) BuildInfo();
+    }
+
+    private void BuildInfo()
+    {
+        FirmwareRow.Visibility = ViewModel.FirmwareVersionText.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        ProductIdRow.Visibility = ViewModel.ProductIdText.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        ResetRow.Visibility = ViewModel.CanFactoryReset ? Visibility.Visible : Visibility.Collapsed;
+        InfoCard.Visibility = FirmwareRow.Visibility == Visibility.Visible || ProductIdRow.Visibility == Visibility.Visible
+            || ResetRow.Visibility == Visibility.Visible || ResetResult.Visibility == Visibility.Visible ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private bool _resetting;
+
+    private async void OnFactoryResetClick(object sender, RoutedEventArgs e)
+    {
+        if (_resetting || XamlRoot is null) return;
+        _resetting = true;
+        try
+        {
+            var dialog = new ContentDialog
+            {
+                XamlRoot = XamlRoot,
+                Title = Loc.Get("Devices_FactoryReset_Title"),
+                Content = new TextBlock { Text = Loc.Format("Devices_FactoryReset_Message", ViewModel.DeviceName), TextWrapping = TextWrapping.Wrap },
+                PrimaryButtonText = Loc.Get("Devices_FactoryReset_Confirm"),
+                CloseButtonText = Loc.Get("Common_Cancel"),
+                DefaultButton = ContentDialogButton.Close,
+            };
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+            var result = await App.Instance.Features.FactoryResetAsync();
+            ResetResult.Text = result.IsSuccess ? Loc.Get("Devices_FactoryReset_Done") : ViewModel.ErrorMessage;
+            ResetResult.Visibility = Visibility.Visible;
+            BuildInfo();
+        }
+        catch (Exception)
+        {
+            // A dialog that cannot open (another one is showing) leaves the earbuds untouched.
+        }
+        finally
+        {
+            _resetting = false;
+        }
     }
 
     private void BuildCapabilities()

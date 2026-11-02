@@ -3,6 +3,7 @@ using System.ComponentModel;
 using EncoDeck.App.Services;
 using EncoDeck.App.ViewModels;
 using EncoDeck.Core.Capabilities;
+using EncoDeck.Core.Profiles;
 using EncoDeck.Core.State;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
@@ -32,6 +33,7 @@ public sealed partial class SoundPage : Page
     private string _customSignature = string.Empty;
     private int? _editorPresetId;
     private string _bandLayout = string.Empty;
+    private string _bandPresetSignature = string.Empty;
     private int _gainScale = 1;
     private bool _syncing;
     private bool _dialogOpen;
@@ -424,7 +426,11 @@ public sealed partial class SoundPage : Page
         CustomEditor.Visibility = Show((spec is not null || band is not null) && selected is not null);
         // A device's single fixed curve has no name to edit and cannot be deleted.
         CustomNameRow.Visibility = CustomNameBox.Visibility = RenameButton.Visibility = DeleteButton.Visibility = Show(spec is not null);
+        var bandPresets = band?.Presets ?? [];
+        BandPresetBox.Visibility = Show(bandPresets.Count > 0);
+        BandWriteOnlyNote.Visibility = Show(band?.WriteOnly == true);
         if (selected is null || (spec is null && band is null)) return;
+        SyncBandPresets(bandPresets, selected, ready && !busy);
 
         int min = spec?.MinGain ?? band!.MinGain, max = spec?.MaxGain ?? band!.MaxGain, scale = spec is null ? band!.GainScale : 1;
         string layout = $"{string.Join(',', selected.Bands.Select(b => b.FrequencyHz))}/{min}/{max}/{scale}";
@@ -451,6 +457,23 @@ public sealed partial class SoundPage : Page
         foreach (var (slider, _) in _bands) slider.IsEnabled = ready;
         RenameButton.IsEnabled = ready && !busy;
         DeleteButton.IsEnabled = ready && !busy;
+    }
+
+    /// <summary>Lists the brand's preset curves and selects the one the current curve equals, if any.</summary>
+    private void SyncBandPresets(IReadOnlyList<BandCurvePreset> presets, CustomEqualizer curve, bool enabled)
+    {
+        if (presets.Count == 0) return;
+        string signature = string.Join('|', presets.Select(p => $"{p.LabelKey}/{p.Variant}"));
+        if (signature != _bandPresetSignature)
+        {
+            _bandPresetSignature = signature;
+            BandPresetBox.Items.Clear();
+            foreach (var preset in presets)
+                BandPresetBox.Items.Add(new ComboBoxItem { Content = preset.Variant > 0 ? $"{Loc.Get(preset.LabelKey)} {preset.Variant}" : Loc.Get(preset.LabelKey), Tag = preset });
+        }
+        var gains = curve.Bands.Select(b => b.Gain).ToArray();
+        BandPresetBox.SelectedIndex = presets.ToList().FindIndex(p => p.Gains.SequenceEqual(gains));
+        BandPresetBox.IsEnabled = enabled;
     }
 
     private void BuildBands(CustomEqualizer preset, int min, int max)
@@ -629,6 +652,15 @@ public sealed partial class SoundPage : Page
         _bandTimer ??= CreateTimer(BandDebounce, SaveBandsAsync);
         _bandTimer.Stop();
         _bandTimer.Start();
+    }
+
+    private async void OnBandPresetChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_syncing || !IsLoaded || BandPresetBox.SelectedItem is not ComboBoxItem { Tag: BandCurvePreset preset }
+            || Features.SelectedCustomEqualizer is not { } curve || preset.Gains.Count != curve.Bands.Count) return;
+        _bandTimer?.Stop();
+        await Features.SaveCustomEqualizerAsync(curve with { Bands = curve.Bands.Select((b, i) => b with { Gain = preset.Gains[i] }).ToArray() });
+        Sync();
     }
 
     private async Task SaveBandsAsync()

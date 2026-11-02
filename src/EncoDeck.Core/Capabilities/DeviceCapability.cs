@@ -29,6 +29,8 @@ public enum DeviceCapability
     Ldac,
     Lc3,
     ChannelSwap,
+    /// <summary>Restoring factory settings, which also clears the earbuds' paired devices.</summary>
+    FactoryReset,
 }
 
 /// <summary>

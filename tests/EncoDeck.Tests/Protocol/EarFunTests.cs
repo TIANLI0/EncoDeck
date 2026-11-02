@@ -44,6 +44,9 @@ public class EarFunTests
         Assert.Equal("earfun", profile.Brand);
         Assert.Equal(EarFunSettings.NoiseModes(profile.Model).Count, profile.NoiseControlOptions.Count);
         Assert.Empty(profile.EqualizerPresets);
+        Assert.True(profile.BandEqualizer.WriteOnly);
+        Assert.True(profile.Capabilities.IsAvailable(DeviceCapability.CustomEqualizer, false));
+        Assert.True(profile.Capabilities.IsAvailable(DeviceCapability.FactoryReset, false));
         // Classic SPP control: a connected LE bond is not LE Audio, and EncoDeck must not keep it up (issue 16).
         Assert.False(profile.ManagesLeAudioLink);
     }
@@ -555,6 +558,102 @@ public class EarFunTests
         Assert.True((await controller.MultiConnectAsync(MultiConnectOperation.Disconnect, hosts[1].Address, Ct)).IsSuccess);
         Assert.False(store.Current.SourceDevices!.Value.Single(d => d.Name == "Phone").IsConnected);
         Assert.False(controller.Closed.IsCompleted);
+    }
+
+    [Fact]
+    public void EqFramesMatchEarKitLayouts()
+    {
+        var tw700 = EarFunProfiles.Models.Single(m => m.Id == "TW700");
+        var spec = EarFunEqualizer.Spec(tw700);
+        Assert.Equal((-12, 12, 2), (spec.MinGain, spec.MaxGain, spec.GainScale));
+        Assert.Equal([31, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000], EarFunEqualizer.Frequencies(tw700));
+        // Rock: EarKit levels 4,5,2,... are +2, +2.5, +1 dB (half-dB steps 4, 5, 2).
+        var rock = spec.Presets.Single(p => p.LabelKey == "EarFunEq_Rock");
+        Assert.Equal([4, 5, 2, 0, 0, 1, 2, 3, 3, 2], rock.Gains);
+        // Level 9 is +5 dB.
+        Assert.Equal([4, 10, 0, 0, 0, 0, 0, 0, 0, 0], spec.Presets.Single(p => p.LabelKey == "EarFunEq_BassBoost" && p.Variant == 3).Gains);
+        var frames = EarFunEqualizer.Encode(tw700, [4, -6, 0, 0, 0, 0, 0, 0, 0, 12]);
+        Assert.Equal(10, frames.Count);
+        // Qualcomm vendor 001D command 0E01: band A1, master FE98, 31.5 Hz x3 = 94, +2 dB x60 = 120, Q 0.7 x4096.
+        Assert.Equal(Convert.FromHexString("FF040009001D0E01A1FE98005E00780B33"), frames[0]);
+        Assert.Equal(Convert.FromHexString("FF040009001D0E01A2FE9800BDFF4C0B33"), frames[1]);
+        Assert.Equal(Convert.FromHexString("FF040009001D0E01AAFE98BB8001680B33"), frames[9]);
+
+        // Six bands in whole dB, then EarKit's four fixed shaping bands.
+        var free2s = EarFunProfiles.Models.Single(m => m.Id == "TW101S");
+        Assert.Equal((-10, 10, 1), (EarFunEqualizer.Spec(free2s).MinGain, EarFunEqualizer.Spec(free2s).MaxGain, EarFunEqualizer.Spec(free2s).GainScale));
+        var six = EarFunEqualizer.Encode(free2s, [8, 0, 0, 0, 0, 0]);
+        Assert.Equal(10, six.Count);
+        Assert.Equal(Convert.FromHexString("FF040009001D0E01A1FE9800BD01E00B33"), six[0]);
+        Assert.Equal(Convert.FromHexString("FF040009001D0E01A7FE980063010E0800"), six[6]);
+
+        // EF: count, band, master (by the loudest band), frequency, gain, Q; Air Pro 4i's master for +5 dB is -13 dB.
+        var tw230 = EarFunProfiles.Models.Single(m => m.Id == "TW230");
+        var ef = EarFunEqualizer.Encode(tw230, [10, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        Assert.Equal(Convert.FromHexString("EF20950A0A01FCF4005E012C0B33CEFE"), ef[0]);
+        Assert.True(EarFunEqualizer.Combined(tw230));
+        // Between EarKit's slider positions (+4.5 dB) the master follows the next position up (+5 dB).
+        Assert.Equal(EarFunEqualizer.Encode(tw230, [10, 0, 0, 0, 0, 0, 0, 0, 0, 0])[0][4..8], EarFunEqualizer.Encode(tw230, [9, 0, 0, 0, 0, 0, 0, 0, 0, 0])[0][4..8]);
+        var hp220 = EarFunProfiles.Models.Single(m => m.Id == "HP220");
+        // (int)(-8 - 3.5) * 60 = -660.
+        Assert.Equal(new byte[] { 0xFD, 0x6C }, EarFunEqualizer.Encode(hp220, [7, 0, 0, 0, 0, 0, 0, 0, 0, 0])[0][6..8]);
+    }
+
+    [Theory]
+    [InlineData(true, "TW700")]
+    [InlineData(false, "TW230")]
+    public async Task EqCurveIsSentWithoutReadbackAndKeptAsSent(bool gaia, string model)
+    {
+        var device = new Device(gaia); var (controller, store) = Create(device, model); await using var owner = controller;
+        Assert.True(await controller.InitializeAsync(Ct));
+        var flat = Assert.Single(store.Current.CustomEqualizers!.Value);
+        Assert.True(flat.IsSelected);
+        Assert.All(flat.Bands, b => Assert.Equal(0, b.Gain));
+        int before = device.Written.Count;
+        var curve = flat with { Bands = flat.Bands.Select((b, i) => b with { Gain = i == 0 ? 6 : 0 }).ToArray() };
+        Assert.True((await controller.SaveCustomEqualizerAsync(curve, Ct)).IsSuccess);
+        // TW230 takes the whole curve in one write.
+        Assert.Equal(gaia ? 10 : 1, device.Written.Count - before);
+        Assert.Equal(gaia ? 0x1D : 0x95, gaia ? device.Written[^1][5] : device.Written[^1][2]);
+        Assert.Equal(StateSource.Sent, store.Current.CustomEqualizers!.Source);
+        Assert.Equal(6, store.Current.CustomEqualizers.Value[0].Bands[0].Gain);
+        before = device.Written.Count;
+        Assert.Equal(CommandStatus.Unsupported, (await controller.SaveCustomEqualizerAsync(curve with { Bands = curve.Bands.Select(b => b with { Gain = 13 }).ToArray() }, Ct)).Status);
+        Assert.Equal(CommandStatus.Unsupported, (await controller.SaveCustomEqualizerAsync(curve with { Bands = curve.Bands.Skip(1).ToArray() }, Ct)).Status);
+        Assert.Equal(before, device.Written.Count);
+        Assert.True((await controller.SelectCustomEqualizerAsync(EarFunEqualizer.CurveId, Ct)).IsSuccess);
+        Assert.True(device.Written.Count > before);
+        Assert.False(controller.Closed.IsCompleted);
+    }
+
+    [Fact]
+    public async Task EqCurveLastSentSurvivesReconnect()
+    {
+        var device = new Device(true); var (controller, store) = Create(device, "TW700");
+        await using (controller)
+        {
+            Assert.True(await controller.InitializeAsync(Ct));
+            var flat = store.Current.CustomEqualizers!.Value[0];
+            Assert.True((await controller.SaveCustomEqualizerAsync(flat with { Bands = flat.Bands.Select(b => b with { Gain = -4 }).ToArray() }, Ct)).IsSuccess);
+        }
+        var profile = (EarFunProfile)store.Current.Profile!;
+        var again = profile.CreateController(new Device(true), new(store.Current.Device!, store, () => true, NullLoggerFactory.Instance, TimeProvider.System));
+        await using var owner = again;
+        Assert.True(await again.InitializeAsync(Ct));
+        Assert.All(store.Current.CustomEqualizers!.Value[0].Bands, b => Assert.Equal(-4, b.Gain));
+    }
+
+    [Theory]
+    [InlineData(true, "TW700", "0336", "")]
+    [InlineData(false, "TW230", "1000", "AFA5")]
+    public async Task FactoryResetSendsEarKitsCommand(bool gaia, string model, string command, string payload)
+    {
+        var device = new Device(gaia); var (controller, _) = Create(device, model); await using var owner = controller;
+        Assert.True(await controller.InitializeAsync(Ct));
+        Assert.True((await controller.FactoryResetAsync(Ct)).IsSuccess);
+        byte[] frame = device.Written[^1];
+        Assert.Equal(command, Convert.ToHexString(gaia ? frame[6..8] : frame[1..3]));
+        Assert.Equal(payload, Convert.ToHexString(gaia ? frame[8..] : frame[4..^2]));
     }
 
     [Fact]

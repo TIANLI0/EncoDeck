@@ -296,6 +296,8 @@ public sealed class FeaturesViewModel
 
     public Task<CommandResult> FindEarbudsAsync(bool ring) => Run(() => _commands.FindEarbudsAsync(ring));
 
+    public Task<CommandResult> FactoryResetAsync() => Run(() => _commands.FactoryResetAsync());
+
     public Task<CommandResult> RunFitTestAsync() => Run(() => _commands.RunFitTestAsync());
 
     // ---- dual connection -------------------------------------------------------------------------

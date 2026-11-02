@@ -149,6 +149,16 @@
   <data name="Controls_Title.Text" xml:space="preserve"><value>控制</value></data>
   <data name="Controls_Settings.Text" xml:space="preserve"><value>更多设置</value></data>
   <data name="Devices_Capabilities.Text" xml:space="preserve"><value>功能支持情况</value></data>
+  <data name="Devices_Info.Text" xml:space="preserve"><value>设备信息</value></data>
+  <data name="Devices_Firmware.Header" xml:space="preserve"><value>固件版本</value></data>
+  <data name="Devices_ProductId.Header" xml:space="preserve"><value>产品 ID</value></data>
+  <data name="Devices_FactoryReset.Header" xml:space="preserve"><value>恢复出厂设置</value></data>
+  <data name="Devices_FactoryReset.Description" xml:space="preserve"><value>清除耳机上的所有设置和全部配对记录。之后需要在 Windows 蓝牙设置里删除这副耳机，再重新配对。</value></data>
+  <data name="Devices_FactoryResetButton.Content" xml:space="preserve"><value>恢复出厂…</value></data>
+  <data name="Devices_FactoryReset_Title" xml:space="preserve"><value>恢复出厂设置？</value></data>
+  <data name="Devices_FactoryReset_Message" xml:space="preserve"><value>{0} 会清除全部设置，并忘记所有配对过的手机和电脑（包括这台电脑）。耳机会重启并断开连接。要在这台电脑上继续使用，请先在 Windows 蓝牙设置里删除这副耳机，再让耳机进入配对模式重新配对。</value></data>
+  <data name="Devices_FactoryReset_Confirm" xml:space="preserve"><value>恢复出厂</value></data>
+  <data name="Devices_FactoryReset_Done" xml:space="preserve"><value>已发送。耳机会重启并清除配对记录；请在 Windows 蓝牙设置里删除这副耳机后重新配对。</value></data>
   <data name="Devices_Title.Text" xml:space="preserve"><value>设备</value></data>
   <data name="Devices_Paired.Text" xml:space="preserve"><value>已配对的耳机</value></data>
   <data name="Devices_None.Text" xml:space="preserve"><value>没有 EncoDeck 支持的已配对耳机。请在 Windows 蓝牙设置中配对。</value></data>
@@ -765,6 +775,7 @@
   <data name="Cap_Ldac" xml:space="preserve"><value>LDAC</value></data>
   <data name="Cap_Lc3" xml:space="preserve"><value>LC3</value></data>
   <data name="Cap_ChannelSwap" xml:space="preserve"><value>左右声道交换</value></data>
+  <data name="Cap_FactoryReset" xml:space="preserve"><value>恢复出厂设置</value></data>
   <data name="Toggle_Ldac" xml:space="preserve"><value>LDAC</value></data>
   <data name="Toggle_Ldac_Description" xml:space="preserve"><value>耳机端 LDAC 开关。此开关不会为 Windows 安装 LDAC 编码器。</value></data>
   <data name="Toggle_AptXAdaptive" xml:space="preserve"><value>aptX Adaptive</value></data>
@@ -1007,6 +1018,30 @@
   <data name="Nothing_Eq_EnhanceVocals" xml:space="preserve"><value>人声增强</value></data>
   <data name="Nothing_Eq_Classical" xml:space="preserve"><value>古典</value></data>
   <data name="Eq_DeviceCustom" xml:space="preserve"><value>自定义 EQ</value></data>
+  <data name="Eq_BandPreset.PlaceholderText" xml:space="preserve"><value>套用预设</value></data>
+  <data name="Eq_WriteOnlyNote.Text" xml:space="preserve"><value>这副耳机不会回报当前的均衡器。这里显示的是 EncoDeck 上次发送的曲线；在其他 App 里改过之后这里不会跟着变，拖动任一频段都会把整条曲线重新发送。</value></data>
+  <data name="EarFunEq_Flat" xml:space="preserve"><value>平直</value></data>
+  <data name="EarFunEq_Rock" xml:space="preserve"><value>摇滚</value></data>
+  <data name="EarFunEq_Pop" xml:space="preserve"><value>流行</value></data>
+  <data name="EarFunEq_Country" xml:space="preserve"><value>乡村</value></data>
+  <data name="EarFunEq_RnB" xml:space="preserve"><value>R&amp;B</value></data>
+  <data name="EarFunEq_Classical" xml:space="preserve"><value>古典</value></data>
+  <data name="EarFunEq_Jazz" xml:space="preserve"><value>爵士</value></data>
+  <data name="EarFunEq_Electronic" xml:space="preserve"><value>电子</value></data>
+  <data name="EarFunEq_Dance" xml:space="preserve"><value>舞曲</value></data>
+  <data name="EarFunEq_HipHop" xml:space="preserve"><value>嘻哈</value></data>
+  <data name="EarFunEq_Metal" xml:space="preserve"><value>金属</value></data>
+  <data name="EarFunEq_Blues" xml:space="preserve"><value>蓝调</value></data>
+  <data name="EarFunEq_Soul" xml:space="preserve"><value>灵魂</value></data>
+  <data name="EarFunEq_Hits" xml:space="preserve"><value>热门</value></data>
+  <data name="EarFunEq_Latin" xml:space="preserve"><value>拉丁</value></data>
+  <data name="EarFunEq_Natural" xml:space="preserve"><value>自然</value></data>
+  <data name="EarFunEq_VocalBoost" xml:space="preserve"><value>人声增强</value></data>
+  <data name="EarFunEq_VocalReduce" xml:space="preserve"><value>人声减弱</value></data>
+  <data name="EarFunEq_BassBoost" xml:space="preserve"><value>低音增强</value></data>
+  <data name="EarFunEq_BassReduce" xml:space="preserve"><value>低音减弱</value></data>
+  <data name="EarFunEq_TrebleBoost" xml:space="preserve"><value>高音增强</value></data>
+  <data name="EarFunEq_TrebleReduce" xml:space="preserve"><value>高音减弱</value></data>
   <data name="Eq_DevicePreset" xml:space="preserve"><value>预设 {0}</value></data>
   <data name="Sennheiser_EqOff" xml:space="preserve"><value>关闭</value></data>
   <data name="Sennheiser_EqPodcast" xml:space="preserve"><value>播客</value></data>

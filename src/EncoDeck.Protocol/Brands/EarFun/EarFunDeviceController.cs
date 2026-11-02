@@ -31,7 +31,8 @@ internal sealed class EarFunDeviceController(IDuplexByteChannel channel, Control
     private readonly HashSet<ushort> _traced = [.. Enum.GetValues<EarFunSetting>()
         .SelectMany(s => new[] { EarFunSettings.Command(profile.Model, s).Read, EarFunSettings.Command(profile.Model, s).Write })
         .Where(c => c != 0), EarFunGestures.Read(profile.Model), EarFunGestures.Write(profile.Model),
-        EarFunSettings.ConnectHost(profile.Model), EarFunSettings.DisconnectHost(profile.Model)];
+        EarFunSettings.ConnectHost(profile.Model), EarFunSettings.DisconnectHost(profile.Model),
+        EarFunSettings.Reset(profile.Model), profile.Model.Gaia ? EarFunEqualizer.GaiaCommand : EarFunEqualizer.EfCommand];
     // Reports of settings and gestures: logged once per session when EncoDeck cannot read the value.
     private readonly HashSet<ushort> _reads = [.. Enum.GetValues<EarFunSetting>().Select(s => EarFunSettings.Command(profile.Model, s).Read)
         .Where(c => c != 0), EarFunGestures.Read(profile.Model)];
@@ -240,6 +241,10 @@ internal sealed class EarFunDeviceController(IDuplexByteChannel channel, Control
         }
         if (Model.Has("keys") && !await Send(EarFunGestures.Read(Model), [], cancellationToken).ConfigureAwait(false)) return false;
         if (Model.Has("list") && !await RequestSourcesAsync(cancellationToken).ConfigureAwait(false)) return false;
+        // The earbuds never report their EQ: show the curve EncoDeck last sent (kept across sessions by the
+        // state cache), or a flat one until something is sent.
+        Store.TryUpdate(DeviceId, s => s.CustomEqualizers?.Value is [var curve] && EarFunEqualizer.Fits(Model, curve) ? s
+            : s with { CustomEqualizers = Observed.From<IReadOnlyList<CustomEqualizer>>([EarFunEqualizer.Flat(Model)], Now, StateSource.Optimistic) });
         _rereads = 3;
         StartPolling();
         return true;
@@ -575,4 +580,47 @@ internal sealed class EarFunDeviceController(IDuplexByteChannel channel, Control
             && EarFunGestures.Decode(Model, reply.Payload) is { } keys && keys.Select((key, i) => key == (i == index ? assignment : old[i])).All(v => v), ct).ConfigureAwait(false);
     }, cancellationToken);
 
+    // ---- user EQ and factory reset (no readback) -------------------------------------------------
+
+    public override Task<CommandResult> SaveCustomEqualizerAsync(CustomEqualizer preset, CancellationToken cancellationToken = default) =>
+        preset.Id != EarFunEqualizer.CurveId || !EarFunEqualizer.Fits(Model, preset) ? Task.FromResult(NotSupported("EQ curve"))
+        : Serialized(ct => WriteCurve([.. preset.Bands.Select(b => b.Gain)], ct), cancellationToken);
+
+    /// <summary>The curve is the earbuds' only EQ; selecting it sends it again.</summary>
+    public override Task<CommandResult> SelectCustomEqualizerAsync(int id, CancellationToken cancellationToken = default) =>
+        Store.Current.CustomEqualizers?.Value is [var curve] && curve.Id == id ? SaveCustomEqualizerAsync(curve, cancellationToken)
+        : Task.FromResult(NotSupported("EQ curve"));
+
+    /// <summary>
+    /// Sends the curve band by band (in one write where the firmware takes it so). The earbuds answer EQ writes on
+    /// another GAIA vendor or not at all, so a completed write is all EncoDeck learns: the state keeps it as sent.
+    /// </summary>
+    private async Task<CommandResult> WriteCurve(int[] gains, CancellationToken ct)
+    {
+        var frames = EarFunEqualizer.Encode(Model, gains);
+        ushort command = Model.Gaia ? EarFunEqualizer.GaiaCommand : EarFunEqualizer.EfCommand;
+        foreach (var frame in frames) TraceFrame(FrameDirection.Sent, command, null, Model.Gaia ? frame[8..] : frame[4..^2]);
+        if (EarFunEqualizer.Combined(Model))
+        {
+            if (!await WriteAsync(frames.SelectMany(f => f).ToArray(), ct).ConfigureAwait(false)) return TimedOut;
+        }
+        else
+        {
+            foreach (var frame in frames)
+            {
+                if (!await WriteAsync(frame, ct).ConfigureAwait(false)) return TimedOut;
+                await Task.Delay(FrameGap, Context.Time, ct).ConfigureAwait(false);
+            }
+        }
+        Store.TryUpdate(DeviceId, s => s with { CustomEqualizers = Observed.From<IReadOnlyList<CustomEqualizer>>([EarFunEqualizer.Curve(Model, gains)], Now, StateSource.Sent) });
+        return CommandResult.Ok;
+    }
+
+    /// <summary>EarKit's reset (GAIA 0x0336, EF 0x1000 with AF A5). The earbuds restart and forget every host, so the link drops.</summary>
+    public override Task<CommandResult> FactoryResetAsync(CancellationToken cancellationToken = default) => Serialized(async ct =>
+    {
+        if (!await Send(EarFunSettings.Reset(Model), Model.Gaia ? [] : [0xAF, 0xA5], ct).ConfigureAwait(false)) return TimedOut;
+        Logger.LogInformation("EarFun factory reset sent");
+        return CommandResult.Ok;
+    }, cancellationToken);
 }

@@ -10,6 +10,7 @@ using EncoDeck.Core.Privacy;
 using EncoDeck.Core.Resources;
 using EncoDeck.Core.State;
 using EncoDeck.Protocol.Brands;
+using EncoDeck.Protocol.Brands.EarFun;
 using EncoDeck.Protocol.Brands.Moondrop;
 using EncoDeck.Protocol.Brands.Sennheiser;
 using EncoDeck.App.ViewModels;
@@ -156,7 +157,8 @@ internal sealed class BrandDemo
             Toggles = toggles.ToImmutableDictionary(t => t, t => O(t is DeviceToggle.DualDeviceConnection or DeviceToggle.InEarDetection
                 or DeviceToggle.LowLatency or DeviceToggle.IndicatorLight or DeviceToggle.PromptTone)),
             Spatial = Has(DeviceCapability.SpatialAudio) ? O(SpatialAudioMode.Off) : null,
-            Firmware = Has(DeviceCapability.FirmwareInformation) ? O(new FirmwareInfo("1.0.0", null, new Dictionary<string, string>())) : null,
+            Firmware = Has(DeviceCapability.FirmwareInformation)
+                ? O(new FirmwareInfo("1.0.0", (profile as EarFunProfile)?.Model.Id, new Dictionary<string, string>())) : null,
             GameSound = model is { GameSoundTypes.Count: > 0 } ? O(new GameSoundState(0, model.GameSoundTypes)) : null,
             PromptVolume = Has(DeviceCapability.PromptVolume)
                 ? O(model is not null ? (model.PromptVolumeRange.Min + model.PromptVolumeRange.Max) / 2 : profile is MoondropProfile ? 40 : 5) : null,
@@ -173,7 +175,10 @@ internal sealed class BrandDemo
             ]) : null,
             PreferredDevice = dual ? O(new PreferredDeviceState(null)) : null,
             CustomEqualizers = Has(DeviceCapability.CustomEqualizer) && model?.CustomEqualizer is { } spec
-                ? O<IReadOnlyList<CustomEqualizer>>([DemoCustomEqualizer(spec, 1, false)]) : null,
+                ? O<IReadOnlyList<CustomEqualizer>>([DemoCustomEqualizer(spec, 1, false)])
+                // EarFun: the curve last sent, here its first preset after "flat".
+                : profile is EarFunProfile earfun ? O<IReadOnlyList<CustomEqualizer>>(new[] { EarFunEqualizer.Curve(earfun.Model, earfun.BandEqualizer.Presets[1].Gains) })
+                : null,
         };
     }
 

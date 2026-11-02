@@ -149,6 +149,16 @@
   <data name="Controls_Title.Text" xml:space="preserve"><value>Controls</value></data>
   <data name="Controls_Settings.Text" xml:space="preserve"><value>More settings</value></data>
   <data name="Devices_Capabilities.Text" xml:space="preserve"><value>Feature support</value></data>
+  <data name="Devices_Info.Text" xml:space="preserve"><value>Device information</value></data>
+  <data name="Devices_Firmware.Header" xml:space="preserve"><value>Firmware</value></data>
+  <data name="Devices_ProductId.Header" xml:space="preserve"><value>Product ID</value></data>
+  <data name="Devices_FactoryReset.Header" xml:space="preserve"><value>Restore factory settings</value></data>
+  <data name="Devices_FactoryReset.Description" xml:space="preserve"><value>Clears every setting and every paired device on the earbuds. Afterwards remove them in Windows Bluetooth settings and pair them again.</value></data>
+  <data name="Devices_FactoryResetButton.Content" xml:space="preserve"><value>Restore…</value></data>
+  <data name="Devices_FactoryReset_Title" xml:space="preserve"><value>Restore factory settings?</value></data>
+  <data name="Devices_FactoryReset_Message" xml:space="preserve"><value>{0} will lose all its settings and forget every phone and computer it was paired with, including this PC. The earbuds restart and disconnect. To use them here again, remove them in Windows Bluetooth settings, then put them in pairing mode and pair them again.</value></data>
+  <data name="Devices_FactoryReset_Confirm" xml:space="preserve"><value>Restore</value></data>
+  <data name="Devices_FactoryReset_Done" xml:space="preserve"><value>Sent. The earbuds restart and forget their pairings; remove them in Windows Bluetooth settings and pair them again.</value></data>
   <data name="Devices_Title.Text" xml:space="preserve"><value>Devices</value></data>
   <data name="Devices_Paired.Text" xml:space="preserve"><value>Paired earbuds</value></data>
   <data name="Devices_None.Text" xml:space="preserve"><value>No paired earbuds that EncoDeck supports. Pair them in Windows Bluetooth settings.</value></data>
@@ -765,6 +775,7 @@
   <data name="Cap_Ldac" xml:space="preserve"><value>LDAC</value></data>
   <data name="Cap_Lc3" xml:space="preserve"><value>LC3</value></data>
   <data name="Cap_ChannelSwap" xml:space="preserve"><value>Left / right channel swap</value></data>
+  <data name="Cap_FactoryReset" xml:space="preserve"><value>Restore factory settings</value></data>
   <data name="Toggle_Ldac" xml:space="preserve"><value>LDAC</value></data>
   <data name="Toggle_Ldac_Description" xml:space="preserve"><value>Device-side LDAC switch. This does not install an LDAC encoder in Windows.</value></data>
   <data name="Toggle_AptXAdaptive" xml:space="preserve"><value>aptX Adaptive</value></data>
@@ -1007,6 +1018,30 @@ Afterwards Windows lists two entries with the same name (one is the other earbud
   <data name="Nothing_Eq_EnhanceVocals" xml:space="preserve"><value>Enhance vocals</value></data>
   <data name="Nothing_Eq_Classical" xml:space="preserve"><value>Classical</value></data>
   <data name="Eq_DeviceCustom" xml:space="preserve"><value>Custom EQ</value></data>
+  <data name="Eq_BandPreset.PlaceholderText" xml:space="preserve"><value>Apply a preset</value></data>
+  <data name="Eq_WriteOnlyNote.Text" xml:space="preserve"><value>These earbuds don't report their EQ. The curve shown is the one EncoDeck last sent; a change made in another app is not shown here, and moving any band sends the whole curve again.</value></data>
+  <data name="EarFunEq_Flat" xml:space="preserve"><value>Flat</value></data>
+  <data name="EarFunEq_Rock" xml:space="preserve"><value>Rock</value></data>
+  <data name="EarFunEq_Pop" xml:space="preserve"><value>Pop</value></data>
+  <data name="EarFunEq_Country" xml:space="preserve"><value>Country</value></data>
+  <data name="EarFunEq_RnB" xml:space="preserve"><value>R&amp;B</value></data>
+  <data name="EarFunEq_Classical" xml:space="preserve"><value>Classical</value></data>
+  <data name="EarFunEq_Jazz" xml:space="preserve"><value>Jazz</value></data>
+  <data name="EarFunEq_Electronic" xml:space="preserve"><value>Electronic</value></data>
+  <data name="EarFunEq_Dance" xml:space="preserve"><value>Dance</value></data>
+  <data name="EarFunEq_HipHop" xml:space="preserve"><value>Hip-hop</value></data>
+  <data name="EarFunEq_Metal" xml:space="preserve"><value>Metal</value></data>
+  <data name="EarFunEq_Blues" xml:space="preserve"><value>Blues</value></data>
+  <data name="EarFunEq_Soul" xml:space="preserve"><value>Soul</value></data>
+  <data name="EarFunEq_Hits" xml:space="preserve"><value>Hits</value></data>
+  <data name="EarFunEq_Latin" xml:space="preserve"><value>Latin</value></data>
+  <data name="EarFunEq_Natural" xml:space="preserve"><value>Natural</value></data>
+  <data name="EarFunEq_VocalBoost" xml:space="preserve"><value>Vocal boost</value></data>
+  <data name="EarFunEq_VocalReduce" xml:space="preserve"><value>Vocal reduction</value></data>
+  <data name="EarFunEq_BassBoost" xml:space="preserve"><value>Bass boost</value></data>
+  <data name="EarFunEq_BassReduce" xml:space="preserve"><value>Bass reduction</value></data>
+  <data name="EarFunEq_TrebleBoost" xml:space="preserve"><value>Treble boost</value></data>
+  <data name="EarFunEq_TrebleReduce" xml:space="preserve"><value>Treble reduction</value></data>
   <data name="Eq_DevicePreset" xml:space="preserve"><value>Preset {0}</value></data>
   <data name="Sennheiser_EqOff" xml:space="preserve"><value>Off</value></data>
   <data name="Sennheiser_EqPodcast" xml:space="preserve"><value>Podcast</value></data>

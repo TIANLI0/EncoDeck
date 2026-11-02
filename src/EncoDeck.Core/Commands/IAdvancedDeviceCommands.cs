@@ -76,4 +76,11 @@ public interface IAdvancedDeviceCommands
     /// </summary>
     Task<CommandResult> SetOptionAsync(string id, int value, CancellationToken cancellationToken = default) =>
         Task.FromResult(CommandResult.Unsupported($"Option {id} is not supported on this device."));
+
+    /// <summary>
+    /// Restores the earbuds' factory settings, which also clears their paired devices; Windows then has to pair
+    /// them again. Success means the earbuds took the command: they restart and drop the link, so nothing is read back.
+    /// </summary>
+    Task<CommandResult> FactoryResetAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult(CommandResult.Unsupported("Factory reset is not supported on this device."));
 }

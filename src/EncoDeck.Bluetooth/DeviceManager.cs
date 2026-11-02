@@ -464,6 +464,8 @@ public sealed class DeviceManager : IDeviceManager
     public Task<CommandResult> SetOptionAsync(string id, int value, CancellationToken cancellationToken = default) =>
         _usbSettings is { } usb ? usb.SetOptionAsync(id, value, cancellationToken) : WithController(c => c.SetOptionAsync(id, value, cancellationToken));
 
+    public Task<CommandResult> FactoryResetAsync(CancellationToken cancellationToken = default) => WithController(c => c.FactoryResetAsync(cancellationToken));
+
     public Task<CommandResult> ReconnectAsync(CancellationToken cancellationToken = default)
     {
         if (_usbIdentity is not null) return RefreshUsbAsync(cancellationToken, forceSettings: true);

@@ -19,6 +19,26 @@
                 </StackPanel>
             </Border>
 
+            <!-- The connected earbuds: what to quote in a report, and the factory reset where the earbuds take one. -->
+            <Border x:Name="InfoCard" Style="{StaticResource CardStyle}" Visibility="Collapsed">
+                <StackPanel Spacing="8">
+                    <TextBlock x:Uid="Devices_Info" Text="Device information" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                    <controls:SettingRow x:Name="FirmwareRow" x:Uid="Devices_Firmware" Header="Firmware">
+                        <TextBlock Text="{x:Bind ViewModel.FirmwareVersionText, Mode=OneWay}" IsTextSelectionEnabled="True" TextWrapping="Wrap"
+                                   VerticalAlignment="Center" Style="{StaticResource SecondaryTextStyle}" />
+                    </controls:SettingRow>
+                    <controls:SettingRow x:Name="ProductIdRow" x:Uid="Devices_ProductId" Header="Product ID">
+                        <TextBlock Text="{x:Bind ViewModel.ProductIdText, Mode=OneWay}" IsTextSelectionEnabled="True"
+                                   VerticalAlignment="Center" Style="{StaticResource SecondaryTextStyle}" />
+                    </controls:SettingRow>
+                    <controls:SettingRow x:Name="ResetRow" x:Uid="Devices_FactoryReset" Header="Restore factory settings"
+                                         Description="Clears every setting and every paired device on the earbuds. Afterwards remove them in Windows Bluetooth settings and pair them again.">
+                        <Button x:Uid="Devices_FactoryResetButton" Content="Restore…" Click="OnFactoryResetClick" />
+                    </controls:SettingRow>
+                    <TextBlock x:Name="ResetResult" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" Visibility="Collapsed" />
+                </StackPanel>
+            </Border>
+
             <Border x:Name="CapabilityCard" Style="{StaticResource CardStyle}">
                 <StackPanel Spacing="8">
                     <TextBlock x:Uid="Devices_Capabilities" Text="Feature support" Style="{StaticResource BodyStrongTextBlockStyle}" />

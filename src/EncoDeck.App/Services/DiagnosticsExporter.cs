@@ -32,7 +32,8 @@ internal static class DiagnosticsExporter
             model = state.Profile?.ModelId,
             connection = state.Connection.ToString(),
             leAudio = new { state.IsLeAudioBonded, links = state.LeAudioLinks, audioStreamingVerified = false },
-            firmware = state.Firmware?.Value.Extra,
+            productId = state.ProductId?.ToString("X6"),
+            firmware = state.Firmware?.Value is { } fw ? new { version = fw.Version, modelCode = fw.ModelCode, parts = fw.Extra } : null,
             codec = new
             {
                 windowsLogged = state.WindowsCodecLogged,

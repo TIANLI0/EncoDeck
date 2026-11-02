@@ -26,7 +26,13 @@ internal sealed record CachedDevice(CachedReading? Left, CachedReading? Right, C
 
     /// <summary>Last multi-connection list the earbuds reported (without addresses), shown until they answer again.</summary>
     public IReadOnlyList<CachedSource>? Sources { get; init; }
+
+    /// <summary>Last user EQ curve EncoDeck sent to earbuds that never report it (<see cref="StateSource.Sent"/>).</summary>
+    public CachedCurve? SentCurve { get; init; }
 }
+
+/// <summary>A user EQ curve as sent: its id, gain limits and bands.</summary>
+internal sealed record CachedCurve(int Id, int MinGain, int MaxGain, int[] Frequencies, int[] Gains, DateTimeOffset Timestamp);
 
 /// <summary>One multi-connection source device; its Bluetooth address is deliberately not kept.</summary>
 internal sealed record CachedSource(string Name, int State, bool IsThisDevice, bool IsAudioActive, int DeviceType, DateTimeOffset Timestamp);
@@ -37,7 +43,7 @@ internal sealed partial class CacheJsonContext : JsonSerializerContext;
 
 /// <summary>
 /// Remembers the last confirmed battery readings, product id, colour id, capabilities and firmware
-/// per device across app restarts. Restored readings are marked <see cref="StateSource.Cache"/> so
+/// per device across app restarts, and the EQ curve last sent to earbuds that cannot report theirs. Restored readings are marked <see cref="StateSource.Cache"/> so
 /// the UI presents them as "last read", never as live; the rest lets the UI show the device's art
 /// and the same settings as last time before (and while) it connects.
 /// Device keys are hashed; no Bluetooth address is written to disk.
@@ -104,6 +110,7 @@ public sealed class DeviceStateCache : IDisposable
                 Capabilities = current.ControlCapabilities is { Length: > 0 } caps ? Convert.ToHexString(caps) : existing?.Capabilities,
                 Firmware = current.BudFirmware ?? existing?.Firmware,
                 Sources = PickSources(current.SourceDevices, existing?.Sources),
+                SentCurve = PickCurve(current.CustomEqualizers, existing?.SentCurve),
             };
             if (next != existing)
             {
@@ -134,6 +141,7 @@ public sealed class DeviceStateCache : IDisposable
                 ControlCapabilities = state.ControlCapabilities ?? Capabilities(cached.Capabilities),
                 BudFirmware = state.BudFirmware ?? cached.Firmware,
                 SourceDevices = state.SourceDevices ?? ToObserved(cached.Sources),
+                CustomEqualizers = state.CustomEqualizers ?? ToObserved(cached.SentCurve),
             };
         });
     }
@@ -180,6 +188,17 @@ public sealed class DeviceStateCache : IDisposable
 
         static CachedSource Comparable(CachedSource d) => d with { Timestamp = default };
     }
+
+    /// <summary>Only a curve the earbuds cannot report is kept; a newer send replaces it.</summary>
+    private static CachedCurve? PickCurve(Observed<IReadOnlyList<CustomEqualizer>>? live, CachedCurve? existing) =>
+        live is not { Source: StateSource.Sent, Value: [var curve] } || existing?.Timestamp == live.Timestamp ? existing
+        : new(curve.Id, curve.MinGain, curve.MaxGain, [.. curve.Bands.Select(b => b.FrequencyHz)], [.. curve.Bands.Select(b => b.Gain)], live.Timestamp);
+
+    private static Observed<IReadOnlyList<CustomEqualizer>>? ToObserved(CachedCurve? curve) =>
+        curve is { Frequencies.Length: > 0 } && curve.Frequencies.Length == curve.Gains.Length
+            ? Observed.From<IReadOnlyList<CustomEqualizer>>([new CustomEqualizer(curve.Id, "", curve.MinGain, curve.MaxGain, IsSelected: true,
+                [.. curve.Frequencies.Zip(curve.Gains, (f, g) => new EqualizerBand(f, g))])], curve.Timestamp, StateSource.Cache)
+            : null;
 
     private static CachedReading? Pick(Observed<BatteryReading>? live, CachedReading? existing)
     {

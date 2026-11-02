@@ -17,6 +17,7 @@ public static class EarFunSettings
     public static ushort ConnectHost(EarFunModel model) => model.Gaia ? (ushort)0x0329 : (ushort)0x2165;
     public static ushort DisconnectHost(EarFunModel model) => model.Gaia ? (ushort)0x032A : (ushort)0x2175;
     public const ushort PlayList = 0x0358;
+    public static ushort Reset(EarFunModel model) => model.Gaia ? (ushort)0x0336 : (ushort)0x1000;
 
     /// <summary>Entry layout: number, 19-byte name, then 3 (GAIA) or 4 (EF) address bytes and the connection state.</summary>
     public static EarFunSource? Source(EarFunModel model, byte[] p)

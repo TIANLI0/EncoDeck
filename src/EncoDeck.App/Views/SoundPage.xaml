@@ -14,7 +14,7 @@
                 Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
                 CloseButtonCommand="{x:Bind ViewModel.DismissErrorCommand}" />
 
-            <!-- Connected earbuds with none of the cards below (EarFun: no EQ readback), instead of a blank page. -->
+            <!-- Connected earbuds with none of the cards below, instead of a blank page. -->
             <Border x:Name="EmptyCard" Style="{StaticResource CardStyle}" Visibility="Collapsed">
                 <StackPanel Spacing="4">
                     <TextBlock x:Uid="Sound_Empty_Title" Text="No sound settings available" Style="{StaticResource BodyStrongTextBlockStyle}" />
@@ -61,7 +61,12 @@
                             <Button x:Name="RenameButton" x:Uid="Eq_Rename" Grid.Column="1" Content="Rename" Click="OnRenameClick" />
                             <Button x:Name="DeleteButton" x:Uid="Eq_Delete" Grid.Column="2" Content="Delete" Click="OnDeleteClick" />
                         </Grid>
+                        <!-- Write-only curves (EarFun): presets only fill the curve, and the earbuds never report it back. -->
+                        <ComboBox x:Name="BandPresetBox" x:Uid="Eq_BandPreset" PlaceholderText="Apply a preset" MinWidth="200"
+                                  SelectionChanged="OnBandPresetChanged" Visibility="Collapsed" />
                         <Grid x:Name="BandHost" ColumnSpacing="4" />
+                        <TextBlock x:Name="BandWriteOnlyNote" x:Uid="Eq_WriteOnlyNote" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" Visibility="Collapsed"
+                                   Text="These earbuds don't report their EQ. The curve shown is the one EncoDeck last sent; a change made in another app is not shown here, and moving any band sends the whole curve again." />
                     </StackPanel>
                     <TextBlock Text="{x:Bind ViewModel.EqualizerText, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" />
                 </StackPanel>

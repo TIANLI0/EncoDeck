@@ -18,6 +18,9 @@ public enum StateSource
 
     /// <summary>Restored from a previous session; never shown as live.</summary>
     Cache,
+
+    /// <summary>Written to a device that never reports it back: the value this PC last sent.</summary>
+    Sent,
 }
 
 /// <summary>A value together with when and how it was learned. Absence (null) means unknown.</summary>

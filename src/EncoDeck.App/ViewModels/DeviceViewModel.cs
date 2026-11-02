@@ -191,6 +191,15 @@ public sealed partial class DeviceViewModel : ObservableObject
     [ObservableProperty] public partial bool CanEditEqualizerBands { get; set; }
 
     [ObservableProperty] public partial string FirmwareText { get; set; } = string.Empty;
+
+    /// <summary>Devices page: the firmware the earbuds reported (per part where they report several).</summary>
+    [ObservableProperty] public partial string FirmwareVersionText { get; set; } = string.Empty;
+
+    /// <summary>Devices page: the product id the earbuds reported, or their model code.</summary>
+    [ObservableProperty] public partial string ProductIdText { get; set; } = string.Empty;
+
+    /// <summary>Devices page: the connected earbuds take a factory reset command.</summary>
+    [ObservableProperty] public partial bool CanFactoryReset { get; set; }
     [ObservableProperty] public partial string LastUpdatedText { get; set; } = string.Empty;
     [ObservableProperty] public partial string TrayToolTip { get; set; } = "EncoDeck";
 
@@ -477,6 +486,10 @@ public sealed partial class DeviceViewModel : ObservableObject
         ApplyToggles(state, controlReady);
 
         FirmwareText = state.Firmware?.Value is { } fw ? DescribeFirmware(fw, profile) : string.Empty;
+        FirmwareVersionText = state.Firmware?.Value is { } version ? DescribeFirmwareVersion(version) : string.Empty;
+        ProductIdText = state.ProductId is { } pid ? pid.ToString("X6")
+            : state.Firmware?.Value.ModelCode is { Length: > 0 } code && code != profile?.DisplayName ? code : string.Empty;
+        CanFactoryReset = IsReady && profile?.Capabilities.Get(DeviceCapability.FactoryReset).Support == CapabilitySupport.Supported;
         var newest = new[] { state.Battery.Left?.Timestamp, state.Battery.Right?.Timestamp, state.NoiseControl?.Timestamp, state.LastResponseAt }.Max();
         LastUpdatedText = newest is { } t && IsReady ? Loc.Format("Status_UpdatedAt", t.ToLocalTime().ToString("T")) : string.Empty;
 
@@ -683,6 +696,17 @@ public sealed partial class DeviceViewModel : ObservableObject
         // Sennheiser reports one device-wide version; other brands keep their existing Home layout.
         if (parts.Count == 0 && profile is EncoDeck.Protocol.Brands.Sennheiser.SennheiserProfile && !string.IsNullOrWhiteSpace(fw.Version)) parts.Add(fw.Version);
         return parts.Count == 0 ? string.Empty : $"{Loc.Get("Home_FirmwareLabel")}  {string.Join(" · ", parts)}";
+    }
+
+    /// <summary>Every version the earbuds reported: labelled per part, else the single version.</summary>
+    private static string DescribeFirmwareVersion(FirmwareInfo fw)
+    {
+        var parts = new List<string>();
+        if (fw.Extra.TryGetValue("left", out var l)) parts.Add($"{Loc.Get("Battery_Left")} {l}");
+        if (fw.Extra.TryGetValue("right", out var r)) parts.Add($"{Loc.Get("Battery_Right")} {r}");
+        if (fw.Extra.TryGetValue("case", out var c)) parts.Add($"{Loc.Get("Battery_Case")} {c}");
+        if (parts.Count == 0 && !string.IsNullOrWhiteSpace(fw.Version)) parts.Add(fw.Version);
+        return string.Join(" · ", parts);
     }
 
     public static string DescribeConnection(DeviceConnectionState state) => Loc.Get($"Connection_{state}");
