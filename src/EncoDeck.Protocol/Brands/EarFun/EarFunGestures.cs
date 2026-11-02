@@ -56,13 +56,14 @@ public static class EarFunGestures
         }
         return slots;
     }
+    /// <summary>
+    /// Each function at EarKit's fixed offset (GAIA: gesture type, then function, per slot). Like EarKit, a longer
+    /// report and GAIA type bytes other than the ones EncoDeck writes do not hide the functions (issue 16).
+    /// </summary>
     public static IReadOnlyList<KeyFunction>? Decode(EarFunModel model, byte[] payload)
     {
         var slots = Slots(model);
-        if (payload.Length != slots.Count * (model.Gaia ? 2 : 1)) return null;
-        if (model.Gaia)
-            for (int i = 0; i < slots.Count; i++)
-                if (payload[2 * i] != (slots[i].Action == GestureAction.SqueezeAndHold ? 17 : (int)slots[i].Action)) return null;
+        if (slots.Count == 0 || payload.Length < slots.Count * (model.Gaia ? 2 : 1)) return null;
         return [.. slots.Select((s, i) => new KeyFunction(s.Side, s.Button, s.Action, payload[model.Gaia ? 2 * i + 1 : i]))];
     }
 }

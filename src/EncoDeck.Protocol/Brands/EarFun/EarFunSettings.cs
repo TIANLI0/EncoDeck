@@ -84,6 +84,8 @@ public static class EarFunSettings
 
     public static DeviceOption? Option(EarFunModel model, EarFunSetting setting, byte value)
     {
+        // EarKit writes "never" as 255 and shows any unlisted report as never; firmware that reports 0 means never too.
+        if (setting == EarFunSetting.AutoOff && value == 0) value = 255;
         DeviceOptionChoice C(int v, string key) => new(v, "EarFun_" + key);
         IReadOnlyList<DeviceOptionChoice> choices = setting switch
         {

@@ -22,6 +22,8 @@ internal sealed class EarFunDeviceController(IDuplexByteChannel channel, Control
     private static readonly TimeSpan SourceListWindow = TimeSpan.FromMilliseconds(1200);
     // EarKit re-reads the list for about 11 s after a connect or disconnect and repeats the command at 3 s and 6 s.
     private static readonly TimeSpan HostSwitchWindow = TimeSpan.FromSeconds(12);
+    // EarKit's spacing between queued frames.
+    private static readonly TimeSpan FrameGap = TimeSpan.FromMilliseconds(40);
     private readonly EarFunFrameCodec _codec = new(profile.Model.Gaia);
     private readonly ConcurrentDictionary<ushort, byte[]> _values = new();
     // Raw protocol log: values of the settings EncoDeck reads and writes; only the length of anything else
@@ -30,6 +32,12 @@ internal sealed class EarFunDeviceController(IDuplexByteChannel channel, Control
         .SelectMany(s => new[] { EarFunSettings.Command(profile.Model, s).Read, EarFunSettings.Command(profile.Model, s).Write })
         .Where(c => c != 0), EarFunGestures.Read(profile.Model), EarFunGestures.Write(profile.Model),
         EarFunSettings.ConnectHost(profile.Model), EarFunSettings.DisconnectHost(profile.Model)];
+    // Reports of settings and gestures: logged once per session when EncoDeck cannot read the value.
+    private readonly HashSet<ushort> _reads = [.. Enum.GetValues<EarFunSetting>().Select(s => EarFunSettings.Command(profile.Model, s).Read)
+        .Where(c => c != 0), EarFunGestures.Read(profile.Model)];
+    private readonly HashSet<ushort> _unreadable = [];
+    // Refreshes that may still ask again for settings that have not answered.
+    private int _rereads;
     // The PC's adapter address, to recognise this PC by the partial address in the list.
     private readonly byte[]? _host = Vivo.VivoParsers.TryParseHostAddress(context.Identity.DeviceId, out var host) ? host : null;
     private readonly object _sourceGate = new();
@@ -68,6 +76,11 @@ internal sealed class EarFunDeviceController(IDuplexByteChannel channel, Control
             _profile = new(Model, _values.Keys.ToHashSet());
             Store.TryUpdate(DeviceId, s => s with { Profile = _profile, LastResponseAt = Now });
         }
+        // The control stays unavailable until a report is understood; keep the first one for diagnostics.
+        else if (packet.Type == 0 && _reads.Contains(packet.Command) && !_profile.Confirmed(packet.Command))
+            lock (_unreadable)
+                if (_unreadable.Add(packet.Command))
+                    Logger.LogInformation("EarFun report {Command:X4} not understood: {Payload}", packet.Command, Convert.ToHexString(packet.Payload));
     }
 
     private IEnumerable<EarFunSetting> Settings()
@@ -213,7 +226,7 @@ internal sealed class EarFunDeviceController(IDuplexByteChannel channel, Control
             foreach (var body in bodies)
             {
                 if (!await WriteAsync(new byte[] { 0xFF,4,0,(byte)(body.Length - 4) }.Concat(body).ToArray(), cancellationToken).ConfigureAwait(false)) return false;
-                await Task.Delay(TimeSpan.FromMilliseconds(40), Context.Time, cancellationToken).ConfigureAwait(false);
+                await Task.Delay(FrameGap, Context.Time, cancellationToken).ConfigureAwait(false);
             }
         }
         if (await Read(EarFunSetting.Firmware, cancellationToken).ConfigureAwait(false) is null
@@ -223,10 +236,11 @@ internal sealed class EarFunDeviceController(IDuplexByteChannel channel, Control
         foreach (var setting in Settings().Where(s => s is not (EarFunSetting.Firmware or EarFunSetting.Battery)))
         {
             if (!await Send(EarFunSettings.Command(Model, setting).Read, [], cancellationToken).ConfigureAwait(false)) return false;
-            await Task.Delay(TimeSpan.FromMilliseconds(40), Context.Time, cancellationToken).ConfigureAwait(false);
+            await Task.Delay(FrameGap, Context.Time, cancellationToken).ConfigureAwait(false);
         }
         if (Model.Has("keys") && !await Send(EarFunGestures.Read(Model), [], cancellationToken).ConfigureAwait(false)) return false;
         if (Model.Has("list") && !await RequestSourcesAsync(cancellationToken).ConfigureAwait(false)) return false;
+        _rereads = 3;
         StartPolling();
         return true;
     }
@@ -307,7 +321,8 @@ internal sealed class EarFunDeviceController(IDuplexByteChannel channel, Control
                 bool enabled;
                 if (pair == EarFunSetting.Wear)
                 {
-                    if (Model.Tw700 ? value > 15 : value > 1) return false;
+                    // TW700 keeps four flags in the low bits (all set: off); EarKit ignores the high bits (issue 16).
+                    if (!Model.Tw700 && value > 1) return false;
                     enabled = Model.Tw700 ? (value & 15) != 15 : value != 1;
                 }
                 else { if (Model.Gaia ? value > 1 : value is not (1 or 2)) return false; enabled = value == (Model.Gaia ? 1 : 2); }
@@ -488,6 +503,18 @@ internal sealed class EarFunDeviceController(IDuplexByteChannel channel, Control
                 return Closed.IsCompleted ? TimedOut : new(CommandStatus.Rejected, "EarFun returned an invalid or rejected refresh response.");
         // Hosts come and go without a report; the entries arrive after this transaction.
         if (Model.Has("list")) await RequestSourcesAsync(ct).ConfigureAwait(false);
+        // A start-up read can go unanswered; ask a few more times without waiting, like start-up (EarKit
+        // re-reads every setting after each change).
+        if (_rereads > 0)
+        {
+            _rereads--;
+            foreach (var setting in Settings().Where(s => !_profile.Confirmed(EarFunSettings.Command(Model, s).Read)))
+            {
+                if (!await Send(EarFunSettings.Command(Model, setting).Read, [], ct).ConfigureAwait(false)) return TimedOut;
+                await Task.Delay(FrameGap, Context.Time, ct).ConfigureAwait(false);
+            }
+            if (Model.Has("keys") && Store.Current.KeyFunctions is null) await Send(EarFunGestures.Read(Model), [], ct).ConfigureAwait(false);
+        }
         return CommandResult.Ok;
     }, cancellationToken);
 
@@ -525,7 +552,7 @@ internal sealed class EarFunDeviceController(IDuplexByteChannel channel, Control
         if (setting is null) return Task.FromResult(NotSupported("Option"));
         return setting == EarFunSetting.TouchLock
             ? Change(EarFunSetting.TouchLock, EarFunSettings.TouchLockPayload(Model, value), p => EarFunSettings.TouchLockValue(Model, p) == value, cancellationToken)
-            : Change(setting.Value, [(byte)value], p => p[0] == value, cancellationToken);
+            : Change(setting.Value, [(byte)value], p => EarFunSettings.Option(Model, setting.Value, p[0])?.Value == value, cancellationToken);
     }
 
     public override Task<CommandResult> SetKeyFunctionAsync(KeyFunction assignment, CancellationToken cancellationToken = default) => Serialized(async ct =>
@@ -547,4 +574,5 @@ internal sealed class EarFunDeviceController(IDuplexByteChannel channel, Control
         return await WriteConfirmed(EarFunGestures.Write(Model), payload, EarFunGestures.Read(Model), reply => reply.Type == 0
             && EarFunGestures.Decode(Model, reply.Payload) is { } keys && keys.Select((key, i) => key == (i == index ? assignment : old[i])).All(v => v), ct).ConfigureAwait(false);
     }, cancellationToken);
+
 }

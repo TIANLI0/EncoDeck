@@ -556,4 +556,48 @@ public class EarFunTests
         Assert.False(store.Current.SourceDevices!.Value.Single(d => d.Name == "Phone").IsConnected);
         Assert.False(controller.Closed.IsCompleted);
     }
+
+    [Fact]
+    public async Task Tw700ReportsEarKitReadsAreUnderstood()
+    {
+        // Issue 16 (beta.6): in-ear detection stayed unavailable, gestures and auto power-off never appeared.
+        var device = new Device(true);
+        device.Values[0x034A] = [0x30];
+        device.Values[0x0348] = [0];
+        // Gesture types other than the ones EncoDeck writes, and a trailing byte.
+        device.Values[0x030B] = [1, 1, 1, 2, 2, 3, 2, 4, 3, 5, 3, 6, 4, 7, 4, 8, 0];
+        var (controller, store) = Create(device, "TW700"); await using var owner = controller;
+        Assert.True(await controller.InitializeAsync(Ct));
+        await Wait(() => store.Current.KeyFunctions is not null && store.Current.Options.ContainsKey("earfun-autooff")
+            && store.Current.Toggles.ContainsKey(DeviceToggle.InEarDetection));
+        Assert.True(store.Current.Toggles[DeviceToggle.InEarDetection].Value);
+        Assert.Equal(255, store.Current.Options["earfun-autooff"].Value.Value);
+        Assert.Equal([1, 2, 3, 4, 5, 6, 7, 8], store.Current.KeyFunctions!.Value.Select(k => k.Function));
+        device.Push(0x034A, [0x1F]);
+        await Wait(() => !store.Current.Toggles[DeviceToggle.InEarDetection].Value);
+        // Firmware that reports "never" as 0 confirms EarKit's 255.
+        Assert.Equal(255, EarFunSettings.Option(EarFunProfiles.Models.Single(m => m.Id == "TW700"), EarFunSetting.AutoOff, 0)!.Value);
+        device.Values[0x0348] = [3];
+        await controller.RefreshAsync(Ct);
+        Assert.Equal(3, store.Current.Options["earfun-autooff"].Value.Value);
+        Assert.True((await controller.SetOptionAsync("earfun-autooff", 255, Ct)).IsSuccess);
+    }
+
+    [Fact]
+    public async Task UnansweredStartupReadsAreAskedAgainOnRefresh()
+    {
+        var device = new Device(true);
+        byte[] autoOff = device.Values[0x0348];
+        device.Values.Remove(0x0348);
+        var (controller, store) = Create(device, "TW700"); await using var owner = controller;
+        Assert.True(await controller.InitializeAsync(Ct)); await Wait(() => store.Current.KeyFunctions is not null);
+        Assert.False(store.Current.Options.ContainsKey("earfun-autooff"));
+        device.Values[0x0348] = autoOff;
+        Assert.True((await controller.RefreshAsync(Ct)).IsSuccess);
+        await Wait(() => store.Current.Options.ContainsKey("earfun-autooff"));
+        // Settings that answered are not asked twice.
+        int reads = device.Written.Count(f => f[7] == 0x48);
+        Assert.True((await controller.RefreshAsync(Ct)).IsSuccess);
+        Assert.Equal(reads + 1, device.Written.Count(f => f[7] == 0x48));
+    }
 }
