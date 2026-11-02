@@ -187,4 +187,4 @@ EncoDeck is an unofficial open-source project with no affiliation, partnership o
 
 ### EarFun (development version)
 
-23 GAIA / EF profiles, including EarFun Air Pro 4+ (TW700), are available with battery and firmware reads and model-specific controls, including the paired-device list, touch lock, call microphone and device-side LDAC / aptX switches; every write is confirmed by reading it back. EncoAPI provides 13 exact official product photographs. Hardware verification and EQ readback remain pending; see [compatibility details](docs/COMPATIBILITY.md#earfun--atvel).
+23 GAIA / EF profiles, including EarFun Air Pro 4+ (TW700), are available with battery and firmware reads and model-specific controls, including the paired-device list, touch lock, call microphone, device-side LDAC / aptX switches, the custom EQ curve with presets, and factory reset. Every setting write is confirmed by reading it back; the earbuds never report their EQ, so EncoDeck shows the curve it last sent. EncoAPI provides 13 exact official product photographs. Hardware verification remains pending; see [compatibility details](docs/COMPATIBILITY.md#earfun--atvel).
