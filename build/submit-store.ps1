@@ -52,7 +52,7 @@ $headers = @{ Authorization = "Bearer $token" }
 $app = Invoke-RestMethod "$api" -Headers $headers
 if ($app.pendingApplicationSubmission -and $ReplacePending) {
     $pending = Invoke-RestMethod "$api/submissions/$($app.pendingApplicationSubmission.id)" -Headers $headers
-    if ($pending.status -ne "PendingCommit") {
+    if ($pending.status -notin "PendingCommit", "CommitFailed") {
         throw "Submission $($pending.id) is $($pending.status) in Partner Center; it can no longer be replaced."
     }
     Invoke-RestMethod -Method Delete "$api/submissions/$($pending.id)" -Headers $headers | Out-Null
@@ -100,13 +100,23 @@ Compress-Archive -LiteralPath $Package -DestinationPath $zip
 Invoke-RestMethod -Method Put $submission.fileUploadUrl -InFile $zip -Headers @{ "x-ms-blob-type" = "BlockBlob" } -ContentType "application/zip"
 Write-Host "Uploaded $fileName"
 
-Invoke-RestMethod -Method Post "$api/submissions/$($submission.id)/commit" -Headers $headers -ContentType "application/json" -Body "" | Out-Null
-for ($i = 0; $i -lt 60; $i++) {
-    $status = Invoke-RestMethod "$api/submissions/$($submission.id)/status" -Headers $headers
-    if ($status.status -ne "CommitStarted") { break }
-    Start-Sleep -Seconds 10
+# Partner Center sometimes fails a commit with a transient 409 InvalidState; committing the same submission
+# again goes through, so retry that case a few times before giving up.
+for ($attempt = 1; $attempt -le 3; $attempt++) {
+    Invoke-RestMethod -Method Post "$api/submissions/$($submission.id)/commit" -Headers $headers -ContentType "application/json" -Body "" | Out-Null
+    for ($i = 0; $i -lt 60; $i++) {
+        $status = Invoke-RestMethod "$api/submissions/$($submission.id)/status" -Headers $headers
+        if ($status.status -ne "CommitStarted") { break }
+        Start-Sleep -Seconds 10
+    }
+    Write-Host "Submission status: $($status.status)"
+    $invalidState = $status.status -eq "CommitFailed" -and @($status.statusDetails.errors).Count -gt 0 -and
+        -not (@($status.statusDetails.errors) | Where-Object code -ne "InvalidState")
+    if (-not $invalidState -or $attempt -eq 3) { break }
+    $status.statusDetails | ConvertTo-Json -Depth 10 | Write-Host
+    Write-Host "Commit attempt $attempt hit InvalidState; retrying in 60 s."
+    Start-Sleep -Seconds 60
 }
-Write-Host "Submission status: $($status.status)"
 if ($status.status -like "*Failed") {
     $status.statusDetails | ConvertTo-Json -Depth 10 | Write-Host
     throw "Store submission failed."

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)] [ValidateSet('Status', 'Delete')] [string] $Action,
+    [Parameter(Mandatory)] [ValidateSet('Status', 'Delete', 'Commit')] [string] $Action,
     [Parameter(Mandatory)] [ValidatePattern('^\d+$')] [string] $SubmissionId,
     [string] $AppId = '9PN6D8G1K9WZ'
 )
@@ -23,7 +23,27 @@ $status = Invoke-RestMethod "$api/submissions/$SubmissionId/status" -Headers $he
 Write-Host "Submission $SubmissionId status: $($status.status)"
 Write-Host "Pending submission: $($app.pendingApplicationSubmission.id)"
 Write-Host "Published submission: $($app.lastPublishedApplicationSubmission.id)"
+if ($status.statusDetails) { $status.statusDetails | ConvertTo-Json -Depth 10 | Write-Host }
 if ($Action -eq 'Status') { return }
+
+# Commit again a pending submission whose commit failed (e.g. a transient 409 InvalidState), keeping its package.
+if ($Action -eq 'Commit') {
+    if ($app.pendingApplicationSubmission.id -ne $SubmissionId -or $status.status -notin 'PendingCommit', 'CommitFailed') {
+        throw 'Only the current pending submission in PendingCommit or CommitFailed can be committed.'
+    }
+    Invoke-RestMethod -Method Post "$api/submissions/$SubmissionId/commit" -Headers $headers -ContentType 'application/json' -Body '' | Out-Null
+    for ($i = 0; $i -lt 60; $i++) {
+        $status = Invoke-RestMethod "$api/submissions/$SubmissionId/status" -Headers $headers
+        if ($status.status -ne 'CommitStarted') { break }
+        Start-Sleep -Seconds 10
+    }
+    Write-Host "Submission $SubmissionId status: $($status.status)"
+    if ($status.status -like '*Failed') {
+        $status.statusDetails | ConvertTo-Json -Depth 10 | Write-Host
+        throw 'Store submission failed.'
+    }
+    return
+}
 
 # Delete only the exact pending submission explicitly named by the operator.
 if ($app.lastPublishedApplicationSubmission.id -eq $SubmissionId -or $status.status -eq 'Published') {
