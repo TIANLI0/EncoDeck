@@ -9,11 +9,11 @@ on:
         required: true
         type: string
       action:
-        description: Read status, delete, or commit again the named pending submission
+        description: Read status or delete the named pending submission
         required: true
         type: choice
         default: Status
-        options: [Status, Delete, Commit]
+        options: [Status, Delete]
 
 permissions:
   contents: read
@@ -21,7 +21,7 @@ permissions:
 jobs:
   manage:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - name: Manage the specified submission
