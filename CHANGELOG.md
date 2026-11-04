@@ -2,6 +2,16 @@
 
 本文件记录 EncoDeck 每个版本的用户可见变化，格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。每个版本按“新增 / 改进 / 修复 / 移除”分类。
 
+## [Unreleased]
+
+### 新增
+
+- 支持 EDIFIER W830NB 的电量显示（[#18](https://github.com/TIANLI0/EncoDeck/issues/18)）。此前它被当作旧款漫步者头戴连接，控制通道建立失败，还会反复断开耳机的蓝牙连接。
+
+### 移除
+
+- 实验室“LE Audio 码率与延迟”的“Intel 左右同步调度”开关（仅 Enco X4）：它只能让播放中的左右状态不再漂移，消除不了开始播放时的错位。
+
 ## [1.14.0] - 2026-11-02 · LC3 一键切换与 EarFun 支持
 
 ### 新增
