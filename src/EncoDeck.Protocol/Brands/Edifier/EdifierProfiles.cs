@@ -3,6 +3,7 @@
 // Per-model feature gating follows mEDIFIER Qt/devices/deviceinfo.json (https://github.com/wh201906/mEDIFIER,
 // 10056b5, MIT, Copyright (c) 2023 Self Not Found; MIT notice in THIRD_PARTY_NOTICES.md) and the
 // device records of HyperEars (https://github.com/silverpoetry/HyperEars, 361d279, GPL-3.0-only).
+// W830NB framing follows the devicePEQ capture (https://github.com/jeromeof/devicePEQ, 0617f38, 0BSD).
 using System.Text;
 using EncoDeck.Core.Capabilities;
 using EncoDeck.Core.Commands;
@@ -38,6 +39,11 @@ public static partial class EdifierProfiles
         new EdifierProfile("edifier-w860nb-pro", "EDIFIER W860NB PRO", "w860nbpro", isGeneric: false,
             spec: new EdifierSpec(EdifierFraming.V2Xor, StateBattery: false, EdifierAnc.SlotW860, EdifierFeatures.Noise,
                 Evidence: "W860NB PRO: HyperEars real-device verification (battery, noise slot 0x10)")),
+        // devicePEQ W830NB capture: BES v2 with XOR payloads; v1 frames go unanswered and the link
+        // drops (issue #18). Its noise slot is not recorded, so 0xCC is never sent and only battery is read.
+        new EdifierProfile("edifier-w830nb", "EDIFIER W830NB", "w830nb", isGeneric: false,
+            spec: new EdifierSpec(EdifierFraming.V2Xor, StateBattery: false, EdifierAnc.Probe, EdifierFeatures.None,
+                Evidence: "W830NB: devicePEQ capture (BES v2, XOR payloads); battery only, its noise slot is not recorded")),
         .. CreateTwsProfiles(),
         new EdifierProfile("edifier", "EDIFIER headphones", "edifier", isGeneric: true),
     ];

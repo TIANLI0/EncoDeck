@@ -351,7 +351,7 @@ Free4 标准版 / 丹拿版的支持范围见 [设备兼容性](COMPATIBILITY.md
 
 ## 14. 漫步者 EDIFIER 设置
 
-来源：[mEDIFIER `10056b5`](https://github.com/wh201906/mEDIFIER/tree/10056b51ce1b354fdf2b18e35e61f8a0b8520cd5)（`doc/KnownCommands/W820NB_Double_Gold.txt` 完整收发帧、`Qt/devices/deviceinfo.json` 型号功能隐藏表），[Macifier `5479859`](https://github.com/luanyufei/Macifier/tree/547985930840a1c374659351fc8ca1e47a53e97d)（W820NB 真机），[HyperEars `361d279`](https://github.com/silverpoetry/HyperEars/tree/361d27970002ea86a778a7eaf722c3c022975591) 的 `docs/edifier-bes-protocol.md`，[BudsLink `ba3160d`](https://github.com/maniacx/BudsLink/tree/ba3160dfce72c192ebbdf2697b0341aa1e78fb56) 的 X5 Pro 配置。本节 [社区] 指上述项目的真机记录。
+来源：[mEDIFIER `10056b5`](https://github.com/wh201906/mEDIFIER/tree/10056b51ce1b354fdf2b18e35e61f8a0b8520cd5)（`doc/KnownCommands/W820NB_Double_Gold.txt` 完整收发帧、`Qt/devices/deviceinfo.json` 型号功能隐藏表），[Macifier `5479859`](https://github.com/luanyufei/Macifier/tree/547985930840a1c374659351fc8ca1e47a53e97d)（W820NB 真机），[HyperEars `361d279`](https://github.com/silverpoetry/HyperEars/tree/361d27970002ea86a778a7eaf722c3c022975591) 的 `docs/edifier-bes-protocol.md`，[BudsLink `ba3160d`](https://github.com/maniacx/BudsLink/tree/ba3160dfce72c192ebbdf2697b0341aa1e78fb56) 的 X5 Pro 配置，[devicePEQ `0617f38`](https://github.com/jeromeof/devicePEQ/tree/0617f382e76629792a5933e6933e4b396a756a93) 的 `bluetooth_tools/cli_tools/EDIFIER_W830NB_FINDINGS.md`。本节 [社区] 指上述项目的真机记录。
 
 | 发现 | 证据 |
 |---|---|
@@ -371,6 +371,8 @@ Free4 标准版 / 丹拿版的支持范围见 [设备兼容性](COMPATIBILITY.md
 | W860NB PRO 降噪切换后约 1.9 秒播报提示音，期间不应答；回读超时后延迟 2 秒重试一次 | [社区] |
 | W820NB 三金标版的 SPP 通道可以打开，但对 v1 的电量 `0xD0` 与降噪 `0xCC` 查询均无应答；它以 W820NB 变体名匹配到 v1 配置 | 用户诊断日志 |
 | v1 型号两项查询都无应答时，改用 BES v2 帧只读查询一次 `0xD0`（空 payload，异或与否帧相同），由应答的电量字节判断异或：明文 ≤ 100，异或后最高位必为 1；应答后只提供电量，不查询降噪与其他设置 | [推测] [协议实现] |
+| W830NB 使用 BES v2 帧与异或 payload（音效查询 `0xD5` 应答 `A5` 即预设 0）；对 v1 帧不应答，且控制通道打开约 2 秒后整条蓝牙链路断开 | [社区]（devicePEQ 抓包）、用户诊断日志（#18） |
+| W830NB 直接使用 BES v2 异或帧，只查询电量 `0xD0`；其降噪槽位没有记录，不发送 `0xCC` | [推测] [协议实现] |
 | 漫步者充电状态没有任何真机证据，不实现 | — |
 
 ## 15. 索尼 MDR 与 AKG（独立于 OPPO）

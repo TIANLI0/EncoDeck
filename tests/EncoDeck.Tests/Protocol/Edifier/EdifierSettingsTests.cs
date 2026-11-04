@@ -3,7 +3,8 @@
 // (https://github.com/wh201906/mEDIFIER, 10056b5, MIT, Copyright (c) 2023 Self Not Found; MIT notice in
 // THIRD_PARTY_NOTICES.md); W860NB PRO, 花再 Evo Pro and FitBuds Turbo frames from HyperEars
 // docs/edifier-bes-protocol.md (https://github.com/silverpoetry/HyperEars, 361d279, GPL-3.0-only);
-// X5 Pro noise group from BudsLink deviceConfigs/X5Pro.js (https://github.com/maniacx/BudsLink, ba3160d, GPL-3.0).
+// X5 Pro noise group from BudsLink deviceConfigs/X5Pro.js (https://github.com/maniacx/BudsLink, ba3160d, GPL-3.0);
+// W830NB frames from devicePEQ bluetooth_tools/cli_tools/EDIFIER_W830NB_FINDINGS.md (https://github.com/jeromeof/devicePEQ, 0617f38, 0BSD).
 using EncoDeck.Core.Capabilities;
 using EncoDeck.Core.Commands;
 using EncoDeck.Core.Devices;
@@ -98,6 +99,17 @@ public sealed class EdifierSettingsTests
     }
 
     [Fact]
+    public void BesV2_XorFramesMatchTheDevicePeqW830nbCapture()
+    {
+        // Sound-effect query and its answer (preset 0), and a preset-0 write.
+        Assert.Equal(Hex("AA EC D5 00 00 6B"), EdifierFrameCodec.EncodeV2(0xD5, []));
+        Assert.Equal(Hex("AA EC C4 00 01 A5 00"), EdifierFrameCodec.EncodeV2(0xC4, [0x00], xor: true));
+        var frame = Assert.Single(new EdifierFrameDecoder(version2: true).Feed(Hex("BB EC D5 00 01 A5 22")));
+        Assert.Equal(0xD5, frame.Command);
+        Assert.Equal(0, frame.Payload[0] ^ EdifierConstants.PayloadXor);
+    }
+
+    [Fact]
     public void TwsState_CaseMarkedOfflineIsNotShown()
     {
         var online = EdifierDeviceController.ParseTwsBattery([3, 80, 70, 60, 1], DateTimeOffset.UnixEpoch, StateSource.QueryResponse)!;
@@ -140,6 +152,7 @@ public sealed class EdifierSettingsTests
     [InlineData("W820NB双金标版", "edifier-w820nb-double-gold")]
     [InlineData("EDIFIER W820NB", "edifier-w820nb")]
     [InlineData("EDIFIER W860NB Pro", "edifier-w860nb-pro")]
+    [InlineData("EDIFIER W830NB", "edifier-w830nb")]
     [InlineData("漫步者・花再 Evo Pro", "edifier-evo-pro")]
     [InlineData("EDIFIER FitBuds Turbo", "edifier-fitbuds-turbo")]
     [InlineData("EDIFIER FitClip Ultra", "edifier-fitclip-ultra")]
@@ -265,6 +278,27 @@ public sealed class EdifierSettingsTests
             Assert.Equal(Hex("10 03"), device.Last(0xC1));
             Assert.Contains(device.Written, w => w.SequenceEqual(Hex("AA EC C1 00 02 B5 A6 B4")));
             Assert.Equal(EdifierSettings.WindLevel, store.Current.NoiseControl?.Value.LevelId);
+        });
+    }
+
+    [Fact]
+    public async Task W830nb_ReadsBatteryOverXorFramingWithoutV1OrNoiseQueries()
+    {
+        var device = new FakeEdifier(Hex("10 05"), version2: true, xor: true) { Battery = [55] };
+        await RunAsync("EDIFIER W830NB", device, true, async (controller, store) =>
+        {
+            Assert.Equal(55, store.Current.Battery.Left?.Value.Level);
+            var profile = Assert.IsType<EdifierProfile>(store.Current.Profile);
+            Assert.Equal("edifier-w830nb", profile.ModelId);
+            Assert.Empty(profile.NoiseControlOptions);
+            Assert.Equal(CapabilitySupport.Unknown, profile.Capabilities.Get(DeviceCapability.NoiseCancellation).Support);
+            Assert.Null(store.Current.NoiseControl);
+            Assert.Equal(CommandStatus.Unsupported, (await controller.SetNoiseControlAsync(new(NoiseControlMode.NoiseCancellation), Ct)).Status);
+            Assert.Equal(CommandStatus.Success, (await controller.RefreshAsync(Ct)).Status);
+            // The first frame is already v2 with an XOR payload: no v1 frame ever reaches the headset.
+            Assert.Equal(Hex("AA EC D0 00 00 66"), device.Written[0]);
+            Assert.All(device.Written, w => Assert.Equal(EdifierConstants.AppCode, w[1]));
+            Assert.All(device.Requests, r => Assert.Equal(0xD0, r.Command));
         });
     }
 
