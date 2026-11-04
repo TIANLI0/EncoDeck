@@ -1229,6 +1229,9 @@
   <data name="WindowsCodec_Notes.Text" xml:space="preserve"><value>Windows は再生の終了時（しばらく一時停止、出力デバイスの切り替え、切断）にコーデックを記録し、イヤホンごとに記憶されます。新しいイヤホンは一度再生して停止すると表示されます。LE Audio イヤホンはこの方法を使いません。EncoDeck のインストーラー版をアンインストールすると許可も取り消されます。Store 版はアンインストール前に「許可を取り消す」を選んでください。</value></data>
   <data name="Codec_A2dpDescription" xml:space="preserve"><value>Bluetooth A2DP で接続しています。ここには具体的なコーデックを表示しません。イヤホンが報告するコーデックは PC が実際に使うものとは限らないため使用しません。実際のコーデックは Windows だけが把握しており、「Windows からオーディオ コーデックを取得」をオンにする（管理者の許可が一度必要）と読み取れます。</value></data>
   <data name="Codec_A2dpNotLoggedDescription" xml:space="preserve"><value>Bluetooth A2DP で接続しています。Windows はこのイヤホンのコーデックをまだ記録していません。音声を再生して停止すると、ここに表示されます。</value></data>
+  <data name="Codec_LhdcDescription" xml:space="preserve"><value>このイヤホンの A2DP は LHDC コンポーネントのドライバーが担当しており、LHDC V5 で再生します。この接続のコーデックは Windows に記録されません。</value></data>
+  <data name="Codec_LhdcStreamingDescription" xml:space="preserve"><value>LHDC コンポーネントがこのイヤホンに LHDC V5 音声を {0} kbps で送信しています。</value></data>
+  <data name="Codec_OtherDriverDescription" xml:space="preserve"><value>Bluetooth A2DP で接続していますが、このイヤホンの A2DP はサードパーティ製ドライバーが担当しています。使われるコーデックは Windows に記録されないため、ここには具体的なコーデックを表示しません。</value></data>
   <data name="CodecBadge_Enable" xml:space="preserve"><value>オンにする（管理者の許可が一度必要）</value></data>
   <data name="CodecBadge_Enabled" xml:space="preserve"><value>オンにしました。音声を再生して停止すると、Windows が実際に使うコーデックがここに表示されます。</value></data>
   <data name="LeAudio_UseClassic" xml:space="preserve"><value>クラシック Bluetooth を使う</value></data>

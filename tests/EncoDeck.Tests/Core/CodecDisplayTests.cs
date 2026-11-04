@@ -73,6 +73,37 @@ public class CodecDisplayTests
         Assert.Equal(CodecDisplayKind.None, CodecDisplay.Resolve(state with { Connection = DeviceConnectionState.Disconnected }).Kind);
     }
 
+    [Theory]
+    [InlineData("lhdc-transport")]
+    [InlineData("LHDC-Transport")]
+    public void LhdcDriver_ShowsLhdc_NotTheCodecWindowsLoggedBefore(string driver)
+    {
+        var expected = new CodecDisplay(CodecDisplayKind.LhdcStream, "LHDC V5");
+        Assert.Equal(expected, CodecDisplay.Resolve(Logged with { A2dpDriver = driver }));
+        Assert.Equal(expected, CodecDisplay.Resolve(Ready with { A2dpDriver = driver }));
+    }
+
+    [Fact]
+    public void OtherDriver_IsPlainA2dp_NeverTheWindowsLog() =>
+        Assert.Equal(new CodecDisplay(CodecDisplayKind.A2dpOtherDriver), CodecDisplay.Resolve(Logged with { A2dpDriver = "ThirdPartyA2dp" }));
+
+    [Theory]
+    [InlineData("BthA2dp")]
+    [InlineData("BTHA2DP")]
+    [InlineData(null)]
+    [InlineData("")]
+    public void WindowsDriver_OrUnknown_KeepsTheWindowsLog(string? driver) =>
+        Assert.Equal(new CodecDisplay(CodecDisplayKind.WindowsStream, "AAC"), CodecDisplay.Resolve(Logged with { A2dpDriver = driver }));
+
+    [Fact]
+    public void LhdcDriver_DoesNotOverrideLeAudio_OrShowWithoutALink()
+    {
+        var lhdc = Logged with { A2dpDriver = CodecDisplay.LhdcA2dpDriver };
+        Assert.Equal(CodecDisplayKind.LeLink, CodecDisplay.Resolve(lhdc with { IsLeAudio = true }).Kind);
+        Assert.Equal(CodecDisplayKind.None, CodecDisplay.Resolve(lhdc with { Connection = DeviceConnectionState.Disconnected }).Kind);
+        Assert.Equal(CodecDisplayKind.None, CodecDisplay.Resolve(lhdc with { LinkViaBridge = true }).Kind);
+    }
+
     [Fact]
     public void NoSelectedDevice_OrUsbReceiver_DoesNotGetABluetoothBadge()
     {

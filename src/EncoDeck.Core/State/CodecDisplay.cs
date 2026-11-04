@@ -16,14 +16,24 @@ public enum CodecDisplayKind
     A2dpLogOff,
     /// <summary>A Classic link with the log on, but Windows has not logged a stream to this device yet.</summary>
     A2dpNotLogged,
+    /// <summary>The LHDC component's driver carries this device's A2DP in place of Windows' own: LHDC V5.</summary>
+    LhdcStream,
+    /// <summary>Another driver than Windows' own carries this device's A2DP: Windows logs nothing for it, only "A2DP" is known.</summary>
+    A2dpOtherDriver,
 }
 
 /// <summary>
-/// One source for the audio badge on every surface. Codecs come only from the PC side (A2DP Bridge or Windows' own log),
-/// never from the earbuds' report, which does not prove what the PC streams.
+/// One source for the audio badge on every surface. Codecs come only from the PC side (A2DP Bridge, the driver carrying
+/// A2DP, or Windows' own log), never from the earbuds' report, which does not prove what the PC streams.
 /// </summary>
 public sealed record CodecDisplay(CodecDisplayKind Kind, string? Codec = null)
 {
+    /// <summary>The service of Windows' own A2DP driver, the only one Windows logs codecs for.</summary>
+    public const string WindowsA2dpDriver = "BthA2dp";
+
+    /// <summary>The service of the LHDC component's driver, which takes a device's A2DP over from Windows'.</summary>
+    public const string LhdcA2dpDriver = "lhdc-transport";
+
     public static CodecDisplay Resolve(DeviceState state)
     {
         if (state.Device?.Transport != DeviceTransport.Bluetooth) return new(CodecDisplayKind.None);
@@ -38,6 +48,11 @@ public sealed record CodecDisplay(CodecDisplayKind Kind, string? Codec = null)
         if (state.IsLeAudio) return new(CodecDisplayKind.LeLink);
         // Linked only through the bridge's own adapter: Windows has no A2DP link to this device.
         if (state.LinkViaBridge) return new(CodecDisplayKind.None);
+        // Windows logs codecs only for its own driver. Once another one takes the device over (the LHDC component
+        // rebinds it), the log keeps the codec Windows streamed before, which is not the one in use.
+        if (state.A2dpDriver is { Length: > 0 } driver && !driver.Equals(WindowsA2dpDriver, StringComparison.OrdinalIgnoreCase))
+            return driver.Equals(LhdcA2dpDriver, StringComparison.OrdinalIgnoreCase) ? new(CodecDisplayKind.LhdcStream, "LHDC V5")
+                : new(CodecDisplayKind.A2dpOtherDriver);
         if (!state.WindowsCodecLogged) return new(CodecDisplayKind.A2dpLogOff);
         return state.WindowsCodec is { Length: > 0 } codec ? new(CodecDisplayKind.WindowsStream, codec) : new(CodecDisplayKind.A2dpNotLogged);
     }

@@ -409,11 +409,11 @@ public sealed partial class DeviceViewModel : ObservableObject
         CodecLabel = codecDisplay.Kind switch
         {
             // The "A2DP Bridge" tag beside a bridge stream already names its source.
-            CodecDisplayKind.BridgeStream or CodecDisplayKind.WindowsStream => codecDisplay.Codec!,
+            CodecDisplayKind.BridgeStream or CodecDisplayKind.WindowsStream or CodecDisplayKind.LhdcStream => codecDisplay.Codec!,
             // Windows' LE Audio output is active, and LE Audio on Windows is always LC3.
             CodecDisplayKind.LeLink => "LC3",
             // Only the Classic link is known: the earbuds' own codec report is never shown.
-            CodecDisplayKind.A2dpLogOff or CodecDisplayKind.A2dpNotLogged => "A2DP",
+            CodecDisplayKind.A2dpLogOff or CodecDisplayKind.A2dpNotLogged or CodecDisplayKind.A2dpOtherDriver => "A2DP",
             // An unknown bridge codec shows no tag at all (the diagnostics still record why).
             _ => string.Empty,
         };
@@ -421,12 +421,15 @@ public sealed partial class DeviceViewModel : ObservableObject
         {
             CodecDisplayKind.BridgeStream => Loc.Format("Codec_BridgeDescription", codecDisplay.Codec),
             CodecDisplayKind.WindowsStream => Loc.Format("Codec_WindowsDescription", codecDisplay.Codec),
+            CodecDisplayKind.LhdcStream => state.LhdcKbps > 0 ? Loc.Format("Codec_LhdcStreamingDescription", state.LhdcKbps)
+                : Loc.Get("Codec_LhdcDescription"),
             CodecDisplayKind.LeLink => Loc.Get("Codec_LeAudioDescription"),
             CodecDisplayKind.A2dpLogOff => Loc.Get("Codec_A2dpDescription"),
             CodecDisplayKind.A2dpNotLogged => Loc.Get("Codec_A2dpNotLoggedDescription"),
+            CodecDisplayKind.A2dpOtherDriver => Loc.Get("Codec_OtherDriverDescription"),
             _ => string.Empty,
         };
-        CodecIsDetailed = codecDisplay.Kind is not (CodecDisplayKind.A2dpLogOff or CodecDisplayKind.A2dpNotLogged);
+        CodecIsDetailed = codecDisplay.Kind is not (CodecDisplayKind.A2dpLogOff or CodecDisplayKind.A2dpNotLogged or CodecDisplayKind.A2dpOtherDriver);
         CodecCanEnable = codecDisplay.Kind == CodecDisplayKind.A2dpLogOff;
         HasCodec = CodecLabel.Length > 0;
         // One earbud worn while the other charges is ordinary use; warn only when the other should be up.

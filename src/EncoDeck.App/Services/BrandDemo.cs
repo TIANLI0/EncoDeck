@@ -191,6 +191,9 @@ internal sealed class BrandDemo
             "windows-aac" => state with { WindowsCodecLogged = true, WindowsCodec = "AAC" },
             "a2dp" => state with { WindowsCodecLogged = false, WindowsCodec = null },
             "a2dp-not-logged" => state with { WindowsCodecLogged = true, WindowsCodec = null },
+            // Windows' log still holds the codec from before the LHDC component took the earbuds over.
+            "lhdc" => state with { A2dpDriver = CodecDisplay.LhdcA2dpDriver, LhdcKbps = 900, WindowsCodecLogged = true, WindowsCodec = "AAC" },
+            "a2dp-other-driver" => state with { A2dpDriver = "ThirdPartyA2dp", WindowsCodecLogged = true, WindowsCodec = "AAC" },
             "le" => state with { IsLeAudio = true, LeAudioLinks = new(true, true, true, true), WindowsCodecLogged = true, WindowsCodec = "AAC" },
             "bridge-aac" => state with { Bridge = new(true, "AAC", 256, 48000, "demo"), IsLeAudio = true },
             "bridge-unknown" => state with { Bridge = new(true, null, 256, 48000, "demo"), WindowsCodecLogged = true, WindowsCodec = "AAC" },

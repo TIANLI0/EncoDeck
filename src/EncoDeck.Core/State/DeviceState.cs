@@ -58,6 +58,15 @@ public sealed record DeviceState
     /// <summary>The codec Windows' A2DP driver used for this device's latest stream ("AAC", "LDAC"); null when none was logged.</summary>
     public string? WindowsCodec { get; init; }
 
+    /// <summary>
+    /// The driver carrying this device's Classic A2DP while a link is up: Windows' own <see cref="CodecDisplay.WindowsA2dpDriver"/>,
+    /// or a replacement such as the LHDC component's <see cref="CodecDisplay.LhdcA2dpDriver"/>; null when unknown.
+    /// </summary>
+    public string? A2dpDriver { get; init; }
+
+    /// <summary>The bitrate the LHDC component streams to this device at, in kbps; 0 while it plays nothing or is not in use.</summary>
+    public int LhdcKbps { get; init; }
+
     /// <summary>24-bit product id reported by the device (e.g. 0x06EC10 for Enco X4).</summary>
     public uint? ProductId { get; init; }
 

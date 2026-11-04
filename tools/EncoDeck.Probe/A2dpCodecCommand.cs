@@ -23,8 +23,9 @@ internal static class A2dpCodecCommand
                 Console.WriteLine($"{records.Count} streams in {watch.ElapsedMilliseconds} ms");
                 foreach (var record in records)
                     Console.WriteLine($"  {record.At.ToLocalTime():yyyy-MM-dd HH:mm:ss}  {record.Address:X12}  {record.Codec}");
+                // Windows logs only for its own driver (BthA2dp): with another one bound, the latest record is stale.
                 foreach (var latest in WindowsA2dpCodecLog.Latest(records).Values)
-                    Console.WriteLine($"latest {latest.Address:X12}: {latest.Codec}");
+                    Console.WriteLine($"latest {latest.Address:X12}: {latest.Codec}  driver={A2dpSinkDriver.ServiceFor(latest.Address) ?? "none"}");
                 return 0;
             case "authorize":
                 await WindowsA2dpCodecLog.AuthorizeAsync();

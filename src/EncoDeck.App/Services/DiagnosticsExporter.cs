@@ -38,6 +38,8 @@ internal static class DiagnosticsExporter
             {
                 windowsLogged = state.WindowsCodecLogged,
                 windows = state.WindowsCodec,
+                a2dpDriver = state.A2dpDriver,
+                lhdcKbps = state.LhdcKbps,
                 displayKind = CodecDisplay.Resolve(state).Kind.ToString(),
                 displayCodec = CodecDisplay.Resolve(state).Codec,
             },

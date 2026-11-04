@@ -47,6 +47,21 @@ public static class LhdcComponent
         catch (Exception ex) when (ex is System.Security.SecurityException or UnauthorizedAccessException or IOException) { return false; }
     }
 
+    /// <summary>
+    /// The bitrate the LHDC service streams at now, in kbps; 0 while it plays nothing or is turned off. The service
+    /// publishes it in its registry key, which needs no administrator rights to read.
+    /// </summary>
+    public static int ActiveBitrate()
+    {
+        if (!ServiceEnabled()) return 0;
+        try
+        {
+            using var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\LHDC-Win");
+            return key?.GetValue("ActiveBitrate") is int kbps && kbps > 0 ? kbps : 0;
+        }
+        catch (Exception ex) when (ex is System.Security.SecurityException or UnauthorizedAccessException or IOException) { return 0; }
+    }
+
     /// <summary>A runtime folder built by build/build-lhdc.ps1 (downloaded, or bundled by an offline installer).</summary>
     public static bool IsRuntime(string directory)
     {

@@ -1229,6 +1229,9 @@
   <data name="WindowsCodec_Notes.Text" xml:space="preserve"><value>Windows 在一次播放结束时（暂停一会儿、切换输出设备或断开）记下所用编码，并按耳机记住，所以新耳机要先播放并停下一次才会显示。LE Audio 耳机不经过这里。卸载 EncoDeck 安装版时会一并取消授权；商店版请在卸载前点“取消授权”。</value></data>
   <data name="Codec_A2dpDescription" xml:space="preserve"><value>已通过蓝牙 A2DP 连接。这里不显示具体编码：耳机自己报告的编码不一定是电脑实际使用的，所以不采用；实际编码只有 Windows 知道，需要开启“从 Windows 读取音频编码”（管理员授权一次）后才能读取。</value></data>
   <data name="Codec_A2dpNotLoggedDescription" xml:space="preserve"><value>已通过蓝牙 A2DP 连接。Windows 还没有记录这副耳机的编码：播放一段音频并停下后就会显示。</value></data>
+  <data name="Codec_LhdcDescription" xml:space="preserve"><value>这副耳机的 A2DP 已由 LHDC 组件的驱动接管，播放时使用 LHDC V5。Windows 不会记录这条连接的编码。</value></data>
+  <data name="Codec_LhdcStreamingDescription" xml:space="preserve"><value>LHDC 组件正在以 {0} kbps 向这副耳机发送 LHDC V5 音频。</value></data>
+  <data name="Codec_OtherDriverDescription" xml:space="preserve"><value>已通过蓝牙 A2DP 连接，但这副耳机的 A2DP 由第三方驱动接管。Windows 不会记录它使用的编码，所以这里不显示具体编码。</value></data>
   <data name="CodecBadge_Enable" xml:space="preserve"><value>开启（需要管理员授权一次）</value></data>
   <data name="CodecBadge_Enabled" xml:space="preserve"><value>已开启。播放一段音频并停下后，这里会显示 Windows 实际使用的编码。</value></data>
   <data name="LeAudio_UseClassic" xml:space="preserve"><value>改用传统蓝牙</value></data>
