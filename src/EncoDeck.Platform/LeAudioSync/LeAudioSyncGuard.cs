@@ -79,6 +79,8 @@ public sealed class LeAudioSyncGuard : IAsyncDisposable
     private bool _polling;
     // A rebuild waiting for other programs to stop: whether to play the check once it is done.
     private bool _pendingCheckAfter;
+    // Failed opens since the stream was last held; only the first is logged as a warning.
+    private int _openFailures;
 
     public LeAudioSyncGuard(ILeAudioSyncPlatform platform, ILogger logger, LeAudioSyncTimings? timings = null)
     {
@@ -195,15 +197,19 @@ public sealed class LeAudioSyncGuard : IAsyncDisposable
             var stream = _platform.OpenKeepAlive(endpoints.Render);
             stream.Lost += (_, _) => Post(() => OnKeepAliveLostAsync(stream));
             _keepAlive = stream;
+            _openFailures = 0;
             _logger.LogInformation("LE Audio link held");
             return true;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _logger.LogWarning(ex, "LE Audio keep-alive stream failed to open");
-            // Forget the endpoints so the owner's next SetEndpoints (even with the same ids) opens again.
+            if (_openFailures++ == 0) _logger.LogWarning(ex, "LE Audio keep-alive stream failed to open");
+            else _logger.LogDebug(ex, "LE Audio keep-alive stream failed to open again ({Failures})", _openFailures);
+            // Forget the endpoints so the owner's next SetEndpoints (even with the same ids) opens again. The endpoint
+            // refuses streams for a while after the earbuds connect (AUDCLNT_E_DEVICE_IN_USE): the same error again
+            // still has to reach the owner, or it never looks again and the link stays unheld.
             _endpoints = null;
-            SetState(LeAudioSyncState.WaitingForDevice, ex.Message);
+            SetState(LeAudioSyncState.WaitingForDevice, ex.Message, notifyUnchanged: true);
             return false;
         }
     }
@@ -360,10 +366,10 @@ public sealed class LeAudioSyncGuard : IAsyncDisposable
         _checkGeneration++;
     }
 
-    private void SetState(LeAudioSyncState state, string? detail = null)
+    private void SetState(LeAudioSyncState state, string? detail = null, bool notifyUnchanged = false)
     {
         var status = new LeAudioSyncStatus(state, _support, _rebuilds, detail);
-        if (status == Status) return;
+        if (status == Status && !notifyUnchanged) return;
         Status = status;
         Changed?.Invoke(this, EventArgs.Empty);
     }

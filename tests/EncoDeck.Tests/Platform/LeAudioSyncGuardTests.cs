@@ -139,6 +139,25 @@ public sealed class LeAudioSyncGuardTests
     }
 
     [Fact]
+    public async Task RepeatedFailedOpenStillAsksForTheDevice()
+    {
+        var platform = new FakePlatform { FailOpen = true };
+        await using var guard = new LeAudioSyncGuard(platform, NullLogger.Instance, Fast);
+        int changes = 0;
+        guard.Changed += (_, _) => Interlocked.Increment(ref changes);
+        guard.SetEnabled(true);
+        guard.SetEndpoints(Endpoints);
+        await WaitForAsync(guard, LeAudioSyncState.WaitingForDevice);
+        int afterFirst = Volatile.Read(ref changes);
+        // The owner looks again and the endpoint refuses with the same error: the owner must hear about it again.
+        guard.SetEndpoints(Endpoints);
+        await WaitUntilAsync(() => Volatile.Read(ref changes) > afterFirst);
+        platform.FailOpen = false;
+        guard.SetEndpoints(Endpoints);
+        await WaitForAsync(guard, LeAudioSyncState.NeedsCheck);
+    }
+
+    [Fact]
     public async Task DisablingReleasesTheLink()
     {
         var platform = new FakePlatform();
