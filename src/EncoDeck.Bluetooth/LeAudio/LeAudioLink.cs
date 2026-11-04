@@ -104,24 +104,6 @@ public static class LeAudioLink
     }
 
     /// <summary>
-    /// The LE addresses of every bonded earbud of the set at <paramref name="bluetoothAddress"/> (the primary's public
-    /// address first). Windows prepares an LE Audio stream earbud by earbud, so a per-device setting must name them all.
-    /// </summary>
-    public static async Task<IReadOnlyList<ulong>> GetSetAddressesAsync(ulong bluetoothAddress, CancellationToken cancellationToken = default)
-    {
-        using var device = await BluetoothLEDevice.FromBluetoothAddressAsync(bluetoothAddress, BluetoothAddressType.Public).AsTask(cancellationToken).ConfigureAwait(false);
-        var others = await LeAudioPairing.FindSecondaryBondsAsync(bluetoothAddress, device?.Name, cancellationToken).ConfigureAwait(false);
-        try
-        {
-            return [bluetoothAddress, .. others.Select(o => o.BluetoothAddress).Where(a => a != bluetoothAddress).Distinct()];
-        }
-        finally
-        {
-            foreach (var other in others) other.Dispose();
-        }
-    }
-
-    /// <summary>
     /// True when Windows has a bond with the LE identity at the same public address and that earbud
     /// or the other bonded one is connected (earbuds on LE Audio keep only LE links; Classic stays down).
     /// </summary>

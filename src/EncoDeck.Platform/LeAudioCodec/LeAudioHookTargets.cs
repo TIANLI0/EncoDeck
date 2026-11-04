@@ -19,28 +19,23 @@ public enum LeAudioHookResolveError
 }
 
 /// <summary>
-/// Finds the two functions the hook patches in whatever build of Microsoft.Bluetooth.Audio.dll is installed: the
+/// Finds the functions the hook patches in whatever build of Microsoft.Bluetooth.Audio.dll is installed: the
 /// DLL's public symbols (Microsoft's symbol server, cached) name them, and their first instructions must be ones the
 /// trampoline can run elsewhere. Nothing is tied to a Windows version; a build that renamed or rewrote them is
 /// reported unsupported.
 /// </summary>
 public static partial class LeAudioHookTargets
 {
-    /// <summary>The functions, in the order the hook DLL expects them (Hook0, Hook1).</summary>
+    /// <summary>The functions, in the order the hook DLL expects them (Hook0, Hook1, Hook2).</summary>
     public static readonly string[] Functions =
     [
         "Microsoft::Bluetooth::Profiles::Bap::UnicastClient::LC3ClientCodec::GetPreferredConfigurationFromCapabilities",
         "Microsoft::Bluetooth::Profiles::Bap::UnicastClient::LC3ClientCodec::FindQosSettings",
+        "Microsoft::Bluetooth::Profiles::Cap::Initiator::Details::CapAcceptorSetEndpointImpl::StreamingAudioContextChanged",
     ];
-
-    /// <summary>
-    /// Called (not patched) by the hook to learn which earbuds a stream is for, so the Intel sync schedule reaches only
-    /// the earbuds it is applied to. Optional: without it everything else still works.
-    /// </summary>
-    public const string AddressReader = "Microsoft::Bluetooth::Profiles::Bap::UnicastClient::Details::AscsDeviceServiceImpl::GetRemoteDeviceAddress";
-
-    /// <summary>How many of the address reader's first bytes the hook compares before it calls it.</summary>
-    internal const int AddressCodeLength = 16;
+    internal const int RequiredFunctionCount = 2;
+    // This callback's private ABI is verified only for the implementation that reads a DWORD from its third argument.
+    private const int ContextReadOffset = 0xCA;
 
     /// <summary>The patch is an absolute jump of 14 bytes; at most this many bytes of prologue are moved.</summary>
     internal const int JumpSize = 14;
@@ -49,9 +44,7 @@ public static partial class LeAudioHookTargets
     private const string SymbolServer = "https://msdl.microsoft.com/download/symbols";
     private static readonly SemaphoreSlim DbgHelpGate = new(1, 1);
 
-    /// <returns>The functions to patch and, when this build has it, the <see cref="AddressReader"/> (its offset and first
-    /// <see cref="AddressCodeLength"/> bytes).</returns>
-    public static async Task<(IReadOnlyList<LeAudioHookTarget>? Targets, LeAudioHookTarget? AddressReader, LeAudioHookResolveError Error)> ResolveAsync(
+    public static async Task<(IReadOnlyList<LeAudioHookTarget>? Targets, LeAudioHookResolveError Error)> ResolveAsync(
         string dllPath, string cacheDirectory, CancellationToken ct = default)
     {
         byte[] image;
@@ -61,12 +54,12 @@ public static partial class LeAudioHookTargets
             image = await File.ReadAllBytesAsync(dllPath, ct).ConfigureAwait(false);
             using var pe = new PEReader(new MemoryStream(image));
             var entry = pe.ReadDebugDirectory().FirstOrDefault(e => e.Type == DebugDirectoryEntryType.CodeView);
-            if (entry.DataSize == 0) return (null, null, LeAudioHookResolveError.Unsupported);
+            if (entry.DataSize == 0) return (null, LeAudioHookResolveError.Unsupported);
             codeView = pe.ReadCodeViewDebugDirectoryData(entry);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or BadImageFormatException)
         {
-            return (null, null, LeAudioHookResolveError.Unsupported);
+            return (null, LeAudioHookResolveError.Unsupported);
         }
 
         string pdbName = Path.GetFileName(codeView.Path);
@@ -80,7 +73,7 @@ public static partial class LeAudioHookTargets
                 Directory.CreateDirectory(pdbDirectory);
                 using var http = new HttpClient { Timeout = TimeSpan.FromMinutes(2) };
                 using var response = await http.GetAsync($"{SymbolServer}/{pdbName}/{key}/{pdbName}", ct).ConfigureAwait(false);
-                if (!response.IsSuccessStatusCode) return (null, null, LeAudioHookResolveError.SymbolsUnavailable);
+                if (!response.IsSuccessStatusCode) return (null, LeAudioHookResolveError.SymbolsUnavailable);
                 string partial = pdbPath + ".partial";
                 await using (var file = File.Create(partial))
                     await response.Content.CopyToAsync(file, ct).ConfigureAwait(false);
@@ -88,32 +81,38 @@ public static partial class LeAudioHookTargets
             }
             catch (Exception ex) when (ex is HttpRequestException or IOException or UnauthorizedAccessException or TaskCanceledException)
             {
-                return (null, null, LeAudioHookResolveError.SymbolsUnavailable);
+                return (null, LeAudioHookResolveError.SymbolsUnavailable);
             }
         }
 
         int?[]? rvas;
         await DbgHelpGate.WaitAsync(ct).ConfigureAwait(false);
-        try { rvas = LookUp(dllPath, image.Length, pdbDirectory, [.. Functions, AddressReader]); }
+        try { rvas = LookUp(dllPath, image.Length, pdbDirectory, Functions); }
         finally { DbgHelpGate.Release(); }
-        if (rvas is null || rvas[..Functions.Length].Any(rva => rva is null)) return (null, null, LeAudioHookResolveError.Unsupported);
+        if (rvas is null || rvas[..RequiredFunctionCount].Any(rva => rva is null)) return (null, LeAudioHookResolveError.Unsupported);
 
         var targets = new List<LeAudioHookTarget>();
-        LeAudioHookTarget? reader = null;
         using (var pe = new PEReader(new MemoryStream(image)))
         {
             for (int i = 0; i < Functions.Length; i++)
             {
-                var block = pe.GetSectionData(rvas[i]!.Value);
-                if (block.Length < MaxPrologue) return (null, null, LeAudioHookResolveError.Unsupported);
-                byte[] code = block.GetContent(0, MaxPrologue).ToArray();
-                if (PrologueLength(code) is not { } length) return (null, null, LeAudioHookResolveError.Unsupported);
-                targets.Add(new LeAudioHookTarget(Functions[i], rvas[i]!.Value, code[..length]));
+                if (rvas[i] is { } rva && pe.GetSectionData(rva) is { Length: >= MaxPrologue } block
+                    && (i < RequiredFunctionCount || IsKnownContextCallback(block))
+                    && block.GetContent(0, MaxPrologue).ToArray() is { } code && PrologueLength(code) is { } length)
+                    targets.Add(new LeAudioHookTarget(Functions[i], rva, code[..length]));
+                else if (i < RequiredFunctionCount)
+                    return (null, LeAudioHookResolveError.Unsupported);
             }
-            if (rvas[^1] is { } readerRva && pe.GetSectionData(readerRva) is { Length: >= AddressCodeLength } readerBlock)
-                reader = new LeAudioHookTarget(AddressReader, readerRva, readerBlock.GetContent(0, AddressCodeLength).ToArray());
         }
-        return (targets, reader, LeAudioHookResolveError.None);
+        return (targets, LeAudioHookResolveError.None);
+    }
+
+    private static bool IsKnownContextCallback(PEMemoryBlock block)
+    {
+        // mov r8d,[rdi]; mov rax,[rcx]; mov rax,[rax+78h]
+        ReadOnlySpan<byte> instructions = [0x44, 0x8B, 0x07, 0x48, 0x8B, 0x01, 0x48, 0x8B, 0x40, 0x78];
+        return block.Length >= ContextReadOffset + instructions.Length
+            && block.GetContent(ContextReadOffset, instructions.Length).AsSpan().SequenceEqual(instructions);
     }
 
     /// <summary>

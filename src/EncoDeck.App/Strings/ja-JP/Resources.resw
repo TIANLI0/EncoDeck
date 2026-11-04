@@ -849,11 +849,6 @@
   <data name="LeAudioCodec_NoCall.Header" xml:space="preserve"><value>通話モードに切り替えない（イヤホンのマイクを無効化）</value></data>
   <data name="LeAudioCodec_NoCallNote.Text" xml:space="preserve"><value>ゲームのボイスチャットや通話アプリの音も他の音と同じ高音質リンクで再生され、イヤホンが通話構成（音質の急低下、マイク チャンネル）に切り替わらなくなります。イヤホンのマイクも無効になり、プログラムからは見えなくなります。音声には別のマイクを使ってください。オンにした後、イヤホンを充電ケースに戻して取り出す（一度再接続する）と有効になります。</value></data>
   <data name="LeAudioCodec_NoCallName" xml:space="preserve"><value>通話モードなし</value></data>
-  <data name="LeAudioCodec_Sync.Header" xml:space="preserve"><value>Intel 左右同期スケジュール（Enco X4 のみ）</value></data>
-  <data name="LeAudioCodec_SyncNote.Text" xml:space="preserve"><value>この PC の Intel Bluetooth では、LE Audio のリンクを確立するたびに一定の確率で片方のイヤホンが 1 フレーム（約 7.5 ms）遅れ、音が片側に寄ります。伝送上限が短いと、再生中にも少しずつずれていきます。オンにすると、Windows はこのイヤホンに最大 75 ms・再送 20 回のリンクを要求し、Intel コントローラーは各イヤホンに 3 回の送信機会と FT 7 を割り当てます。リンク確立時の左右の状態がリンクの続く限り保たれ、再生中にずれることがなくなり、開始時のずれも Windows の既定より少なくなります（実測で約 1/8、既定は約 1/4）。リンクの遅延は約 50 ms で、ゲーム以外の Windows の既定と同程度、ゲームモードより長くなります。開始時にずれた場合は左右チャンネル調整で確認して作り直してください。接続中の Enco X4 だけに適用され、他のイヤホンには影響しません。</value></data>
-  <data name="LeAudioCodec_SyncName" xml:space="preserve"><value>Intel 同期スケジュール</value></data>
-  <data name="LeAudioCodec_Result_SyncUnsupported" xml:space="preserve"><value>この Windows ではイヤホンを識別できないため、Intel 同期スケジュールは有効になっていません。</value></data>
-  <data name="LeAudioCodec_Result_SyncAddresses" xml:space="preserve"><value>このイヤホンのアドレスを読み取れなかったため、適用していません：{0}</value></data>
   <data name="LeAudioCodec_Result_NoCallReconnect" xml:space="preserve"><value>「通話モードに切り替えない」は、イヤホンを充電ケースに戻して取り出した（一度再接続した）後に有効になります。</value></data>
   <data name="LeAudioCodec_Result_SymbolsUnavailable" xml:space="preserve"><value>この PC の Windows Bluetooth オーディオ コンポーネントの公開シンボルを Microsoft のシンボル サーバーからダウンロードできませんでした（インターネット接続が必要、約 12 MB）。しばらくしてからもう一度お試しください。</value></data>
   <data name="LeAudioCodec_Mode.Header" xml:space="preserve"><value>伝送方式</value></data>

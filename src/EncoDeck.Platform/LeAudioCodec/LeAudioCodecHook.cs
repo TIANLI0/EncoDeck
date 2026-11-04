@@ -31,13 +31,10 @@ public enum LeAudioLatencyMode
     HighReliability = 2,
 }
 
-/// <summary>
-/// What was last applied, and whether the hook is still in the running Bluetooth audio service. <paramref name="SyncTarget"/>
-/// is the LE address of the earbuds that get the Intel sync schedule (0: none).
-/// </summary>
-public sealed record LeAudioCodecApplied(LeAudioCodecPreset Preset, LeAudioLatencyMode Mode, bool NoCallMode, bool Active, ulong SyncTarget = 0)
+/// <summary>What was last applied, and whether the hook is still in the running Bluetooth audio service.</summary>
+public sealed record LeAudioCodecApplied(LeAudioCodecPreset Preset, LeAudioLatencyMode Mode, bool NoCallMode, bool Active)
 {
-    public bool IsWindowsDefault => Preset.IsWindowsDefault && Mode == LeAudioLatencyMode.Auto && !NoCallMode && SyncTarget == 0;
+    public bool IsWindowsDefault => Preset.IsWindowsDefault && Mode == LeAudioLatencyMode.Auto && !NoCallMode;
 }
 
 /// <summary>The transport of the latest LE Audio stream Windows set up, as the hook recorded it.</summary>
@@ -90,8 +87,8 @@ public static class LeAudioCodecHook
 
     private static string StatePath => Path.Combine(HookDirectory, "state.txt");
 
-    /// <summary>How many earbud addresses the hook reads from SyncTargets.</summary>
-    private const int MaxSyncTargets = 8;
+    /// <summary>Values earlier versions wrote for a feature since removed; the hook no longer reads them.</summary>
+    private static readonly string[] ObsoleteValues = ["AddressRva", "AddressCode", "SyncTargets"];
 
     /// <summary>The hook DLL shipped next to the app.</summary>
     public static string BundledDll => Path.Combine(AppContext.BaseDirectory, HookDllName);
@@ -104,7 +101,7 @@ public static class LeAudioCodecHook
     {
         bool x64 = RuntimeInformation.ProcessArchitecture == Architecture.X64 && Environment.Is64BitOperatingSystem;
         if (!x64 || !File.Exists(BundledDll)) return Evaluate(x64, File.Exists(BundledDll), LeAudioHookResolveError.None);
-        var (_, _, error) = await LeAudioHookTargets.ResolveAsync(TargetPath, UserSymbolCache, ct).ConfigureAwait(false);
+        var (_, error) = await LeAudioHookTargets.ResolveAsync(TargetPath, UserSymbolCache, ct).ConfigureAwait(false);
         return Evaluate(x64, componentPresent: true, error);
     }
 
@@ -131,13 +128,13 @@ public static class LeAudioCodecHook
         if (state is null) return new LeAudioCodecApplied(LeAudioCodecPreset.WindowsDefault, LeAudioLatencyMode.Auto, false, true);
         var preset = LeAudioCodecPreset.Find(state.FrameUs, state.Octets) ?? LeAudioCodecPreset.WindowsDefault;
         var mode = Enum.IsDefined(state.Mode) ? state.Mode : LeAudioLatencyMode.Auto;
-        if (preset.IsWindowsDefault && mode == LeAudioLatencyMode.Auto && !state.NoCallMode && state.SyncTarget == 0)
+        if (preset.IsWindowsDefault && mode == LeAudioLatencyMode.Auto && !state.NoCallMode)
             return new LeAudioCodecApplied(preset, mode, false, true);
-        return new LeAudioCodecApplied(preset, mode, state.NoCallMode, servicePid != 0 && servicePid == state.ServicePid, state.SyncTarget);
+        return new LeAudioCodecApplied(preset, mode, state.NoCallMode, servicePid != 0 && servicePid == state.ServicePid);
     }
 
     internal sealed record AppliedState(int ServicePid, int FrameUs, int Octets, LeAudioLatencyMode Mode = LeAudioLatencyMode.Auto,
-        bool NoCallMode = false, ulong SyncTarget = 0);
+        bool NoCallMode = false);
 
     private static Dictionary<string, string> ParseValues(string text) =>
         text.Split('\n', StringSplitOptions.RemoveEmptyEntries)
@@ -152,14 +149,12 @@ public static class LeAudioCodecHook
     {
         var values = ParseValues(text);
         int Get(string key) => (int)GetNumber(values, key);
-        ulong syncTarget = values.TryGetValue("syncTarget", out var hex)
-            && ulong.TryParse(hex, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out ulong address) ? address : 0;
         return values.Count == 0 ? null
-            : new AppliedState(Get("pid"), Get("frameUs"), Get("octets"), (LeAudioLatencyMode)Get("mode"), Get("noCallMode") != 0, syncTarget);
+            : new AppliedState(Get("pid"), Get("frameUs"), Get("octets"), (LeAudioLatencyMode)Get("mode"), Get("noCallMode") != 0);
     }
 
     internal static string FormatState(AppliedState state) =>
-        string.Create(CultureInfo.InvariantCulture, $"pid={state.ServicePid}\nframeUs={state.FrameUs}\noctets={state.Octets}\nmode={(int)state.Mode}\nnoCallMode={(state.NoCallMode ? 1 : 0)}\nsyncTarget={state.SyncTarget:X}\n");
+        string.Create(CultureInfo.InvariantCulture, $"pid={state.ServicePid}\nframeUs={state.FrameUs}\noctets={state.Octets}\nmode={(int)state.Mode}\nnoCallMode={(state.NoCallMode ? 1 : 0)}\n");
 
     /// <summary>link.txt as the hook writes it (time is a FILETIME); null when incomplete.</summary>
     internal static LeAudioLinkConfig? ParseLink(string text)
@@ -202,81 +197,62 @@ public static class LeAudioCodecHook
         public const int ComponentMissing = 7;
         public const int NotElevated = 8;
         public const int Failed = 9;
-        /// <summary>Applied, but this Windows build has no address reader: the Intel sync schedule is off.</summary>
-        public const int SyncUnsupported = 10;
     }
 
     /// <summary>
     /// In an elevated process: stores the preset, the transport and whether calls may take over the link for the hook,
     /// then turns the hook on in the running service and records what was applied. <paramref name="noCallMode"/> only
     /// applies to endpoints created afterwards: the earbuds have to reconnect once. With Windows' own choice the hook stays on but only records each new
-    /// link, so that one can be confirmed too. <paramref name="syncTargets"/> (the LE addresses of every earbud of one set,
-    /// the primary first; empty for none) get the Intel sync schedule; no other earbuds do. Returns a <see cref="Result"/>
-    /// code. Takes effect the next time Windows builds an LE Audio stream.
+    /// link, so that one can be confirmed too. Returns a <see cref="Result"/> code. Takes effect the next time Windows
+    /// builds an LE Audio stream.
     /// </summary>
     public static async Task<int> ApplyElevatedAsync(LeAudioCodecPreset preset, LeAudioLatencyMode mode, bool noCallMode, string hookDll,
-        Action<string>? log = null, IReadOnlyList<ulong>? syncTargets = null)
+        Action<string>? log = null, bool gameAsMedia = false)
     {
-        syncTargets ??= [];
         log ??= _ => { };
         if (!Environment.IsPrivilegedProcess) return Result.NotElevated;
         try
         {
             // Worked out again here, from a symbol cache only administrators can change: the hook patches what HKLM names.
             Directory.CreateDirectory(HookDirectory);
-            var (targets, reader, error) = await LeAudioHookTargets.ResolveAsync(TargetPath, ElevatedSymbolCache).ConfigureAwait(false);
+            var (targets, error) = await LeAudioHookTargets.ResolveAsync(TargetPath, ElevatedSymbolCache).ConfigureAwait(false);
             if (targets is null)
             {
                 log($"resolve: {error}");
                 return error == LeAudioHookResolveError.SymbolsUnavailable ? Result.SymbolsUnavailable : Result.UnsupportedWindows;
             }
+            if (gameAsMedia && targets.Count == LeAudioHookTargets.RequiredFunctionCount)
+            {
+                log("game context callback: ABI not verified on this Windows build");
+                return Result.UnsupportedWindows;
+            }
+            if (!File.Exists(hookDll)) return Result.ComponentMissing;
+            int pid = ServiceProcess.GetProcessId(ServiceName);
+            if (pid == 0) return Result.ServiceNotRunning;
             using (var key = Registry.LocalMachine.CreateSubKey(ConfigKey))
             {
                 key.SetValue("FrameDurationUs", preset.FrameUs, RegistryValueKind.DWord);
                 key.SetValue("OctetsPerFrame", preset.Octets, RegistryValueKind.DWord);
                 key.SetValue("LatencyMode", (int)mode, RegistryValueKind.DWord);
                 key.SetValue("NoCallMode", noCallMode ? 1 : 0, RegistryValueKind.DWord);
+                key.SetValue("GameAsMedia", gameAsMedia ? 1 : 0, RegistryValueKind.DWord);
+                if (targets.Count == LeAudioHookTargets.RequiredFunctionCount)
+                {
+                    key.DeleteValue("Hook2Rva", throwOnMissingValue: false);
+                    key.DeleteValue("Hook2Prologue", throwOnMissingValue: false);
+                }
                 for (int i = 0; i < targets.Count; i++)
                 {
                     key.SetValue($"Hook{i}Rva", targets[i].Rva, RegistryValueKind.DWord);
                     key.SetValue($"Hook{i}Prologue", targets[i].Prologue, RegistryValueKind.Binary);
                     log($"target {i}: 0x{targets[i].Rva:X} {Convert.ToHexString(targets[i].Prologue)} {targets[i].Name}");
                 }
-                if (reader is not null)
-                {
-                    key.SetValue("AddressRva", reader.Rva, RegistryValueKind.DWord);
-                    key.SetValue("AddressCode", reader.Prologue, RegistryValueKind.Binary);
-                    log($"address reader: 0x{reader.Rva:X} {Convert.ToHexString(reader.Prologue)}");
-                }
-                else
-                {
-                    key.DeleteValue("AddressRva", throwOnMissingValue: false);
-                    key.DeleteValue("AddressCode", throwOnMissingValue: false);
-                    log("address reader: not in this build");
-                }
-                if (syncTargets.Count > 0 && reader is not null)
-                    key.SetValue("SyncTargets", syncTargets.Take(MaxSyncTargets).SelectMany(BitConverter.GetBytes).ToArray(), RegistryValueKind.Binary);
-                else
-                    key.DeleteValue("SyncTargets", throwOnMissingValue: false);
+                foreach (string name in ObsoleteValues) key.DeleteValue(name, throwOnMissingValue: false);
             }
-            int pid = ServiceProcess.GetProcessId(ServiceName);
-            int result;
-            if (pid == 0)
-            {
-                result = Result.ServiceNotRunning;
-            }
-            else if (!File.Exists(hookDll))
-            {
-                result = Result.ComponentMissing;
-            }
-            else
-            {
-                result = LeAudioHookInjector.Enable(pid, hookDll, HookDirectory, log);
-            }
+            int result = LeAudioHookInjector.Enable(pid, hookDll, HookDirectory, log);
             if (result != Result.Ok) return result;
-            ulong applied = reader is null || syncTargets.Count == 0 ? 0 : syncTargets[0];
-            File.WriteAllText(StatePath, FormatState(new AppliedState(pid, preset.FrameUs, preset.Octets, mode, noCallMode, applied)));
-            return syncTargets.Count > 0 && reader is null ? Result.SyncUnsupported : Result.Ok;
+            File.WriteAllText(StatePath, FormatState(new AppliedState(pid, preset.FrameUs, preset.Octets, mode, noCallMode)));
+            return Result.Ok;
         }
         catch (Exception ex)
         {

@@ -86,14 +86,13 @@ public sealed class LeAudioCodecHookTests
         var old = LeAudioCodecHook.ParseState("pid=1\nframeUs=7500\noctets=117\n")!;
         Assert.Equal(LeAudioLatencyMode.Auto, old.Mode);
         Assert.False(old.NoCallMode);
-        Assert.Equal(0ul, old.SyncTarget);
     }
 
     [Fact]
     public void RestoreTaskRunsTheApplyElevatedOnDemand()
     {
         string xml = LeAudioHookRestoreTask.BuildXml(@"C:\Program Files\EncoDeck\EncoDeck.exe",
-            "--le-hook-apply 48_5 high sync=A1B2C3D4E5F6,A1B2C3D4E5F7 restore", "S-1-5-21-1-2-3-1001");
+            "--le-hook-apply 48_5 high restore", "S-1-5-21-1-2-3-1001");
         var task = System.Xml.Linq.XDocument.Parse(xml).Root!;
         System.Xml.Linq.XNamespace ns = "http://schemas.microsoft.com/windows/2004/02/mit/task";
         Assert.Equal("HighestAvailable", task.Descendants(ns + "RunLevel").Single().Value);
@@ -107,16 +106,10 @@ public sealed class LeAudioCodecHookTests
     }
 
     [Fact]
-    public void SyncTargetRoundTripsAndIsAChoice()
+    public void StateFromTheRemovedSyncScheduleReadsAsWindowsDefault()
     {
-        var state = new LeAudioCodecHook.AppliedState(2220, 0, 0, SyncTarget: 0xA1B2C3D4E5F6);
-        Assert.Equal(state, LeAudioCodecHook.ParseState(LeAudioCodecHook.FormatState(state)));
-        // Windows' own codec and transport with the sync schedule is still something applied, tied to the process.
-        var applied = LeAudioCodecHook.Interpret(state, 2220);
-        Assert.False(applied.IsWindowsDefault);
-        Assert.True(applied.Active);
-        Assert.Equal(0xA1B2C3D4E5F6ul, applied.SyncTarget);
-        Assert.False(LeAudioCodecHook.Interpret(state, 4096).Active);
+        var state = LeAudioCodecHook.ParseState("pid=2220\nframeUs=0\noctets=0\nmode=0\nnoCallMode=0\nsyncTarget=A1B2C3D4E5F6\n")!;
+        Assert.True(LeAudioCodecHook.Interpret(state, 2220).IsWindowsDefault);
     }
 
     [Fact]

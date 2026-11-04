@@ -174,14 +174,8 @@ public sealed class LeAudioCodecCompanion : IDisposable
     private const string NoCallArgument = "nocall";
 
     /// <summary>
-    /// Command-line option of the elevated child: <c>sync=</c> and the LE addresses (hex, comma separated, the primary
-    /// first) of the earbuds that get the Intel sync schedule.
-    /// </summary>
-    private const string SyncArgument = "sync=";
-
-    /// <summary>
     /// Runs in the elevated child, before any window or single-instance check. <paramref name="arguments"/> follow
-    /// <see cref="ApplyArgument"/>: the preset id, the mode, then optionally <c>nocall</c>, <c>sync=</c>addresses and
+    /// <see cref="ApplyArgument"/>: the preset id, the mode, then optionally <c>nocall</c> and
     /// <see cref="LeAudioHookRestoreTask.RestoreArgument"/> (started by the restore task, which stays as it is). Otherwise
     /// a choice other than Windows' own registers the restore task with the same arguments, and Windows' own removes it.
     /// </summary>
@@ -197,18 +191,17 @@ public sealed class LeAudioCodecCompanion : IDisposable
         var options = arguments.Skip(2).ToList();
         bool noCallMode = options.Contains(NoCallArgument, StringComparer.OrdinalIgnoreCase);
         bool restore = options.Contains(LeAudioHookRestoreTask.RestoreArgument, StringComparer.OrdinalIgnoreCase);
-        var syncTargets = ParseAddresses(options.FirstOrDefault(o => o.StartsWith(SyncArgument, StringComparison.OrdinalIgnoreCase))?[SyncArgument.Length..]);
         var mode = ParseMode(arguments.ElementAtOrDefault(1));
         // Off the UI thread: the apply awaits a download and must not wait on the dispatcher it blocks.
-        int result = Task.Run(() => LeAudioCodecHook.ApplyElevatedAsync(preset, mode, noCallMode, LeAudioCodecHook.BundledDll, Log, syncTargets))
+        int result = Task.Run(() => LeAudioCodecHook.ApplyElevatedAsync(preset, mode, noCallMode, LeAudioCodecHook.BundledDll, Log))
             .GetAwaiter().GetResult();
         if (restore)
         {
             Log($"restored: result {result}");
         }
-        else if (result is LeAudioCodecHook.Result.Ok or LeAudioCodecHook.Result.SyncUnsupported && Environment.ProcessPath is { } exe)
+        else if (result == LeAudioCodecHook.Result.Ok && Environment.ProcessPath is { } exe)
         {
-            if (preset.IsWindowsDefault && mode == LeAudioLatencyMode.Auto && !noCallMode && syncTargets.Count == 0)
+            if (preset.IsWindowsDefault && mode == LeAudioLatencyMode.Auto && !noCallMode)
                 LeAudioHookRestoreTask.Unregister(Log);
             else
                 LeAudioHookRestoreTask.Register(exe, string.Join(' ', [ApplyArgument, .. arguments, LeAudioHookRestoreTask.RestoreArgument]), Log);
@@ -216,24 +209,15 @@ public sealed class LeAudioCodecCompanion : IDisposable
         return result;
     }
 
-    /// <summary>Hex addresses separated by commas; anything unreadable is left out.</summary>
-    internal static IReadOnlyList<ulong> ParseAddresses(string? text) =>
-        (text ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(part => ulong.TryParse(part, System.Globalization.NumberStyles.HexNumber, null, out ulong address) ? address : 0)
-            .Where(address => address != 0)
-            .ToList();
-
     /// <summary>
-    /// Shows the administrator prompt and applies <paramref name="preset"/>, <paramref name="mode"/>,
-    /// <paramref name="noCallMode"/> and the Intel sync schedule for <paramref name="syncTargets"/> (the LE addresses of one
-    /// set of earbuds, none for no schedule); returns the child's result code. A declined prompt throws
+    /// Shows the administrator prompt and applies <paramref name="preset"/>, <paramref name="mode"/> and
+    /// <paramref name="noCallMode"/>; returns the child's result code. A declined prompt throws
     /// <see cref="OperationCanceledException"/>.
     /// </summary>
-    public static async Task<int> ApplyAsync(LeAudioCodecPreset preset, LeAudioLatencyMode mode, bool noCallMode, IReadOnlyList<ulong>? syncTargets = null)
+    public static async Task<int> ApplyAsync(LeAudioCodecPreset preset, LeAudioLatencyMode mode, bool noCallMode)
     {
         string exe = Environment.ProcessPath ?? throw new InvalidOperationException("Unknown executable path.");
-        string arguments = $"{ApplyArgument} {preset.Id} {ModeArgument(mode)}" + (noCallMode ? $" {NoCallArgument}" : "")
-            + (syncTargets is { Count: > 0 } ? $" {SyncArgument}{string.Join(',', syncTargets.Select(a => a.ToString("X", System.Globalization.CultureInfo.InvariantCulture)))}" : "");
+        string arguments = $"{ApplyArgument} {preset.Id} {ModeArgument(mode)}" + (noCallMode ? $" {NoCallArgument}" : "");
         var start = new ProcessStartInfo(exe, arguments)
         {
             UseShellExecute = true,

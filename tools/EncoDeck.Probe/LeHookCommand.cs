@@ -26,17 +26,16 @@ internal static class LeHookCommand
     {
         string dll = Path.Combine(Environment.SystemDirectory, "Microsoft.Bluetooth.Audio.dll");
         var watch = System.Diagnostics.Stopwatch.StartNew();
-        var (targets, reader, error) = await LeAudioHookTargets.ResolveAsync(dll, LeAudioCodecHook.UserSymbolCache, ct);
+        var (targets, error) = await LeAudioHookTargets.ResolveAsync(dll, LeAudioCodecHook.UserSymbolCache, ct);
         Console.WriteLine($"resolve: {error} in {watch.ElapsedMilliseconds} ms");
         foreach (var target in targets ?? [])
             Console.WriteLine($"  0x{target.Rva:X} {Convert.ToHexString(target.Prologue)}  {target.Name}");
-        Console.WriteLine(reader is null ? "  address reader: not found" : $"  0x{reader.Rva:X} {Convert.ToHexString(reader.Prologue)}  {reader.Name}");
         return targets is null ? 1 : 0;
     }
 
     private static int Usage()
     {
-        Console.Error.WriteLine("le-hook status | le-hook apply --preset <id> [--mode auto|low|high] [--no-call] [--sync <LE address hex>[,<address>...]] [--dll <path>]   (apply needs an elevated prompt)");
+        Console.Error.WriteLine("le-hook status | le-hook apply --preset <id> [--mode auto|low|high] [--no-call] [--game-as-media] [--dll <path>]   (apply needs an elevated prompt)");
         foreach (var preset in LeAudioCodecPreset.All)
             Console.Error.WriteLine($"  {preset.Id,-8} {(preset.IsWindowsDefault ? "Windows' own choice" : $"{preset.FrameUs} us, {preset.Octets} octets, {preset.Kbps:0.#} kbps")}");
         return 2;
@@ -46,7 +45,7 @@ internal static class LeHookCommand
     {
         Console.WriteLine($"support: {await LeAudioCodecHook.CheckSupportAsync(ct)}");
         var applied = LeAudioCodecHook.ReadApplied();
-        Console.WriteLine($"applied: {applied.Preset.Id}, {applied.Mode}{(applied.NoCallMode ? ", no call mode" : "")}{(applied.SyncTarget != 0 ? $", Intel sync schedule for ..{applied.SyncTarget & 0xFFFF:X4}" : "")}{(applied.IsWindowsDefault ? "" : applied.Active ? " (active)" : " (lost: the service restarted)")}");
+        Console.WriteLine($"applied: {applied.Preset.Id}, {applied.Mode}{(applied.NoCallMode ? ", no call mode" : "")}{(applied.IsWindowsDefault ? "" : applied.Active ? " (active)" : " (lost: the service restarted)")}");
         if (LeAudioCodecHook.ReadLink() is { } link)
             Console.WriteLine($"link: {link.At:HH:mm:ss} {link.FrameUs} us, max SDU {link.MaxSdu} ({link.Kbps:0.#} kbps), at most {link.LatencyMs} ms, {link.Retransmissions} retransmissions");
         if (File.Exists(LeAudioCodecHook.LogPath))
@@ -70,10 +69,8 @@ internal static class LeHookCommand
             "high" => LeAudioLatencyMode.HighReliability,
             _ => LeAudioLatencyMode.Auto,
         };
-        var syncTargets = (options.Get("sync") ?? "").Replace(":", "").Split(',', StringSplitOptions.RemoveEmptyEntries)
-            .Select(part => ulong.TryParse(part, System.Globalization.NumberStyles.HexNumber, null, out ulong address) ? address : 0)
-            .Where(address => address != 0).ToList();
-        int result = await LeAudioCodecHook.ApplyElevatedAsync(preset, mode, options.Has("no-call"), dll, Console.WriteLine, syncTargets);
+        int result = await LeAudioCodecHook.ApplyElevatedAsync(preset, mode, options.Has("no-call"), dll, Console.WriteLine,
+            gameAsMedia: options.Has("game-as-media"));
         Console.WriteLine(result == LeAudioCodecHook.Result.Ok
             ? $"applied {preset.Id}: takes effect when Windows next builds the LE Audio stream"
             : $"not applied: result {result}");

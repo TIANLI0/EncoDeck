@@ -21,11 +21,6 @@
     <ToggleSwitch x:Name="NoCall" x:Uid="LeAudioCodec_NoCall" />
     <TextBlock x:Uid="LeAudioCodec_NoCallNote" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" />
    </StackPanel>
-   <!-- Intel sync schedule: only on Intel LE Audio offload, only for the earbud models it was verified on. -->
-   <StackPanel x:Name="SyncPanel" Spacing="2" Visibility="Collapsed">
-    <ToggleSwitch x:Name="SyncSchedule" x:Uid="LeAudioCodec_Sync" />
-    <TextBlock x:Uid="LeAudioCodec_SyncNote" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" />
-   </StackPanel>
    <!-- Latency of the selected preset and transport. -->
    <TextBlock x:Name="Latency" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" />
    <!-- What is applied (and whether it already took effect), then the link Windows uses right now. -->
