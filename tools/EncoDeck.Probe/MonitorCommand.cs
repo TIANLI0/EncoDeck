@@ -79,6 +79,22 @@ internal static class MonitorCommand
             }
         }
 
+        // What the app's Disconnect and Connect do, once each, on the active device (kept in memory only).
+        if (options.Has("disconnect-cycle") && options.Has("confirm-write"))
+        {
+            await Task.WhenAny(ready.Task, deadline);
+            if (ready.Task.IsCompleted && store.Current.Device is { } device)
+            {
+                var started = DateTimeOffset.UtcNow;
+                var result = await manager.DisconnectDeviceAsync(device.DeviceId, ct);
+                Console.WriteLine($">>> DisconnectDevice = {result} in {(DateTimeOffset.UtcNow - started).TotalMilliseconds:F0} ms");
+                await Task.Delay(TimeSpan.FromSeconds(options.GetInt("dwell", 15)), ct);
+                started = DateTimeOffset.UtcNow;
+                result = await manager.ConnectDeviceAsync(device.DeviceId, ct);
+                Console.WriteLine($">>> ConnectDevice = {result} in {(DateTimeOffset.UtcNow - started).TotalMilliseconds:F0} ms");
+            }
+        }
+
         try
         {
             await deadline;

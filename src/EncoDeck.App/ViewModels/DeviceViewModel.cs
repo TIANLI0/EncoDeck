@@ -106,6 +106,11 @@ public sealed partial class DeviceViewModel : ObservableObject
     [ObservableProperty] public partial bool IsBusyConnecting { get; set; }
     [ObservableProperty] public partial bool IsControlUnavailable { get; set; }
     [ObservableProperty] public partial bool IsLinkDown { get; set; }
+    /// <summary>Bluetooth earbuds linked to this PC: "Disconnect" is offered.</summary>
+    [ObservableProperty] public partial bool CanDisconnect { get; set; }
+    /// <summary>Bluetooth earbuds not linked, or disconnected in EncoDeck: "Connect" is offered.</summary>
+    [ObservableProperty] public partial bool CanConnect { get; set; }
+    [ObservableProperty] public partial bool IsChangingConnection { get; set; }
 
     /// <summary>The audio runs over LE Audio (shown as an "LC3" tag next to the status).</summary>
     [ObservableProperty] public partial bool IsLeAudio { get; set; }
@@ -248,6 +253,30 @@ public sealed partial class DeviceViewModel : ObservableObject
     [RelayCommand]
     private Task ReconnectAsync() => RunAsync(() => _commands.ReconnectAsync());
 
+    /// <summary>Disconnects the earbuds from this PC; EncoDeck then leaves them alone until "Connect".</summary>
+    [RelayCommand]
+    private Task DisconnectDeviceAsync() => ChangeConnectionAsync(connect: false);
+
+    [RelayCommand]
+    private Task ConnectDeviceAsync() => ChangeConnectionAsync(connect: true);
+
+    private async Task ChangeConnectionAsync(bool connect)
+    {
+        if (IsChangingConnection || _store.Current.Device is not { Transport: DeviceTransport.Bluetooth } device) return;
+        IsChangingConnection = true;
+        IsBusyConnecting = true;
+        try
+        {
+            var devices = App.Instance.Host.Devices;
+            await RunAsync(() => connect ? devices.ConnectDeviceAsync(device.DeviceId) : devices.DisconnectDeviceAsync(device.DeviceId));
+        }
+        finally
+        {
+            IsChangingConnection = false;
+            Apply(_store.Current, forceNotify: true);
+        }
+    }
+
     [RelayCommand]
     private void DismissError()
     {
@@ -376,9 +405,9 @@ public sealed partial class DeviceViewModel : ObservableObject
         Connection = state.Connection;
         ConnectionText = DescribeConnection(state.Connection);
         IsReady = state.Connection == DeviceConnectionState.ControlReady;
-        IsBusyConnecting = state.Connection is DeviceConnectionState.ControlConnecting or DeviceConnectionState.Reconnecting or DeviceConnectionState.AudioConnected;
+        IsBusyConnecting = IsChangingConnection || state.Connection is DeviceConnectionState.ControlConnecting or DeviceConnectionState.Reconnecting or DeviceConnectionState.AudioConnected;
         IsControlUnavailable = state.Connection == DeviceConnectionState.ControlUnavailable;
-        IsLinkDown = state.Connection is DeviceConnectionState.PairedNotConnected or DeviceConnectionState.Disconnected;
+        IsLinkDown = state.Connection is DeviceConnectionState.PairedNotConnected or DeviceConnectionState.Disconnected or DeviceConnectionState.DisconnectedByUser;
         IsLeAudio = state.IsLeAudio && !IsLinkDown;
         // A2DP Windows Bridge streams to these earbuds over its own adapter: Windows (and so the control
         // channel) may not see them at all, but they are connected, and the codec is the bridge's.
@@ -398,6 +427,9 @@ public sealed partial class DeviceViewModel : ObservableObject
             IsLeAudio = false;
         }
         IsClassicAudio = !IsLeAudio && !IsLinkDown && !IsBridgeOnly && state.Connection.IsLinkUp();
+        bool windowsBluetooth = state.Device is { Transport: DeviceTransport.Bluetooth } && !IsBridgeOnly;
+        CanDisconnect = windowsBluetooth && state.Connection.IsLinkUp();
+        CanConnect = windowsBluetooth && IsLinkDown;
         CanSwitchAudioTransport = _settings.Current.ShowAudioTransportSwitch != false
             && profile is OppoDeviceProfile { Definition.SupportsLeAudioPairing: true }
             && state.LeAudioLinks is { PrimaryBonded: true, SecondaryBonded: true }

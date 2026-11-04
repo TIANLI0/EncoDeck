@@ -94,8 +94,17 @@
         <TextBlock x:Uid="Panel_NoDevice" Text="No supported earbuds paired." Style="{StaticResource SecondaryTextStyle}"
                    Visibility="{x:Bind services:Ui.Collapsed(ViewModel.HasDevice), Mode=OneWay}" />
 
-        <!-- Only when the control channel is unavailable. -->
-        <Button x:Uid="Panel_Reconnect" Content="Reconnect" HorizontalAlignment="Right" Command="{x:Bind ViewModel.ReconnectCommand}"
-                Visibility="{x:Bind ViewModel.IsControlUnavailable, Mode=OneWay}" />
+        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+            <!-- Only when the control channel is unavailable. -->
+            <Button x:Uid="Panel_Reconnect" Content="Reconnect" Command="{x:Bind ViewModel.ReconnectCommand}"
+                    Visibility="{x:Bind ViewModel.IsControlUnavailable, Mode=OneWay}" />
+            <!-- Disconnect: off this PC, and EncoDeck leaves the earbuds alone until Connect. -->
+            <Button x:Uid="Panel_Disconnect" Content="Disconnect" Command="{x:Bind ViewModel.DisconnectDeviceCommand}"
+                    Visibility="{x:Bind ViewModel.CanDisconnect, Mode=OneWay}"
+                    IsEnabled="{x:Bind services:Ui.Not(ViewModel.IsChangingConnection), Mode=OneWay}" />
+            <Button x:Uid="Panel_Connect" Content="Connect" Command="{x:Bind ViewModel.ConnectDeviceCommand}" Style="{StaticResource AccentButtonStyle}"
+                    Visibility="{x:Bind ViewModel.CanConnect, Mode=OneWay}"
+                    IsEnabled="{x:Bind services:Ui.Not(ViewModel.IsChangingConnection), Mode=OneWay}" />
+        </StackPanel>
     </StackPanel>
 </UserControl>

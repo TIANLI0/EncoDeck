@@ -120,6 +120,7 @@ internal static class ProbeApp
               monitor [--seconds N]       Run the app's device runtime headlessly, print state changes
                                           and finally every feature value the session start read.
                       [--set-anc a,b --confirm-write]  Also run commands (off|anc|transparency|adaptive|smart|deep|medium|light|less|standard|more).
+                      [--disconnect-cycle --confirm-write [--dwell 15]]  Once control is ready, Disconnect then Connect the device as the app does.
 
             A2DP Windows Bridge:
               bridge [--seconds N]        Connect to the A2DPWB core's pipe, print its state and changes.

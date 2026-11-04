@@ -4,6 +4,7 @@ using EncoDeck.App.Services;
 using EncoDeck.App.ViewModels;
 using EncoDeck.Bluetooth;
 using EncoDeck.Core.Capabilities;
+using EncoDeck.Core.Commands;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -175,7 +176,8 @@ public sealed partial class DevicesPage : Page
         var icon = new FontIcon { Glyph = "", FontSize = 20, VerticalAlignment = VerticalAlignment.Center };
         var text = new StackPanel();
         text.Children.Add(new TextBlock { Text = device.Identity.Name });
-        string status = device.IsConnected ? Loc.Get("Devices_StatusConnected") : Loc.Get("Devices_StatusNotConnected");
+        string status = device.IsDisconnectedByUser ? Loc.Get("Connection_DisconnectedByUser")
+            : device.IsConnected ? Loc.Get("Devices_StatusConnected") : Loc.Get("Devices_StatusNotConnected");
         string model = device.Profile.DisplayName;
         text.Children.Add(new TextBlock
         {
@@ -185,34 +187,61 @@ public sealed partial class DevicesPage : Page
         });
         Grid.SetColumn(text, 1);
 
-        UIElement action;
-        if (!device.IsConnected)
+        var action = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
+        bool bluetooth = device.Identity.Transport == EncoDeck.Core.Devices.DeviceTransport.Bluetooth;
+        if (bluetooth && (device.IsDisconnectedByUser || !device.IsConnected))
         {
-            // Windows connects audio and the link together; the supervisor attaches control once the link is up.
-            var button = new Button { Content = Loc.Get("DeviceConnect/Content"), VerticalAlignment = VerticalAlignment.Center };
-            button.Click += OnOpenBluetoothSettings;
-            action = button;
+            // Pages the earbuds and has Windows' audio drivers connect; the supervisor attaches control once the link is up.
+            action.Children.Add(ConnectionButton(Loc.Get("DeviceConnect/Content"), devices =>
+            {
+                App.Instance.Host.Settings.Update(s => s with { PreferredDeviceId = device.Identity.DeviceId });
+                return devices.ConnectDeviceAsync(device.Identity.DeviceId);
+            }));
         }
-        else if (device.IsActive)
+        else if (!device.IsConnected)
         {
-            action = new TextBlock { Text = Loc.Get("Devices_Active"), VerticalAlignment = VerticalAlignment.Center, Style = (Style)Application.Current.Resources["SecondaryTextStyle"] };
+            var button = new Button { Content = Loc.Get("Devices_OpenBluetooth/Content") };
+            button.Click += OnOpenBluetoothSettings;
+            action.Children.Add(button);
         }
         else
         {
-            var button = new Button { Content = Loc.Get("Devices_UseThis"), VerticalAlignment = VerticalAlignment.Center };
-            button.Click += async (_, _) =>
+            if (device.IsActive)
             {
-                App.Instance.Host.Settings.Update(s => s with { PreferredDeviceId = device.Identity.DeviceId });
-                await App.Instance.Host.Devices.SelectDeviceAsync(device.Identity.DeviceId);
-            };
-            action = button;
+                action.Children.Add(new TextBlock { Text = Loc.Get("Devices_Active"), VerticalAlignment = VerticalAlignment.Center, Style = (Style)Application.Current.Resources["SecondaryTextStyle"] });
+            }
+            else
+            {
+                var button = new Button { Content = Loc.Get("Devices_UseThis") };
+                button.Click += async (_, _) =>
+                {
+                    App.Instance.Host.Settings.Update(s => s with { PreferredDeviceId = device.Identity.DeviceId });
+                    await App.Instance.Host.Devices.SelectDeviceAsync(device.Identity.DeviceId);
+                };
+                action.Children.Add(button);
+            }
+            if (bluetooth)
+                action.Children.Add(ConnectionButton(Loc.Get("DeviceDisconnect/Content"), devices => devices.DisconnectDeviceAsync(device.Identity.DeviceId)));
         }
-        Grid.SetColumn((FrameworkElement)action, 2);
+        Grid.SetColumn(action, 2);
 
         grid.Children.Add(icon);
         grid.Children.Add(text);
         grid.Children.Add(action);
         return grid;
+    }
+
+    /// <summary>Connect or Disconnect for one row; disabled while it runs, and the list rebuilds when the link changes.</summary>
+    private static Button ConnectionButton(string label, Func<IDeviceManager, Task<CommandResult>> action)
+    {
+        var button = new Button { Content = label };
+        button.Click += async (_, _) =>
+        {
+            button.IsEnabled = false;
+            await App.Instance.Device.RunCommandAsync(() => action(App.Instance.Host.Devices));
+            button.IsEnabled = true;
+        };
+        return button;
     }
 
     private async void OnOpenBluetoothSettings(object sender, RoutedEventArgs e) =>

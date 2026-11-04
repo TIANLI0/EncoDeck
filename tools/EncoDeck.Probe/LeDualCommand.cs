@@ -132,7 +132,7 @@ internal static class LeDualCommand
     }
 
     /// <summary>Logs each link's transitions and how long every connected period lasted.</summary>
-    private sealed class LinkTimeline(Action<string> log)
+    internal sealed class LinkTimeline(Action<string> log)
     {
         private readonly List<(string Name, List<double> Durations, int Drops)> _summary = [];
         private readonly Stopwatch _clock = Stopwatch.StartNew();

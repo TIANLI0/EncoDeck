@@ -37,6 +37,12 @@ public enum DeviceConnectionState
 
     /// <summary>The USB receiver returned a validated active wireless headset link.</summary>
     UsbHeadsetConnected,
+
+    /// <summary>
+    /// The user disconnected the device in EncoDeck: its control channel stays closed and nothing reconnects it, even
+    /// when Windows links it again, until the user connects it in EncoDeck.
+    /// </summary>
+    DisconnectedByUser,
 }
 
 public static class DeviceConnectionStateExtensions

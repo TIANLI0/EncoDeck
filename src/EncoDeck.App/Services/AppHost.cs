@@ -142,7 +142,8 @@ public sealed class AppHost : IAsyncDisposable
             // Experimental MOONDROP, AKG Hybrid, vivo and EDIFIER settings remain opt-in and read this preference dynamically.
             allowExperimental: () => EncoDeck.App.ViewModels.FeaturesViewModel.OffersExperimental(store.Current.Profile) && settings.Current.EnableExperimentalFeatures,
             loggers,
-            trace: new RawProtocolLog(loggers.CreateLogger("EncoDeck.Protocol.Raw"), () => settings.Current.RawProtocolLogging));
+            trace: new RawProtocolLog(loggers.CreateLogger("EncoDeck.Protocol.Raw"), () => settings.Current.RawProtocolLogging),
+            disconnected: new SettingsDisconnectedDevices(settings));
 
         loggers.CreateLogger<AppHost>().LogInformation(
             "EncoDeck {Version} starting on {OS}",
@@ -192,5 +193,22 @@ public sealed class AppHost : IAsyncDisposable
         Resources.Dispose();
         Loggers.Dispose();
         FileLog.Dispose();
+    }
+}
+
+/// <summary>Keeps the devices disconnected in EncoDeck in the settings file, so they stay left alone after a restart.</summary>
+internal sealed class SettingsDisconnectedDevices(ISettingsStore settings) : IUserDisconnectedDevices
+{
+    public bool Contains(string deviceId) =>
+        settings.Current.DisconnectedDeviceIds?.Contains(deviceId, StringComparer.OrdinalIgnoreCase) == true;
+
+    public void Set(string deviceId, bool disconnected)
+    {
+        if (Contains(deviceId) == disconnected) return;
+        settings.Update(s =>
+        {
+            var ids = (s.DisconnectedDeviceIds ?? []).Where(id => !string.Equals(id, deviceId, StringComparison.OrdinalIgnoreCase));
+            return s with { DisconnectedDeviceIds = disconnected ? [.. ids, deviceId] : [.. ids] };
+        });
     }
 }

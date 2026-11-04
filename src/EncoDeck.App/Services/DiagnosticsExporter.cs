@@ -65,7 +65,8 @@ internal static class DiagnosticsExporter
                 component = host.Bridge.Managed?.Version,
             },
         };
-        await WriteEntryAsync(zip, "summary.json", JsonSerializer.Serialize(summary, new JsonSerializerOptions { WriteIndented = true }));
+        // Settings carry device ids (PreferredDeviceId, DisconnectedDeviceIds), which contain Bluetooth addresses.
+        await WriteEntryAsync(zip, "summary.json", LogRedactor.Redact(JsonSerializer.Serialize(summary, new JsonSerializerOptions { WriteIndented = true })));
         // A2DP Windows Bridge's own diagnostics (its addresses masked by the core), when it runs.
         if (await host.Bridge.DiagnosticsAsync() is { } bridge) await WriteEntryAsync(zip, "a2dpwb.txt", LogRedactor.Redact(bridge));
 

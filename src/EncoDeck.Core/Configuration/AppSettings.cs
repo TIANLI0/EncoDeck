@@ -89,6 +89,9 @@ public sealed record AppSettings
     /// <summary>Device id the user last selected, so it is preferred when several are paired.</summary>
     public string? PreferredDeviceId { get; init; }
 
+    /// <summary>Devices the user disconnected in EncoDeck; left alone (also after a restart) until connected in EncoDeck again.</summary>
+    public IReadOnlyList<string>? DisconnectedDeviceIds { get; init; }
+
     /// <summary>
     /// Check GitHub Releases for a new version daily and download it in the background (never installs
     /// without the user). Nullable only so a file from an older version (which reads as null) gets the default, on.

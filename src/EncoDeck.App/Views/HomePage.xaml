@@ -144,8 +144,12 @@
                                           Description="{x:Bind ViewModel.CodecDescription, Mode=OneWay}" IsDetailed="{x:Bind ViewModel.CodecIsDetailed, Mode=OneWay}"
                                           CanEnable="{x:Bind ViewModel.CodecCanEnable, Mode=OneWay}" MaxLabelWidth="220" />
                         <!-- Inline with no vertical padding, so showing/hiding it never changes the row height. -->
-                        <HyperlinkButton x:Uid="DeviceConnect" Click="OnOpenBluetoothSettings" Padding="2,0" MinHeight="0" VerticalAlignment="Center"
-                                         Visibility="{x:Bind ViewModel.IsLinkDown, Mode=OneWay}" />
+                        <HyperlinkButton x:Uid="DeviceConnect" Command="{x:Bind ViewModel.ConnectDeviceCommand}" Padding="2,0" MinHeight="0" VerticalAlignment="Center"
+                                         Visibility="{x:Bind ViewModel.CanConnect, Mode=OneWay}"
+                                         IsEnabled="{x:Bind services:Ui.Not(ViewModel.IsChangingConnection), Mode=OneWay}" />
+                        <HyperlinkButton x:Uid="DeviceDisconnect" Content="Disconnect" Command="{x:Bind ViewModel.DisconnectDeviceCommand}" Padding="2,0" MinHeight="0" VerticalAlignment="Center"
+                                         Visibility="{x:Bind ViewModel.CanDisconnect, Mode=OneWay}"
+                                         IsEnabled="{x:Bind services:Ui.Not(ViewModel.IsChangingConnection), Mode=OneWay}" />
                     </StackPanel>
                 </StackPanel>
                 <Grid Margin="0,8,0,0">

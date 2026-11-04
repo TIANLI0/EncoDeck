@@ -226,6 +226,27 @@ public class SettingsStoreTests
     }
 
     [Fact]
+    public void DisconnectedDevices_PersistAndOlderFilesHaveNone()
+    {
+        string dir = Directory.CreateTempSubdirectory("encodeck-test").FullName;
+        try
+        {
+            string path = Path.Combine(dir, "settings.json");
+            File.WriteAllText(path, """{ "schemaVersion": 1, "keepRunningInTray": true }""");
+            var store = new JsonSettingsStore(path, NullLogger<JsonSettingsStore>.Instance);
+            Assert.Null(store.Current.DisconnectedDeviceIds);
+
+            store.Update(s => s with { DisconnectedDeviceIds = ["Bluetooth#Bluetooth00:11:22:33:44:55-66:77:88:99:aa:bb"] });
+            var reloaded = new JsonSettingsStore(path, NullLogger<JsonSettingsStore>.Instance).Current.DisconnectedDeviceIds;
+            Assert.Equal(["Bluetooth#Bluetooth00:11:22:33:44:55-66:77:88:99:aa:bb"], reloaded);
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
     public void QuickSettingsPanel_OnForOlderFiles_OffStaysOff()
     {
         string dir = Directory.CreateTempSubdirectory("encodeck-test").FullName;

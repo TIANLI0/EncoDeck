@@ -574,7 +574,11 @@
   <data name="Lhdc_Help.Header" xml:space="preserve"><value>How to use LHDC</value></data>
   <data name="Lhdc_HelpRestore.Text" xml:space="preserve"><value>4. Before you stop using LHDC or uninstall EncoDeck, select the earbuds, choose Restore Windows audio, approve administrator access and wait for it to finish. Closing EncoDeck does not stop the LHDC background service or restore Windows audio.</value></data>
   <data name="Lhdc_Disclaimer.Text" xml:space="preserve"><value>Disclaimer: LHDC is an experimental feature based on the third-party open-source project LHDC-Win. Playback, reconnection and recovery still need hardware testing; compatibility with every device or system is not guaranteed. You may encounter lost audio, stuttering or a need to restore audio manually. Use it only if you understand and accept the risks of driver installation and system setting changes. To the extent permitted by applicable law, EncoDeck and its developers are not liable for resulting losses.</value></data>
-  <data name="DeviceConnect.Content" xml:space="preserve"><value>Connect in Windows</value></data>
+  <data name="DeviceConnect.Content" xml:space="preserve"><value>Connect</value></data>
+  <data name="DeviceDisconnect.Content" xml:space="preserve"><value>Disconnect</value></data>
+  <data name="Panel_Connect.Content" xml:space="preserve"><value>Connect</value></data>
+  <data name="Panel_Disconnect.Content" xml:space="preserve"><value>Disconnect</value></data>
+  <data name="Connection_DisconnectedByUser" xml:space="preserve"><value>Disconnected in EncoDeck</value></data>
   <data name="Lhdc_Guide.Content" xml:space="preserve"><value>Full guide: driver setup and recovery</value></data>
   <data name="Lhdc_Version" xml:space="preserve"><value>Component version: {0}</value></data>
   <data name="Lhdc_UpdateAvailable" xml:space="preserve"><value>LHDC component {0} is available. The installed one keeps working until you update.</value></data>
