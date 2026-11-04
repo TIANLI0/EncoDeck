@@ -8,8 +8,7 @@ namespace EncoDeck.Probe.LeSync;
 /// established. <see cref="CisIndex"/> is the CIS's place in the CIG (0 is scheduled first).
 /// </summary>
 /// <param name="Packets">TLV 0xAF: packets transmitted on the CIS.</param>
-/// <param name="LateSubevent">TLV 0xBA: grows on the later CIS when the earlier one was given the audio frame
-/// one ISO interval late; the meaning is inferred from measurements, Intel does not document it.</param>
+/// <param name="LateSubevent">TLV 0xBA. Its exact meaning is unverified.</param>
 /// <param name="Retransmitted">TLV 0xAE.</param>
 internal readonly record struct CisLinkSample(ushort Handle, byte CisIndex, uint Packets, uint LateSubevent, uint Retransmitted);
 

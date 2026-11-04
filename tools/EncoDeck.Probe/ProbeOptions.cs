@@ -12,7 +12,7 @@ internal sealed class ProbeOptions
     // Options that never take a value.
     private static readonly HashSet<string> Flags = new(StringComparer.OrdinalIgnoreCase)
     {
-        "help", "cached", "show-address", "show-sensitive", "raw", "confirm-write", "json", "verbose", "eq-list", "codec", "no-restore", "experimental", "software", "pair", "legacy-pairing", "restore", "no-call",
+        "help", "cached", "show-address", "show-sensitive", "raw", "confirm-write", "json", "verbose", "eq-list", "codec", "no-restore", "experimental", "software", "pair", "legacy-pairing", "restore", "no-call", "ioctl", "disconnect-cycle", "game-as-media",
     };
 
     public static ProbeOptions Parse(string[] args)

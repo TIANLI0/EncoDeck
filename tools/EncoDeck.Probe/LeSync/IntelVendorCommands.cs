@@ -40,6 +40,78 @@ internal static partial class IntelVendorCommands
     /// <summary>Restores the driver's defaults: trace off, its event mask, no periodic statistics.</summary>
     public static void DisableLinkStatistics() => Run(DisableSequence);
 
+    /// <summary>Requests one telemetry report from each active link without changing the periodic configuration.</summary>
+    public static void RequestLinkStatisticsSnapshot() => Run([(0xFCA1, [0x01])]);
+
+    /// <summary>Opens the radio once for a series of commands (sampling would otherwise reopen it for every read).</summary>
+    public static Session OpenSession()
+    {
+        EnableLoadDriverPrivilege();
+        return new Session();
+    }
+
+    /// <summary>Commands sent on a radio handle; each returns the whole Command Complete event.</summary>
+    internal sealed class Session : IDisposable
+    {
+        // Reads at most this many bytes per command: the firmware answers 0x12 from 248 on.
+        public const int MaxReadLength = 247;
+        // ERROR_CONNECTION_COUNT_LIMIT: the radio refuses another IOCTL on this handle until the last one settles.
+        // Reopening the handle and retrying clears it (same workaround as the one-shot SendCommand above).
+        private const int ConnectionCountLimit = 1238;
+        private RadioHandle _radio = OpenRadio() ?? throw new InvalidOperationException("No Bluetooth radio");
+
+        public byte[] Send(ushort opcode, ReadOnlySpan<byte> parameters)
+        {
+            byte[] input = BuildCommand(opcode, parameters);
+            Win32Exception? last = null;
+            for (int attempt = 0; attempt < CommandAttempts; attempt++)
+            {
+                if (attempt > 0)
+                {
+                    Thread.Sleep(50);
+                    _radio.Dispose();
+                    _radio = OpenRadio() ?? throw new InvalidOperationException("No Bluetooth radio");
+                }
+                byte[] output = new byte[512];
+                if (DeviceIoControl(_radio.Handle, IoctlBthHciVendorCommand, input, (uint)input.Length, output, (uint)output.Length, out uint returned, 0))
+                {
+                    byte[] evt = output.AsSpan(0, (int)returned).ToArray();
+                    byte status = ParseCommandComplete(evt, opcode);
+                    if (status != 0) throw new InvalidOperationException($"Vendor command 0x{opcode:X4} failed with HCI status 0x{status:X2}");
+                    return evt;
+                }
+                int error = Marshal.GetLastPInvokeError();
+                last = new Win32Exception(error);
+                if (error != ConnectionCountLimit) throw last;
+            }
+            throw last!;
+        }
+
+        /// <summary>
+        /// Research: Intel 0xFC8D reads controller memory (address, width 0 = bytes / 1 = 16-bit / 2 = 32-bit, length).
+        /// The firmware checks only the length, not the address, and a read of an unmapped address may fault the
+        /// controller: callers pass addresses from <see cref="FirmwareAddressTable"/> only.
+        /// </summary>
+        public byte[] ReadMemory(uint address, int length, byte width = 0)
+        {
+            if (length is < 1 or > MaxReadLength) throw new ArgumentOutOfRangeException(nameof(length));
+            Span<byte> parameters = stackalloc byte[6];
+            BinaryPrimitives.WriteUInt32LittleEndian(parameters, address);
+            parameters[4] = width;
+            parameters[5] = (byte)length;
+            // 0E len ncmd opcode(2) status address(4) data
+            byte[] evt = Send(0xFC8D, parameters);
+            if (evt.Length != 10 + length || BinaryPrimitives.ReadUInt32LittleEndian(evt.AsSpan(6)) != address)
+                throw new InvalidOperationException($"Unexpected 0xFC8D reply for 0x{address:X8}+{length}: {Convert.ToHexString(evt)}");
+            return evt.AsSpan(10).ToArray();
+        }
+
+        /// <summary>Intel Read Version (0xFC05) in TLV form: the TLVs after the status byte.</summary>
+        public byte[] ReadVersion() => Send(0xFC05, [0xFF]).AsSpan(6).ToArray();
+
+        public void Dispose() => _radio.Dispose();
+    }
+
     private static void Run((ushort Opcode, byte[] Parameters)[] sequence)
     {
         EnableLoadDriverPrivilege();
@@ -118,7 +190,7 @@ internal static partial class IntelVendorCommands
         return new RadioHandle(radio);
     }
 
-    private sealed class RadioHandle(nint handle) : IDisposable
+    internal sealed class RadioHandle(nint handle) : IDisposable
     {
         public nint Handle { get; } = handle;
 

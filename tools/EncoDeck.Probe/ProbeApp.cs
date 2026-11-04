@@ -36,8 +36,13 @@ internal static class ProbeApp
                 "le-audio" => await LeAudioCommand.RunAsync(options, ct),
                 "le-dual" => await LeDualCommand.RunAsync(options, ct),
                 "bats" => await BatsCommand.RunAsync(options, ct),
+                "link" => await LinkCommand.RunAsync(options, ct),
                 "le-sync" => await LeSyncCommand.RunAsync(options, ct),
                 "le-sync-selftest" => await LeSyncCommand.SelfTestAsync(options, ct),
+                "le-sync-snapshot" => await LeSyncCommand.SnapshotAsync(ct),
+                "le-trace" => await LeSyncCommand.TraceAsync(options, ct),
+                "fw-mem-read" => LeSyncCommand.FirmwareMemoryRead(options),
+                "fw-pair-state" => await LeSyncCommand.FirmwarePairStateAsync(options, ct),
                 "le-hook" => await LeHookCommand.RunAsync(options, ct),
                 "a2dp-codec" => await A2dpCodecCommand.RunAsync(options),
                 "multipoint-off" => await LeAudioCommand.DisableMultipointCommandAsync(options, ct),
@@ -105,12 +110,24 @@ internal static class ProbeApp
                        [--pair --confirm-write]  Confirm multipoint off, then wait for pairing mode and replace this PC's bonds.
                        [--legacy-pairing]  With --pair, use explicit addresses without Windows set discovery for comparison.
                        [--restore --confirm-write]  Remove this PC's LE Audio pairings (pair again in Windows Settings).
+              link [status]               The PC's Classic and LE links, the audio endpoints and their driver filters.
+              link disconnect|connect --confirm-write  Ask the audio drivers to disconnect/reconnect (KS ONESHOT),
+                   [--ioctl]             or force the Classic link down instead (disconnect only),
+                   [--seconds N]         then log links and endpoints (default 20 s). Exit the app first.
               le-sync [--seconds N]       Hold the active LE Audio link like the Labs left/right calibration and
                       [--resync-file <path>]  print its status; creating the file rebuilds the link, creating
                       [--check-file <path>]   the check file plays the check clicks. Default 60 s.
                       [--render <endpoint id>]  Use this render endpoint instead of the active LE Audio one.
               le-sync-selftest [--seconds N]  Research, run elevated: turn on Intel link statistics and print the
                                               per-CIS reports while audio plays, then restore the controller.
+              le-sync-snapshot              Research, run elevated: read one Intel report per active CIS.
+              le-trace [--seconds N] [--all]
+                                            Research, run elevated: print every controller event the Intel driver forwards to ETW
+                                            and mark payloads carrying the ABxx firmware log tags (--all prints everything).
+              fw-mem-read [--addr A --len N]  Research, run elevated: read Intel controller memory (image code or the
+                                              LC3 queue slots only); no --addr checks the image header.
+              fw-pair-state [--samples N --rounds N --gap-ms N]  Research, run elevated, Intel Solar A3 only: sample
+                            [--log <jsonl>] [--verbose]          the LC3 queues and print the left/right pairing state.
               le-hook [status]            Labs LE Audio bitrate: support, applied preset and the hook's log.
               le-hook apply --preset <id> Elevated: what the card's Apply does (48_1..48_5, or default).
                       [--mode auto|low|high]  Transport: Windows' choice, latency first or reliability first.
