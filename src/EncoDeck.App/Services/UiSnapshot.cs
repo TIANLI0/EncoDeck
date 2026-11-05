@@ -294,6 +294,19 @@ internal static class UiSnapshot
             await Task.Delay(900);
             await CaptureAsync(panel, Path.Combine(outDir, "TrayPanel-0.png"));
             panel.Close();
+            foreach (var (name, state) in TrayScenarios(sample))
+            {
+                host.Store.Reset(state);
+                await Task.Delay(300);
+                // A fresh panel per state: it is sized to its content when shown.
+                var scenario = new TrayPanelWindow();
+                new ThemeService(host.Settings).Register(scenario);
+                scenario.ShowForDiagnostics(new Platform.Shell.PixelPoint(-24000, -22000), scale);
+                await Task.Delay(900);
+                await CaptureAsync(scenario, Path.Combine(outDir, $"TrayPanel-{name}.png"));
+                scenario.Close();
+            }
+            host.Store.Reset(sample);
         }
         catch (Exception ex)
         {
@@ -301,6 +314,29 @@ internal static class UiSnapshot
         }
         await File.WriteAllTextAsync(Path.Combine(outDir, "errors.txt"), string.Join("\n\n", errors));
         return errors.Count == 0 ? 0 : 1;
+    }
+
+    /// <summary>EarFun: the noise sub-mode rows (ANC and transparency) and the faded batteries while not linked.</summary>
+    private static IEnumerable<(string Name, DeviceState State)> TrayScenarios(DeviceState sample)
+    {
+        var now = DateTimeOffset.UtcNow;
+        // Low batteries in the critical colour, but not the one charging.
+        Observed<BatteryReading> Level(int level, bool charging = false) => Observed.From(new BatteryReading(level, charging), now, StateSource.QueryResponse);
+        yield return ("LowBattery", sample with { Battery = new BatteryStatus(Level(8), Level(15), Level(12, charging: true)) });
+        if (sample.Profile is not EncoDeck.Protocol.Brands.EarFun.EarFunProfile earfun) yield break;
+        DeviceState With(DeviceState state, NoiseControlState noise, EncoDeck.Protocol.Brands.EarFun.EarFunSetting setting, byte value) =>
+            EncoDeck.Protocol.Brands.EarFun.EarFunSettings.Option(earfun.Model, setting, value) is { } option
+                ? state with
+                {
+                    NoiseControl = Observed.From(noise, now, StateSource.QueryResponse),
+                    Options = state.Options.SetItem(option.Id, Observed.From(option, now, StateSource.QueryResponse)),
+                }
+                : state;
+        var anc = With(sample, new NoiseControlState(NoiseControlMode.NoiseCancellation), EncoDeck.Protocol.Brands.EarFun.EarFunSetting.Sub, 4);
+        yield return ("Anc", anc);
+        yield return ("Transparency", With(anc, new NoiseControlState(NoiseControlMode.Transparency), EncoDeck.Protocol.Brands.EarFun.EarFunSetting.Ambient, earfun.Model.Gaia ? (byte)1 : (byte)2));
+        yield return ("Disconnected", anc with { Connection = DeviceConnectionState.Disconnected });
+        yield return ("DisconnectedByUser", anc with { Connection = DeviceConnectionState.DisconnectedByUser });
     }
 
     internal static void ApplyArtworkDirectory(App app, string? directory)

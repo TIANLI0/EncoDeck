@@ -89,6 +89,11 @@ public sealed partial class DeviceViewModel : ObservableObject
     public ObservableCollection<NoiseLevelViewModel> NoiseLevels { get; } = [];
     public ObservableCollection<NoiseLevelViewModel> AdaptiveLevels { get; } = [];
     public ObservableCollection<NoiseLevelViewModel> TransparencyLevels { get; } = [];
+    /// <summary>
+    /// The earbuds' own sub-modes of the selected noise mode, kept as a device option (EarFun's ANC and transparency
+    /// sub-modes); the tray panel shows them under the mode buttons, the Controls page as that option's list.
+    /// </summary>
+    public ObservableCollection<NoiseLevelViewModel> NoiseSubModes { get; } = [];
     public ObservableCollection<EqualizerPresetViewModel> EqualizerPresets { get; } = [];
     public ObservableCollection<DeviceToggleViewModel> Toggles { get; } = [];
 
@@ -184,6 +189,9 @@ public sealed partial class DeviceViewModel : ObservableObject
     [ObservableProperty] public partial bool HasTransparencyMode { get; set; }
     [ObservableProperty] public partial bool ShowNoiseLevels { get; set; }
     [ObservableProperty] public partial bool ShowTransparencyLevels { get; set; }
+    [ObservableProperty] public partial bool ShowNoiseSubModes { get; set; }
+    [ObservableProperty] public partial string NoiseSubModesTitle { get; set; } = string.Empty;
+    [ObservableProperty] public partial bool IsNoiseSubModePending { get; set; }
     [ObservableProperty] public partial string NoiseText { get; set; } = string.Empty;
 
     [ObservableProperty] public partial bool IsEqualizerAvailable { get; set; }
@@ -229,6 +237,18 @@ public sealed partial class DeviceViewModel : ObservableObject
         if (option is null) return;
         await RunAsync(() => _commands.SetNoiseControlAsync(option.ToState()));
     }
+
+    [RelayCommand]
+    private async Task SetNoiseSubModeAsync(string value)
+    {
+        if (_noiseSubModeOption is not { } id || !int.TryParse(value, out int target) || IsNoiseSubModePending) return;
+        IsNoiseSubModePending = true;
+        try { await RunAsync(() => App.Instance.Host.Devices.SetOptionAsync(id, target)); }
+        finally { IsNoiseSubModePending = false; }
+    }
+
+    private string? _noiseSubModeOption;
+    private string? _noiseSubModeSignature;
 
     [RelayCommand]
     private async Task SetEqualizerAsync(string presetId)
@@ -648,6 +668,7 @@ public sealed partial class DeviceViewModel : ObservableObject
         foreach (var level in NoiseLevels) level.IsSelected = IsAncSelected && level.Id == noise?.LevelId;
         foreach (var level in AdaptiveLevels) level.IsSelected = IsAdaptiveSelected && level.Id == noise?.LevelId;
         foreach (var level in TransparencyLevels) level.IsSelected = IsTransparencySelected && level.Id == noise?.LevelId;
+        ApplyNoiseSubModes(state, profile, noise);
 
         if (noise is null)
         {
@@ -658,6 +679,38 @@ public sealed partial class DeviceViewModel : ObservableObject
             var option = profile?.NoiseControlOptions.FirstOrDefault(o => o.Matches(noise));
             NoiseText = option is not null ? DescribeNoise(option) : Loc.Get($"NoiseMode_{noise.Mode}");
         }
+    }
+
+    /// <summary>
+    /// The option holding the sub-mode of <paramref name="noise"/>: EarFun keeps one for plain noise cancelling (not
+    /// for its separate wind reduction mode) and one for transparency, each read back from the earbuds.
+    /// </summary>
+    private static string? NoiseSubModeOption(IDeviceProfile? profile, NoiseControlState? noise) => profile is EncoDeck.Protocol.Brands.EarFun.EarFunProfile
+        ? noise switch
+        {
+            { Mode: NoiseControlMode.NoiseCancellation, LevelId: null } => "earfun-sub",
+            { Mode: NoiseControlMode.Transparency } => "earfun-ambient",
+            _ => null,
+        }
+        : null;
+
+    private void ApplyNoiseSubModes(DeviceState state, IDeviceProfile? profile, NoiseControlState? noise)
+    {
+        var option = NoiseSubModeOption(profile, noise) is { } id && state.Options.TryGetValue(id, out var observed) ? observed.Value : null;
+        _noiseSubModeOption = option?.Id;
+        string? signature = option is null ? null : $"{option.Id}|{string.Join(',', option.Choices.Select(c => $"{c.Value}:{c.LabelKey}:{c.Argument}"))}";
+        if (signature != _noiseSubModeSignature)
+        {
+            _noiseSubModeSignature = signature;
+            NoiseSubModes.Clear();
+            foreach (var choice in option?.Choices ?? [])
+                NoiseSubModes.Add(new NoiseLevelViewModel(choice.Value.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    choice.Argument is null ? Loc.Get(choice.LabelKey) : Loc.Format(choice.LabelKey, choice.Argument)));
+        }
+        NoiseSubModesTitle = option is null ? string.Empty : Loc.Get(option.LabelKey);
+        ShowNoiseSubModes = IsNoiseAvailable && NoiseSubModes.Count > 1;
+        string? selected = option?.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        foreach (var mode in NoiseSubModes) mode.IsSelected = mode.Id == selected;
     }
 
     private string DescribeNoise(NoiseControlOption option)

@@ -37,5 +37,11 @@
             <!-- One equal column per level, aligned with the mode buttons above. -->
             <Grid x:Name="LevelsHost" ColumnSpacing="8" />
         </StackPanel>
+
+        <!-- The earbuds' own sub-modes of the selected mode (e.g. EarFun's ANC sub-mode); up to four per row. -->
+        <StackPanel x:Name="SubModesPanel" Spacing="6" Visibility="Collapsed">
+            <TextBlock x:Name="SubModesTitle" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            <Grid x:Name="SubModesHost" ColumnSpacing="8" RowSpacing="8" />
+        </StackPanel>
     </StackPanel>
 </UserControl>

@@ -20,8 +20,12 @@ public sealed partial class NoiseControlSelector : UserControl
     public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register(
         nameof(ViewModel), typeof(DeviceViewModel), typeof(NoiseControlSelector), new PropertyMetadata(null, OnViewModelChanged));
 
+    private const int SubModesPerRow = 4;
+
     private readonly List<(NoiseLevelViewModel Level, ToggleButton Button)> _levelButtons = [];
     private ObservableCollection<NoiseLevelViewModel>? _shownLevels;
+    private readonly List<(NoiseLevelViewModel Level, ToggleButton Button)> _subModeButtons = [];
+    private bool _subModesStale = true;
 
     public NoiseControlSelector()
     {
@@ -54,7 +58,9 @@ public sealed partial class NoiseControlSelector : UserControl
         vm.NoiseLevels.CollectionChanged += OnLevelsChanged;
         vm.AdaptiveLevels.CollectionChanged += OnLevelsChanged;
         vm.TransparencyLevels.CollectionChanged += OnLevelsChanged;
+        vm.NoiseSubModes.CollectionChanged += OnSubModesChanged;
         _shownLevels = null;
+        _subModesStale = true;
         Sync();
     }
 
@@ -65,7 +71,14 @@ public sealed partial class NoiseControlSelector : UserControl
         vm.NoiseLevels.CollectionChanged -= OnLevelsChanged;
         vm.AdaptiveLevels.CollectionChanged -= OnLevelsChanged;
         vm.TransparencyLevels.CollectionChanged -= OnLevelsChanged;
-        foreach (var (level, _) in _levelButtons) level.PropertyChanged -= OnLevelPropertyChanged;
+        vm.NoiseSubModes.CollectionChanged -= OnSubModesChanged;
+        foreach (var (level, _) in _levelButtons.Concat(_subModeButtons)) level.PropertyChanged -= OnLevelPropertyChanged;
+    }
+
+    private void OnSubModesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        _subModesStale = true;
+        Sync();
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e) => Sync();
@@ -119,7 +132,34 @@ public sealed partial class NoiseControlSelector : UserControl
         if (!ReferenceEquals(levels, _shownLevels)) RebuildLevels(levels,
             vm.ShowNoiseLevels ? "NoiseSelector_Level" : vm.ShowAdaptiveLevels ? "NoiseSelector_AdaptiveLevel" : "NoiseSelector_TransparencyLevel");
         LevelsPanel.Visibility = levels is null ? Visibility.Collapsed : Visibility.Visible;
+        if (_subModesStale) RebuildSubModes(vm);
+        SubModesTitle.Text = vm.NoiseSubModesTitle;
+        SubModesPanel.Visibility = vm.ShowNoiseSubModes ? Visibility.Visible : Visibility.Collapsed;
         SyncLevelButtons();
+    }
+
+    private void RebuildSubModes(DeviceViewModel vm)
+    {
+        _subModesStale = false;
+        foreach (var (level, _) in _subModeButtons) level.PropertyChanged -= OnLevelPropertyChanged;
+        _subModeButtons.Clear();
+        SubModesHost.Children.Clear();
+        SubModesHost.ColumnDefinitions.Clear();
+        SubModesHost.RowDefinitions.Clear();
+        int count = vm.NoiseSubModes.Count;
+        int columns = Math.Min(count, SubModesPerRow);
+        for (int i = 0; i < columns; i++) SubModesHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        for (int i = 0; i < (count + SubModesPerRow - 1) / SubModesPerRow; i++) SubModesHost.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        int index = 0;
+        foreach (var mode in vm.NoiseSubModes)
+        {
+            var button = CreateLevelButton(mode, OnSubModeClick);
+            Grid.SetColumn(button, index % SubModesPerRow);
+            Grid.SetRow(button, index / SubModesPerRow);
+            index++;
+            _subModeButtons.Add((mode, button));
+            SubModesHost.Children.Add(button);
+        }
     }
 
     private void RebuildLevels(ObservableCollection<NoiseLevelViewModel>? levels, string titleKey)
@@ -137,23 +177,29 @@ public sealed partial class NoiseControlSelector : UserControl
         {
             // One equal column per level, so they line up under the mode buttons and never wrap.
             LevelsHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            var button = new ToggleButton
-            {
-                Content = FitLabel.Create(level.Label),
-                Tag = level.Id,
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                VerticalAlignment = VerticalAlignment.Stretch,
-                MinHeight = 36,
-                Padding = new Thickness(4, 6, 4, 6),
-                CornerRadius = new CornerRadius(6),
-            };
+            var button = CreateLevelButton(level, OnLevelClick);
             Grid.SetColumn(button, column++);
-            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(button, level.Label);
-            button.Click += OnLevelClick;
-            level.PropertyChanged += OnLevelPropertyChanged;
             _levelButtons.Add((level, button));
             LevelsHost.Children.Add(button);
         }
+    }
+
+    private ToggleButton CreateLevelButton(NoiseLevelViewModel level, RoutedEventHandler click)
+    {
+        var button = new ToggleButton
+        {
+            Content = FitLabel.Create(level.Label),
+            Tag = level.Id,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            MinHeight = 36,
+            Padding = new Thickness(4, 6, 4, 6),
+            CornerRadius = new CornerRadius(6),
+        };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(button, level.Label);
+        button.Click += click;
+        level.PropertyChanged += OnLevelPropertyChanged;
+        return button;
     }
 
     private void SyncLevelButtons()
@@ -165,6 +211,11 @@ public sealed partial class NoiseControlSelector : UserControl
         {
             button.IsChecked = level.IsSelected;
             button.IsEnabled = enabled;
+        }
+        foreach (var (mode, button) in _subModeButtons)
+        {
+            button.IsChecked = mode.IsSelected;
+            button.IsEnabled = enabled && !vm.IsNoiseSubModePending;
         }
     }
 
@@ -183,6 +234,15 @@ public sealed partial class NoiseControlSelector : UserControl
         {
             SyncLevelButtons();
             vm.SetNoiseLevelCommand.Execute(id);
+        }
+    }
+
+    private void OnSubModeClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is ToggleButton { Tag: string value } && ViewModel is { } vm)
+        {
+            SyncLevelButtons();
+            vm.SetNoiseSubModeCommand.Execute(value);
         }
     }
 }
