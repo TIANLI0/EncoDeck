@@ -1,32 +1,60 @@
 # 更新日志（CHANGELOG）
 
-本文件记录 EncoDeck 每个版本的用户可见变化，格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。每个版本按“新增 / 改进 / 修复 / 移除”分类。
+本文件记录 EncoDeck 每个版本的用户可见变化，格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。每个版本按“新增 / 改进 / 修复 / 移除”分类；自 1.15.0 起，每个版本先列中文，分隔线下是对应的英文。
 
-## [1.15.0-beta.1] - 2026-11-05 · 连接与断开
+This file records the user-visible changes of every EncoDeck version (Keep a Changelog, Semantic Versioning). Since 1.15.0 each version lists the Chinese notes first and the English ones below the divider.
+
+## [1.15.0-beta.1] - 2026-11-05 · 连接与断开 / Connect and disconnect
 
 ### 新增
 
-- 耳机面板、首页和设备页可以真正连接 / 断开这台电脑（[#16](https://github.com/TIANLI0/EncoDeck/issues/16)）：断开时关闭 EncoDeck 的控制通道并断开蓝牙音频，之后 EncoDeck 不再自动连接耳机（重启后也一样），其他应用可以使用耳机；点“连接”恢复。无需管理员权限。
-- 设备双连关闭时，在设备管理中连接另一台设备会先确认；耳机切换过去后，这台电脑随之断开，不会再被 EncoDeck 连回。首页设备管理里的“本机”也可以直接断开。
-- EarFun 的降噪 / 通透子模式可以在耳机面板和首页直接切换（[#16](https://github.com/TIANLI0/EncoDeck/issues/16)）。
-- 支持 EDIFIER W830NB 的电量显示（[#18](https://github.com/TIANLI0/EncoDeck/issues/18)）。此前它被当作旧款漫步者头戴连接，控制通道建立失败，还会反复断开耳机的蓝牙连接。
+- 耳机面板、首页和设备页可以连接 / 断开这台电脑；断开后 EncoDeck 不再自动重连，便于其他应用使用耳机（[#16](https://github.com/TIANLI0/EncoDeck/issues/16)）。
+- 设备双连关闭时，从设备管理连接其他设备后，这台电脑随之断开，不会被连回；“本机”也可直接断开。
+- 耳机面板和首页可切换 EarFun 的降噪 / 通透子模式（[#16](https://github.com/TIANLI0/EncoDeck/issues/16)）。
+- 支持 EDIFIER W830NB 的电量显示（[#18](https://github.com/TIANLI0/EncoDeck/issues/18)）。
 
 ### 改进
 
-- 图标改用 Fluent UI System Icons，图标更完整（例如已配对设备列表中的手表）；电量图标仍使用 Windows 自带的样式。
-- 耳机面板右上角改为连接 / 断开图标按钮，点耳机图片或名称打开主界面。
-- 耳机未连接时电量显示变淡；电量不高于低电量提醒阈值且未充电时显示为红色（[#16](https://github.com/TIANLI0/EncoDeck/issues/16)）。
-- A2DP Bridge 组件直接从 A2DP Windows Bridge 官方 Release 下载，更新时获取最新的官方 2.x 版本（包括测试版）。
+- 图标改用 Fluent UI System Icons。
+- 耳机面板右上角改为连接 / 断开按钮，点耳机图片或名称打开主界面。
+- 未连接时电量变淡，低电量时显示为红色。
+- A2DP Bridge 组件改从官方 Release 下载，并可更新到最新的 2.x 版本（含测试版）。
 
 ### 修复
 
-- LHDC 组件接管 A2DP 时，首页显示 LHDC V5 和当前码率，而不是 Windows 旧日志里的编码。
-- 没有提示消息时，首页顶部不再留出大片空白。
-- 实验室“LE Audio 左右声道校准”在耳机刚连接、音频输出暂时无法打开时会继续重试，不再停止保持链路。
+- LHDC 组件接管 A2DP 时，正确显示 LHDC V5 和码率。
+- 首页顶部不再留出大片空白。
+- LE Audio 左右声道校准在耳机刚连接时会继续重试。
 
 ### 移除
 
-- 实验室“LE Audio 码率与延迟”的“Intel 左右同步调度”开关（仅 Enco X4）：它只能让播放中的左右状态不再漂移，消除不了开始播放时的错位。
+- 实验室中仅 Enco X4 可用的“Intel 左右同步调度”开关。
+
+---
+
+### Added
+
+- Connect or disconnect this PC from the tray panel, the Home page and the Devices page; after disconnecting, EncoDeck no longer reconnects the earbuds, so other apps can use them ([#16](https://github.com/TIANLI0/EncoDeck/issues/16)).
+- With dual connection off, connecting another device from Device management disconnects this PC without it being pulled back; "This PC" can also be disconnected directly.
+- EarFun noise cancelling and ambient sub-modes in the tray panel and on the Home page ([#16](https://github.com/TIANLI0/EncoDeck/issues/16)).
+- Battery levels for the EDIFIER W830NB ([#18](https://github.com/TIANLI0/EncoDeck/issues/18)).
+
+### Improved
+
+- Icons now come from Fluent UI System Icons.
+- The tray panel's top right is now a connect / disconnect button; click the earbuds' picture or name to open the main window.
+- Battery levels fade while disconnected and turn red when low.
+- The A2DP Bridge component downloads from the official releases and updates to the newest 2.x build (betas included).
+
+### Fixed
+
+- LHDC V5 and its bitrate are shown correctly while the LHDC component handles A2DP.
+- No more large empty space at the top of the Home page.
+- LE Audio left/right calibration keeps retrying right after the earbuds connect.
+
+### Removed
+
+- The "Intel left/right sync schedule" switch in Labs (Enco X4 only).
 
 ## [1.14.0] - 2026-11-02 · LC3 一键切换与 EarFun 支持
 
