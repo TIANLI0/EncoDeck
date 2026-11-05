@@ -601,7 +601,7 @@
   <data name="Bridge_Stopped" xml:space="preserve"><value>A2DPWB {0} is installed ({1}); its background process is not running.</value></data>
   <data name="Bridge_StoreMissing" xml:space="preserve"><value>The Store version does not download or start other programs. If you installed A2DP Windows Bridge yourself, EncoDeck connects to it and shows its state once it runs.</value></data>
   <data name="Bridge_StoreStart" xml:space="preserve"><value>Start A2DP Windows Bridge from the Start menu.</value></data>
-  <data name="Bridge_Missing" xml:space="preserve"><value>Not installed. The component (about {0:F1} MB) is an unmodified copy of A2DPWB's official build, downloaded from EncoDeck's component release and verified against a pinned SHA-256. Downloading changes no drivers.</value></data>
+  <data name="Bridge_Missing" xml:space="preserve"><value>Not installed. The component (about {0:F1} MB) is A2DPWB's official portable build, downloaded unmodified from the A2DPWB project's own releases and verified against its SHA-256. Updates bring the newest official 2.x build, betas included. Downloading changes no drivers.</value></data>
   <data name="Bridge_Unpublished" xml:space="preserve"><value>The A2DP Bridge component for this EncoDeck version is not published yet.</value></data>
   <data name="Bridge_UpdateAvailable" xml:space="preserve"><value>Component {0} is available to update to.</value></data>
   <data name="Bridge_StandaloneLink.Content" xml:space="preserve"><value>Download the non-Store version</value></data>

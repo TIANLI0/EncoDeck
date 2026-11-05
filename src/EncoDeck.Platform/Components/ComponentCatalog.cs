@@ -92,6 +92,12 @@ public sealed record ComponentRelease
 
     public IReadOnlyList<ComponentPackage> Packages { get; init; } = [];
 
+    /// <summary>
+    /// The packages are downloaded from the upstream project's own release (their mirrors) only, never from an EncoDeck
+    /// component release: A2DP Windows Bridge, whose newer official 2.x builds are taken as they are published.
+    /// </summary>
+    public bool UpstreamDownloads { get; init; }
+
     /// <summary>The package for this machine: arm64 Windows gets an arm64 build when there is one (the app itself may run emulated).</summary>
     public ComponentPackage? PackageFor(Architecture os) =>
         Packages.FirstOrDefault(p => p.Architecture == (os == Architecture.Arm64 ? "arm64" : "x64"))
@@ -99,8 +105,8 @@ public sealed record ComponentRelease
 
     public ComponentPackage? CurrentPackage => PackageFor(RuntimeInformation.OSArchitecture);
 
-    /// <summary>The EncoDeck component release first, then the package's mirrors.</summary>
-    public IReadOnlyList<Uri> Sources(ComponentPackage package) =>
+    /// <summary>The EncoDeck component release first, then the package's mirrors; only the mirrors for <see cref="UpstreamDownloads"/>.</summary>
+    public IReadOnlyList<Uri> Sources(ComponentPackage package) => UpstreamDownloads ? package.Mirrors :
         [new Uri($"https://github.com/{ComponentCatalog.Repository}/releases/download/{Uri.EscapeDataString(Tag)}/{Uri.EscapeDataString(package.File)}"), .. package.Mirrors];
 }
 
@@ -184,6 +190,8 @@ public static class ComponentCatalog
                 Mirrors = mirrors,
             });
         }
+        bool upstream = c["upstreamDownloads"]?.GetValue<bool>() ?? false;
+        if (upstream && packages.Any(p => p.Mirrors.Count == 0)) throw new InvalidDataException($"{id}: upstream downloads need a mirror for every package.");
         return new ComponentRelease
         {
             Id = id,
@@ -193,6 +201,7 @@ public static class ComponentCatalog
             Interface = contract,
             MinApp = minApp,
             Packages = packages,
+            UpstreamDownloads = upstream,
         };
     }
 

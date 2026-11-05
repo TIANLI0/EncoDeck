@@ -27,8 +27,9 @@ public sealed record BridgeInstallation(string Directory, BridgeOrigin Origin, s
 
 /// <summary>
 /// A2DP Windows Bridge (github.com/SeiyaFunaokaJP/A2DP-Windows-Bridge): A2DP from a dedicated USB Bluetooth adapter
-/// under WinUSB, with its own user-mode Bluetooth stack. EncoDeck mirrors the official portable build, byte for
-/// byte, in its own component release and starts, watches and controls the core; it never builds or patches it.
+/// under WinUSB, with its own user-mode Bluetooth stack. EncoDeck downloads the official portable build from the
+/// project's own releases (the newest 2.x, betas included) and starts, watches and controls the core; it never builds
+/// or patches it.
 /// </summary>
 public static class A2dpBridgeComponent
 {

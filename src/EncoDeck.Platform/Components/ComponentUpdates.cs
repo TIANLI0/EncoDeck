@@ -33,24 +33,8 @@ public sealed class ComponentUpdateClient(HttpClient http, SemanticVersion app, 
 
     public async Task<ComponentUpdateResult> CheckAsync(string id, int contract, string? newerThan, bool includePrerelease, CancellationToken ct = default)
     {
-        JsonArray releases;
-        try
-        {
-            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            timeout.CancelAfter(TimeSpan.FromSeconds(30));
-            using var request = Request(_api);
-            request.Headers.Accept.ParseAdd("application/vnd.github+json");
-            request.Headers.TryAddWithoutValidation("X-GitHub-Api-Version", "2022-11-28");
-            using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false);
-            if (response.StatusCode == HttpStatusCode.TooManyRequests
-                || (response.StatusCode == HttpStatusCode.Forbidden && response.Headers.TryGetValues("X-RateLimit-Remaining", out var remaining) && remaining.FirstOrDefault() == "0"))
-                return new(ComponentUpdateOutcome.RateLimited);
-            if (!response.IsSuccessStatusCode) return new(ComponentUpdateOutcome.Failed);
-            releases = JsonNode.Parse(await ReadLimitedAsync(response, MaxList, timeout.Token).ConfigureAwait(false)) as JsonArray ?? [];
-        }
-        catch (OperationCanceledException) when (!ct.IsCancellationRequested) { return new(ComponentUpdateOutcome.Offline); }
-        catch (HttpRequestException ex) when (ex.StatusCode is null) { return new(ComponentUpdateOutcome.Offline); }
-        catch (Exception ex) when (ex is HttpRequestException or JsonException or InvalidDataException or IOException) { return new(ComponentUpdateOutcome.Failed); }
+        var (failure, releases) = await ListAsync(_api, ct).ConfigureAwait(false);
+        if (failure is { } outcome) return new(outcome);
 
         string prefix = id + "-v";
         var candidates = releases.OfType<JsonObject>()
@@ -67,6 +51,118 @@ public sealed class ComponentUpdateClient(HttpClient http, SemanticVersion app, 
             if (await DescribeAsync(release, id, tag!, contract, ct).ConfigureAwait(false) is { } offer) return new(ComponentUpdateOutcome.Available, offer);
         }
         return new(ComponentUpdateOutcome.UpToDate);
+    }
+
+    /// <summary>
+    /// Finds the newest official release of <paramref name="pinned"/>'s upstream project (pre-releases included) with the
+    /// pin's major version, later than <paramref name="newerThan"/>, and describes it as a component release downloaded
+    /// from upstream only. Every package of the pin must be an asset there (same file name with the new version) that
+    /// GitHub reports a SHA-256 digest for; the installer holds the download to it and to the tag's commit.
+    /// </summary>
+    public async Task<ComponentUpdateResult> CheckUpstreamAsync(ComponentRelease pinned, string? newerThan, CancellationToken ct = default)
+    {
+        if (UpstreamRepository(pinned.Source.Repository) is not { } repository
+            || !ComponentVersion.TryParse(pinned.Version, out var current)) return new(ComponentUpdateOutcome.Failed);
+        var (failure, releases) = await ListAsync(new Uri($"https://api.github.com/repos/{repository}/releases?per_page=30"), ct).ConfigureAwait(false);
+        if (failure is { } outcome) return new(outcome);
+
+        var candidates = releases.OfType<JsonObject>()
+            .Select(r => (Release: r, Tag: Str(r["tag_name"])))
+            .Where(x => x.Tag is { Length: > 1 } tag && tag[0] == 'v' && !Bool(x.Release["draft"]))
+            .Select(x => (x.Release, x.Tag, Version: ComponentVersion.TryParse(x.Tag![1..] + "-r0", out var v) ? v : null))
+            .Where(x => x.Version is not null && x.Version.Upstream.Major == current.Upstream.Major && ComponentVersion.IsNewer(x.Version.ToString(), newerThan))
+            .OrderByDescending(x => x.Version)
+            .Take(3);
+        foreach (var (release, tag, version) in candidates)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (DescribeUpstream(pinned, current, version!, tag!, release) is not { } offer) continue;
+            if (await TagCommitAsync(repository, tag!, ct).ConfigureAwait(false) is not { } commit) continue;
+            return new(ComponentUpdateOutcome.Available, offer with { Source = offer.Source with { Commit = commit } });
+        }
+        return new(ComponentUpdateOutcome.UpToDate);
+    }
+
+    /// <summary>"owner/name" of a https://github.com/owner/name repository URL.</summary>
+    private static string? UpstreamRepository(string url) =>
+        Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps && uri.Host == "github.com"
+        && uri.AbsolutePath.Trim('/').Split('/') is [var owner, var name] && owner.Length > 0 && name.Length > 0 ? $"{owner}/{name}" : null;
+
+    /// <summary>The pin's packages as assets of <paramref name="release"/>, or null when one is missing or has no SHA-256 digest.</summary>
+    internal static ComponentRelease? DescribeUpstream(ComponentRelease pinned, ComponentVersion current, ComponentVersion version, string tag, JsonObject release)
+    {
+        string from = current.Upstream.ToString(), to = version.Upstream.ToString();
+        var assets = (release["assets"] as JsonArray ?? []).OfType<JsonObject>().ToList();
+        var packages = new List<ComponentPackage>();
+        foreach (var package in pinned.Packages)
+        {
+            if (!package.File.Contains(from, StringComparison.Ordinal)) return null;
+            string file = package.File.Replace(from, to, StringComparison.Ordinal);
+            if (assets.FirstOrDefault(a => Str(a["name"]) == file) is not { } asset) return null;
+            long size = asset["size"] is JsonValue s && s.TryGetValue(out long reported) ? reported : 0;
+            string sha = Str(asset["digest"]) is { } digest && digest.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase) ? digest[7..] : "";
+            if (size is <= 0 or > 2L * 1024 * 1024 * 1024 || sha.Length != 64 || !sha.All(Uri.IsHexDigit)
+                || !Uri.TryCreate(Str(asset["browser_download_url"]), UriKind.Absolute, out var url) || url.Scheme != Uri.UriSchemeHttps || url.Host != "github.com") return null;
+            packages.Add(package with
+            {
+                File = file,
+                Size = size,
+                Sha256 = sha.ToLowerInvariant(),
+                Root = package.Root.Replace(from, to, StringComparison.Ordinal),
+                Mirrors = [url],
+            });
+        }
+        string componentVersion = version.ToString();
+        return pinned with
+        {
+            Version = componentVersion,
+            Tag = $"{pinned.Id}-v{componentVersion}",
+            Source = pinned.Source with { Release = tag },
+            MinApp = null,
+            Packages = packages,
+            UpstreamDownloads = true,
+        };
+    }
+
+    /// <summary>The commit a tag points at (the installer checks the package's SOURCE.txt names it).</summary>
+    private async Task<string?> TagCommitAsync(string repository, string tag, CancellationToken ct)
+    {
+        try
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeout.CancelAfter(TimeSpan.FromSeconds(30));
+            using var request = Request(new Uri($"https://api.github.com/repos/{repository}/commits/{Uri.EscapeDataString(tag)}"));
+            request.Headers.Accept.ParseAdd("application/vnd.github.sha");
+            request.Headers.TryAddWithoutValidation("X-GitHub-Api-Version", "2022-11-28");
+            using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode) return null;
+            string sha = System.Text.Encoding.ASCII.GetString(await ReadLimitedAsync(response, 256, timeout.Token).ConfigureAwait(false)).Trim();
+            return sha.Length == 40 && sha.All(Uri.IsHexDigit) ? sha.ToLowerInvariant() : null;
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested) { return null; }
+        catch (Exception ex) when (ex is HttpRequestException or InvalidDataException or IOException) { return null; }
+    }
+
+    /// <summary>A GitHub release list; a failure outcome instead when it could not be read.</summary>
+    private async Task<(ComponentUpdateOutcome? Failure, JsonArray Releases)> ListAsync(Uri api, CancellationToken ct)
+    {
+        try
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeout.CancelAfter(TimeSpan.FromSeconds(30));
+            using var request = Request(api);
+            request.Headers.Accept.ParseAdd("application/vnd.github+json");
+            request.Headers.TryAddWithoutValidation("X-GitHub-Api-Version", "2022-11-28");
+            using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false);
+            if (response.StatusCode == HttpStatusCode.TooManyRequests
+                || (response.StatusCode == HttpStatusCode.Forbidden && response.Headers.TryGetValues("X-RateLimit-Remaining", out var remaining) && remaining.FirstOrDefault() == "0"))
+                return (ComponentUpdateOutcome.RateLimited, []);
+            if (!response.IsSuccessStatusCode) return (ComponentUpdateOutcome.Failed, []);
+            return (null, JsonNode.Parse(await ReadLimitedAsync(response, MaxList, timeout.Token).ConfigureAwait(false)) as JsonArray ?? []);
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested) { return (ComponentUpdateOutcome.Offline, []); }
+        catch (HttpRequestException ex) when (ex.StatusCode is null) { return (ComponentUpdateOutcome.Offline, []); }
+        catch (Exception ex) when (ex is HttpRequestException or JsonException or InvalidDataException or IOException) { return (ComponentUpdateOutcome.Failed, []); }
     }
 
     /// <summary>The release's component.json, when it is consistent with the release and this app; null otherwise.</summary>

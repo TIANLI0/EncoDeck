@@ -14,6 +14,21 @@ $headers = @{ 'Accept' = 'application/vnd.github+json'; 'X-GitHub-Api-Version' =
 if ($env:GITHUB_TOKEN) { $headers['Authorization'] = "Bearer $env:GITHUB_TOKEN" }
 $failures = @()
 foreach ($component in $manifest.components) {
+    if ($component.upstreamDownloads) {
+        # Downloaded from the upstream release only (A2DP Windows Bridge): the pin must match its assets there.
+        $upstream = ([Uri]$component.source.repository).AbsolutePath.Trim('/')
+        try { $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$upstream/releases/tags/$($component.source.release)" -Headers $headers }
+        catch { $failures += "$($component.id): upstream release $upstream $($component.source.release) not found"; continue }
+        foreach ($package in $component.packages) {
+            $asset = $release.assets | Where-Object name -eq $package.file
+            if (-not $asset) { $failures += "$($component.id): $($package.file) missing from $upstream $($component.source.release)"; continue }
+            if ($asset.size -ne $package.size) { $failures += "$($component.id): $($package.file) is $($asset.size) bytes upstream, pinned $($package.size)" }
+            if ($asset.digest -and $asset.digest -ne "sha256:$($package.sha256)") { $failures += "$($component.id): $($package.file) upstream digest $($asset.digest) differs from the pin" }
+            if ($package.mirrors -notcontains $asset.browser_download_url) { $failures += "$($component.id): $($package.file) mirror is not the upstream asset" }
+            Write-Host "$($component.id) $($component.version): $($package.file) ok (upstream)"
+        }
+        continue
+    }
     try { $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repository/releases/tags/$($component.tag)" -Headers $headers }
     catch { $failures += "$($component.id): release $($component.tag) not found"; continue }
     if ($release.draft) { $failures += "$($component.id): release $($component.tag) is a draft" }

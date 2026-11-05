@@ -25,13 +25,15 @@ public sealed class ComponentInstallerTests : IDisposable
         Assert.NotNull(lhdc.PackageFor(System.Runtime.InteropServices.Architecture.X64));
         var bridge = ComponentCatalog.A2dpBridge;
         Assert.StartsWith("a2dpwb-v", bridge.Tag);
+        Assert.True(bridge.UpstreamDownloads);
         foreach (var package in bridge.Packages)
         {
             Assert.True(package.IsPublished);
-            // The mirror is the upstream release itself: the same bytes under the same pin.
-            Assert.All(package.Mirrors, m => Assert.StartsWith("https://github.com/SeiyaFunaokaJP/A2DP-Windows-Bridge/releases/download/", m.AbsoluteUri));
-            Assert.Equal(new Uri($"https://github.com/TIANLI0/EncoDeck/releases/download/{bridge.Tag}/{package.File}"), bridge.Sources(package)[0]);
+            // Downloaded from the upstream release only, held to the same pin.
+            Assert.NotEmpty(package.Mirrors);
+            Assert.All(bridge.Sources(package), m => Assert.StartsWith("https://github.com/SeiyaFunaokaJP/A2DP-Windows-Bridge/releases/download/", m.AbsoluteUri));
         }
+        Assert.Equal(new Uri($"https://github.com/TIANLI0/EncoDeck/releases/download/{lhdc.Tag}/{lhdc.Packages[0].File}"), lhdc.Sources(lhdc.Packages[0])[0]);
         // Component tags never parse as app versions, so the app's update check cannot pick them.
         Assert.All(ComponentCatalog.Components, c => Assert.False(SemanticVersion.TryParse(c.Tag, out _)));
     }

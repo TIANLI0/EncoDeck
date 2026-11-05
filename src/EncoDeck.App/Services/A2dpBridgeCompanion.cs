@@ -176,8 +176,9 @@ public sealed class A2dpBridgeCompanion : IAsyncDisposable
     }
 
     /// <summary>
-    /// Looks for a later A2DPWB component release (at most once a day unless <paramref name="force"/>), for this app's
-    /// pipe protocol and version. Only the managed copy uses it: A2DPWB's own installation updates itself.
+    /// Looks for the newest official A2DPWB build of the same major version as the pin (2.x, betas included) on the
+    /// A2DPWB project's own releases, at most once a day unless <paramref name="force"/>; it is downloaded from there
+    /// too. Only the managed copy uses it: A2DPWB's own installation updates itself.
     /// </summary>
     public async Task<ComponentUpdateOutcome?> CheckForUpdateAsync(bool force, CancellationToken ct = default)
     {
@@ -185,8 +186,7 @@ public sealed class A2dpBridgeCompanion : IAsyncDisposable
         var app = SemanticVersion.FromAssembly(typeof(A2dpBridgeCompanion).Assembly);
         using var http = new HttpClient();
         string floor = _managed is { } managed && ComponentVersion.IsNewer(managed.Version, Component.Release.Version) ? managed.Version : Component.Release.Version;
-        var result = await new ComponentUpdateClient(http, app)
-            .CheckAsync(ComponentCatalog.A2dpBridgeId, A2dpBridgeComponent.Interface, floor, _settings.Current.IncludePrereleaseUpdates, ct).ConfigureAwait(false);
+        var result = await new ComponentUpdateClient(http, app).CheckUpstreamAsync(Component.Release, floor, ct).ConfigureAwait(false);
         if (result.Outcome is ComponentUpdateOutcome.Available or ComponentUpdateOutcome.UpToDate)
         {
             OnlineRelease = result.Release;

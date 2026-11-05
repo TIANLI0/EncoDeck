@@ -118,6 +118,64 @@ public sealed class ComponentUpdateTests
         Assert.Equal(ComponentUpdateOutcome.RateLimited, (await client.CheckAsync("a2dpwb", 1, null, false, TestContext.Current.CancellationToken)).Outcome);
     }
 
+    /// <summary>An official A2DPWB release as its own repository lists it.</summary>
+    private static JsonObject Upstream(string tag, bool draft = false, bool prerelease = true, bool arm64 = true, bool digest = true)
+    {
+        string version = tag[1..];
+        var assets = new JsonArray();
+        foreach (string arch in arm64 ? new[] { "win64", "arm64" } : ["win64"])
+        {
+            string file = $"A2DPWB-{version}-{arch}-portable.zip";
+            assets.Add(new JsonObject
+            {
+                ["name"] = file, ["size"] = 2000, ["digest"] = digest ? "sha256:" + new string('C', 64) : null,
+                ["browser_download_url"] = $"https://github.com/SeiyaFunaokaJP/A2DP-Windows-Bridge/releases/download/{tag}/{file}",
+            });
+        }
+        return new JsonObject { ["tag_name"] = tag, ["draft"] = draft, ["prerelease"] = prerelease, ["assets"] = assets };
+    }
+
+    private static ComponentUpdateClient UpstreamClient(JsonArray releases) =>
+        new(new HttpClient(new Handler(request => request.RequestUri!.AbsolutePath switch
+        {
+            "/repos/SeiyaFunaokaJP/A2DP-Windows-Bridge/releases" => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(releases.ToJsonString()) },
+            var path when path.StartsWith("/repos/SeiyaFunaokaJP/A2DP-Windows-Bridge/commits/", StringComparison.Ordinal)
+                => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(Commit) },
+            _ => new HttpResponseMessage(HttpStatusCode.NotFound),
+        })), SemanticVersion.Parse("1.11.0"));
+
+    [Fact]
+    public async Task OffersTheNewestOfficialBuildOfThePinnedMajorVersion()
+    {
+        var pinned = ComponentCatalog.A2dpBridge;
+        var releases = new JsonArray(Upstream("v3.0.0-beta.1"), Upstream("v2.0.3-beta.2", draft: true), Upstream("v2.0.3-beta.1", arm64: false),
+            Upstream("v2.0.2-beta.17"), Upstream("v2.0.2-beta.16"), Upstream("v1.9.0", prerelease: false));
+        var result = await UpstreamClient(releases).CheckUpstreamAsync(pinned, pinned.Version, TestContext.Current.CancellationToken);
+
+        // 3.x is another major version, the draft is not published, and beta.1 of 2.0.3 lacks the arm64 package.
+        Assert.Equal(ComponentUpdateOutcome.Available, result.Outcome);
+        var offer = result.Release!;
+        Assert.Equal("2.0.2-beta.17-r0", offer.Version);
+        Assert.Equal("a2dpwb-v2.0.2-beta.17-r0", offer.Tag);
+        Assert.Equal("v2.0.2-beta.17", offer.Source.Release);
+        Assert.Equal(Commit, offer.Source.Commit);
+        Assert.True(offer.UpstreamDownloads);
+        var x64 = offer.PackageFor(System.Runtime.InteropServices.Architecture.X64)!;
+        Assert.Equal(("A2DPWB-2.0.2-beta.17-win64-portable.zip", "A2DPWB-2.0.2-beta.17", 2000L, new string('c', 64)), (x64.File, x64.Root, x64.Size, x64.Sha256));
+        Assert.Equal([new Uri("https://github.com/SeiyaFunaokaJP/A2DP-Windows-Bridge/releases/download/v2.0.2-beta.17/A2DPWB-2.0.2-beta.17-win64-portable.zip")], offer.Sources(x64));
+
+        var none = await UpstreamClient(releases).CheckUpstreamAsync(pinned, "2.0.2-beta.17-r0", TestContext.Current.CancellationToken);
+        Assert.Equal(ComponentUpdateOutcome.UpToDate, none.Outcome);
+    }
+
+    [Fact]
+    public async Task OfficialBuildsWithoutADigestAreNotOffered()
+    {
+        var pinned = ComponentCatalog.A2dpBridge;
+        var result = await UpstreamClient(new JsonArray(Upstream("v2.0.2-beta.17", digest: false))).CheckUpstreamAsync(pinned, pinned.Version, TestContext.Current.CancellationToken);
+        Assert.Equal(ComponentUpdateOutcome.UpToDate, result.Outcome);
+    }
+
     private sealed class Handler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) => Task.FromResult(respond(request));

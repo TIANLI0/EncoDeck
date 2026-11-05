@@ -601,7 +601,7 @@
   <data name="Bridge_Stopped" xml:space="preserve"><value>已安装 A2DPWB {0}（{1}），后台未运行。</value></data>
   <data name="Bridge_StoreMissing" xml:space="preserve"><value>商店版不会下载或启动其他程序。如已自行安装 A2DP Windows Bridge，启动它后 EncoDeck 会自动连接并显示状态。</value></data>
   <data name="Bridge_StoreStart" xml:space="preserve"><value>请从开始菜单启动 A2DP Windows Bridge。</value></data>
-  <data name="Bridge_Missing" xml:space="preserve"><value>未安装。组件约 {0:F1} MB，是 A2DPWB 官方构建的原样副本，从 EncoDeck 的组件发布下载并按固定的 SHA-256 校验。下载不会更改任何驱动。</value></data>
+  <data name="Bridge_Missing" xml:space="preserve"><value>未安装。组件约 {0:F1} MB，是 A2DPWB 官方的便携版构建，直接从 A2DPWB 官方 Release 原样下载并按 SHA-256 校验。更新时获取最新的官方 2.x 版本（含测试版）。下载不会更改任何驱动。</value></data>
   <data name="Bridge_Unpublished" xml:space="preserve"><value>此版本 EncoDeck 对应的 A2DP Bridge 组件尚未发布。</value></data>
   <data name="Bridge_UpdateAvailable" xml:space="preserve"><value>有新的组件 {0} 可用，可以更新。</value></data>
   <data name="Bridge_StandaloneLink.Content" xml:space="preserve"><value>下载非商店版本</value></data>

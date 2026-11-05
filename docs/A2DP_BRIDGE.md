@@ -84,9 +84,9 @@ A2DPWB 通过它自己的适配器连接耳机，这条连接对 Windows 蓝牙�
 
 组件与 EncoDeck 应用分开发布：
 
-- **独立的组件 Release**：A2DPWB 官方 portable 包原样放在 EncoDeck 的 `a2dpwb-v<版本>` Release（例如 `a2dpwb-v2.0.1-r1`），由 `.github/workflows/components.yml` 从上游下载并逐字节校验后发布，不重新编译、不修改。
-- **应用内固定校验值**：应用内置的 `src/EncoDeck.Platform/Components/components.json` 固定每个包的大小和 SHA-256。下载先尝试 EncoDeck 的组件 Release，失败或内容不符时自动改用上游官方 Release；任何来源的内容都必须与固定值一致才会解压。中断的下载会续传。
-- **独立于应用版本**：更新 EncoDeck 不会重新下载组件。每个组件 Release 附带 `component.json`，已发布的 EncoDeck 据此发现更新的组件，只接受与自己的接口和版本兼容、且大小与 SHA-256 与发布文件一致的版本。更新前旧组件继续可用；更新完成后旧版本即被删除（正在运行的副本退出后再删除）。
+- **直接取自官方 Release**：A2DPWB 官方 portable 包从 [A2DPWB 的 Release](https://github.com/SeiyaFunaokaJP/A2DP-Windows-Bridge/releases) 原样下载，不经 EncoDeck 转发，不重新编译、不修改。
+- **应用内固定校验值**：应用内置的 `src/EncoDeck.Platform/Components/components.json` 固定首次下载的版本及每个包的大小和 SHA-256，内容必须与固定值一致才会解压。中断的下载会续传。
+- **更新跟随官方 2.x**：更新检查读取 A2DPWB 官方的 Release 列表，取与固定版本同一主版本（2.x）中最新的一个，测试版也包括在内。每个包都必须在该 Release 中存在，并有 GitHub 给出的 SHA-256 摘要；下载按这个摘要校验，并核对包内 `SOURCE.txt` 记录的提交与该标签一致。更新 EncoDeck 不会重新下载组件。更新前旧组件继续可用；更新完成后旧版本即被删除（正在运行的副本退出后再删除）。
 - 上游源码与提交见包内的 `SOURCE.txt`，许可见 `LICENSE`、`THIRD_PARTY_LICENSES.md`。
 
 ## 资源占用

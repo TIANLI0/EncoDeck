@@ -27,6 +27,7 @@
       "tag": "a2dpwb-v2.0.2-beta.11-r1",
       "interface": 1,
       "minApp": "1.11.0",
+      "upstreamDownloads": true,
       "source": {
         "repository": "https://github.com/SeiyaFunaokaJP/A2DP-Windows-Bridge",
         "commit": "c5be02894be99467f9aca5badef9616cdcc84033",
