@@ -196,7 +196,7 @@ public sealed partial class DevicesPage : Page
         if (bluetooth && (device.IsDisconnectedByUser || !device.IsConnected))
         {
             // Pages the earbuds and has Windows' audio drivers connect; the supervisor attaches control once the link is up.
-            action.Children.Add(ConnectionButton(Loc.Get("DeviceConnect/Content"), devices =>
+            action.Children.Add(ConnectionButton("link", Loc.Get("Device_ConnectThisPc"), devices =>
             {
                 App.Instance.Host.Settings.Update(s => s with { PreferredDeviceId = device.Identity.DeviceId });
                 return devices.ConnectDeviceAsync(device.Identity.DeviceId);
@@ -225,7 +225,7 @@ public sealed partial class DevicesPage : Page
                 action.Children.Add(button);
             }
             if (bluetooth)
-                action.Children.Add(ConnectionButton(Loc.Get("DeviceDisconnect/Content"), devices => devices.DisconnectDeviceAsync(device.Identity.DeviceId)));
+                action.Children.Add(ConnectionButton("link_dismiss", Loc.Get("Device_DisconnectThisPc"), devices => devices.DisconnectDeviceAsync(device.Identity.DeviceId)));
         }
         Grid.SetColumn(action, 2);
 
@@ -235,10 +235,22 @@ public sealed partial class DevicesPage : Page
         return grid;
     }
 
-    /// <summary>Connect or Disconnect for one row; disabled while it runs, and the list rebuilds when the link changes.</summary>
-    private static Button ConnectionButton(string label, Func<IDeviceManager, Task<CommandResult>> action)
+    /// <summary>
+    /// Connect or Disconnect for one row: a plain icon button as in the earbuds panel, named by its tooltip; disabled
+    /// while it runs, and the list rebuilds when the link changes.
+    /// </summary>
+    private static Button ConnectionButton(string symbol, string label, Func<IDeviceManager, Task<CommandResult>> action)
     {
-        var button = new Button { Content = label };
+        var button = new Button
+        {
+            Content = new FluentIcon(symbol, 16),
+            Style = (Style)Application.Current.Resources["SubtleButtonStyle"],
+            Width = 32,
+            Height = 32,
+            Padding = new Thickness(0),
+        };
+        ToolTipService.SetToolTip(button, label);
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(button, label);
         button.Click += async (_, _) =>
         {
             button.IsEnabled = false;

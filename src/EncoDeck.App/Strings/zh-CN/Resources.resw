@@ -574,10 +574,12 @@
   <data name="Lhdc_Help.Header" xml:space="preserve"><value>LHDC 使用说明</value></data>
   <data name="Lhdc_HelpRestore.Text" xml:space="preserve"><value>4. 停用 LHDC 或卸载 EncoDeck 前，选择对应耳机，点击“恢复 Windows 音频”，允许管理员操作并等待完成。退出 EncoDeck 不会停止 LHDC 后台服务，也不会自动恢复 Windows 音频。</value></data>
   <data name="Lhdc_Disclaimer.Text" xml:space="preserve"><value>免责声明：LHDC 为基于第三方开源项目 LHDC-Win 的实验性功能，实际播放、重连和恢复仍待实机验证，不保证适用于所有设备或系统。使用中可能出现无声、卡顿或需要手动恢复音频的情况。请在了解驱动安装及系统设置变更风险后自行决定是否使用，并自行承担相关风险；EncoDeck 及其开发者在适用法律允许的范围内不对由此造成的损失承担责任。</value></data>
-  <data name="DeviceConnect.Content" xml:space="preserve"><value>连接</value></data>
-  <data name="DeviceDisconnect.Content" xml:space="preserve"><value>断开连接</value></data>
-  <data name="Panel_Connect.Content" xml:space="preserve"><value>连接</value></data>
-  <data name="Panel_Disconnect.Content" xml:space="preserve"><value>断开连接</value></data>
+  <data name="Device_ConnectThisPc" xml:space="preserve"><value>连接到这台电脑</value></data>
+  <data name="Device_DisconnectThisPc" xml:space="preserve"><value>从这台电脑断开</value></data>
+  <data name="Panel_Connect.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>连接到这台电脑</value></data>
+  <data name="Panel_Connect.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>连接到这台电脑</value></data>
+  <data name="Panel_Disconnect.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>从这台电脑断开</value></data>
+  <data name="Panel_Disconnect.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>从这台电脑断开</value></data>
   <data name="Connection_DisconnectedByUser" xml:space="preserve"><value>已在 EncoDeck 中断开</value></data>
   <data name="Lhdc_Guide.Content" xml:space="preserve"><value>查看详细教程（驱动加载与恢复）</value></data>
   <data name="Lhdc_Version" xml:space="preserve"><value>组件版本：{0}</value></data>

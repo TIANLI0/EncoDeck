@@ -6,19 +6,22 @@
     xmlns:controls="using:EncoDeck.App.Controls"
     xmlns:services="using:EncoDeck.App.Services">
     <StackPanel Padding="16,14,16,12" Spacing="12">
-        <!-- Header -->
+        <!-- Header: the artwork and name open EncoDeck; the link button on the right connects or disconnects this PC. -->
         <Grid ColumnSpacing="12">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition x:Name="ArtworkColumn" Width="56" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <controls:DeviceImage x:Name="HeaderArtwork" Height="48" SourcePath="{x:Bind ViewModel.DeviceImagePath, Mode=OneWay}" IsHeadphones="{x:Bind ViewModel.IsHeadphones, Mode=OneWay}" />
+            <!-- Behind the artwork and texts (which let clicks through), so the whole left part is one target; the codec badges stay their own. -->
+            <Button x:Uid="Panel_OpenApp" Grid.ColumnSpan="2" Click="OnOpenApp" Style="{StaticResource SubtleButtonStyle}" Margin="-8,-6"
+                    HorizontalAlignment="Stretch" VerticalAlignment="Stretch" ToolTipService.ToolTip="Open EncoDeck" AutomationProperties.Name="Open EncoDeck" />
+            <controls:DeviceImage x:Name="HeaderArtwork" Height="48" IsHitTestVisible="False" SourcePath="{x:Bind ViewModel.DeviceImagePath, Mode=OneWay}" IsHeadphones="{x:Bind ViewModel.IsHeadphones, Mode=OneWay}" />
             <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                <TextBlock Text="{x:Bind ViewModel.DeviceName, Mode=OneWay}" Style="{StaticResource BodyStrongTextBlockStyle}" TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{x:Bind ViewModel.DeviceName, Mode=OneWay}" Style="{StaticResource BodyStrongTextBlockStyle}" TextTrimming="CharacterEllipsis" IsHitTestVisible="False" />
                 <StackPanel Orientation="Horizontal" Spacing="6">
-                    <ProgressRing Width="12" Height="12" IsActive="{x:Bind ViewModel.IsBusyConnecting, Mode=OneWay}" Visibility="{x:Bind ViewModel.IsBusyConnecting, Mode=OneWay}" />
-                    <TextBlock Text="{x:Bind ViewModel.ConnectionText, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" />
+                    <ProgressRing Width="12" Height="12" IsHitTestVisible="False" IsActive="{x:Bind ViewModel.IsBusyConnecting, Mode=OneWay}" Visibility="{x:Bind ViewModel.IsBusyConnecting, Mode=OneWay}" />
+                    <TextBlock Text="{x:Bind ViewModel.ConnectionText, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" IsHitTestVisible="False" />
                     <Border Style="{StaticResource CodecBadgeSubtleStyle}" Visibility="{x:Bind ViewModel.HasBridgeBadge, Mode=OneWay}"
                             ToolTipService.ToolTip="{x:Bind ViewModel.BridgeBadgeDescription, Mode=OneWay}"
                             AutomationProperties.Name="{x:Bind ViewModel.BridgeBadgeDescription, Mode=OneWay}">
@@ -29,10 +32,23 @@
                                       CanEnable="{x:Bind ViewModel.CodecCanEnable, Mode=OneWay}" MaxLabelWidth="180" />
                 </StackPanel>
             </StackPanel>
-            <Button Grid.Column="2" x:Uid="Panel_OpenApp" Click="OnOpenApp" Style="{StaticResource SubtleButtonStyle}" Padding="8" VerticalAlignment="Top"
-                    ToolTipService.ToolTip="Open EncoDeck" AutomationProperties.Name="Open EncoDeck">
-                <FontIcon Glyph="&#xE8A7;" FontSize="14" />
-            </Button>
+            <!-- The icon names the action: a broken link disconnects, a link connects. Plain icon buttons, like the old "open" one. -->
+            <Grid Grid.Column="2" VerticalAlignment="Center">
+                <Button x:Uid="Panel_Disconnect" Style="{StaticResource SubtleButtonStyle}" Width="36" Height="36" Padding="0"
+                        Command="{x:Bind ViewModel.DisconnectDeviceCommand}" Visibility="{x:Bind ViewModel.CanDisconnect, Mode=OneWay}"
+                        IsEnabled="{x:Bind services:Ui.Not(ViewModel.IsChangingConnection), Mode=OneWay}"
+                        ToolTipService.ToolTip="Disconnect from this PC" AutomationProperties.Name="Disconnect from this PC">
+                    <controls:FluentIcon Symbol="link_dismiss" FontSize="18" Visibility="{x:Bind services:Ui.Collapsed(ViewModel.IsChangingConnection), Mode=OneWay}" />
+                </Button>
+                <Button x:Uid="Panel_Connect" Style="{StaticResource SubtleButtonStyle}" Width="36" Height="36" Padding="0"
+                        Command="{x:Bind ViewModel.ConnectDeviceCommand}" Visibility="{x:Bind ViewModel.CanConnect, Mode=OneWay}"
+                        IsEnabled="{x:Bind services:Ui.Not(ViewModel.IsChangingConnection), Mode=OneWay}"
+                        ToolTipService.ToolTip="Connect to this PC" AutomationProperties.Name="Connect to this PC">
+                    <controls:FluentIcon Symbol="link" FontSize="18" Visibility="{x:Bind services:Ui.Collapsed(ViewModel.IsChangingConnection), Mode=OneWay}" />
+                </Button>
+                <ProgressRing Width="20" Height="20" IsHitTestVisible="False" IsActive="{x:Bind ViewModel.IsChangingConnection, Mode=OneWay}"
+                              Visibility="{x:Bind ViewModel.IsChangingConnection, Mode=OneWay}" />
+            </Grid>
         </Grid>
 
         <!-- Battery; faded while not linked (only the last levels read). -->
@@ -94,17 +110,8 @@
         <TextBlock x:Uid="Panel_NoDevice" Text="No supported earbuds paired." Style="{StaticResource SecondaryTextStyle}"
                    Visibility="{x:Bind services:Ui.Collapsed(ViewModel.HasDevice), Mode=OneWay}" />
 
-        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-            <!-- Only when the control channel is unavailable. -->
-            <Button x:Uid="Panel_Reconnect" Content="Reconnect" Command="{x:Bind ViewModel.ReconnectCommand}"
-                    Visibility="{x:Bind ViewModel.IsControlUnavailable, Mode=OneWay}" />
-            <!-- Disconnect: off this PC, and EncoDeck leaves the earbuds alone until Connect. -->
-            <Button x:Uid="Panel_Disconnect" Content="Disconnect" Command="{x:Bind ViewModel.DisconnectDeviceCommand}"
-                    Visibility="{x:Bind ViewModel.CanDisconnect, Mode=OneWay}"
-                    IsEnabled="{x:Bind services:Ui.Not(ViewModel.IsChangingConnection), Mode=OneWay}" />
-            <Button x:Uid="Panel_Connect" Content="Connect" Command="{x:Bind ViewModel.ConnectDeviceCommand}" Style="{StaticResource AccentButtonStyle}"
-                    Visibility="{x:Bind ViewModel.CanConnect, Mode=OneWay}"
-                    IsEnabled="{x:Bind services:Ui.Not(ViewModel.IsChangingConnection), Mode=OneWay}" />
-        </StackPanel>
+        <!-- Only when the control channel is unavailable. -->
+        <Button x:Uid="Panel_Reconnect" Content="Reconnect" HorizontalAlignment="Right" Command="{x:Bind ViewModel.ReconnectCommand}"
+                Visibility="{x:Bind ViewModel.IsControlUnavailable, Mode=OneWay}" />
     </StackPanel>
 </UserControl>
