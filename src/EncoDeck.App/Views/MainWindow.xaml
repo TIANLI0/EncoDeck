@@ -3,6 +3,7 @@
     x:Class="EncoDeck.App.Views.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:EncoDeck.App.Controls"
     Title="EncoDeck">
     <Window.SystemBackdrop>
         <MicaBackdrop />
@@ -36,34 +37,34 @@
             <NavigationView.MenuItems>
                 <NavigationViewItem x:Uid="Nav_Home" Content="Home" Tag="Home">
                     <NavigationViewItem.Icon>
-                        <FontIcon Glyph="&#xE80F;" />
+                        <controls:FluentIcon Symbol="home" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
                 <NavigationViewItem x:Uid="Nav_Sound" Content="Sound" Tag="Sound">
                     <NavigationViewItem.Icon>
-                        <FontIcon Glyph="&#xE8D6;" />
+                        <controls:FluentIcon Symbol="music_note_2" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
                 <NavigationViewItem x:Uid="Nav_Controls" Content="Controls" Tag="Controls">
                     <NavigationViewItem.Icon>
-                        <FontIcon Glyph="&#xE9E9;" />
+                        <controls:FluentIcon Symbol="options" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
                 <NavigationViewItem x:Uid="Nav_Devices" Content="Devices" Tag="Devices">
                     <NavigationViewItem.Icon>
-                        <FontIcon Glyph="&#xE772;" />
+                        <controls:FluentIcon Symbol="phone_laptop" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
                 <NavigationViewItem x:Uid="Nav_Labs" Content="Labs" Tag="Labs">
                     <NavigationViewItem.Icon>
-                        <FontIcon Glyph="&#xF196;" />
+                        <controls:FluentIcon Symbol="beaker" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
             </NavigationView.MenuItems>
             <NavigationView.FooterMenuItems>
                 <NavigationViewItem x:Name="AboutItem" x:Uid="Nav_About" Content="About" Tag="About">
                     <NavigationViewItem.Icon>
-                        <FontIcon Glyph="&#xE946;" />
+                        <controls:FluentIcon Symbol="info" />
                     </NavigationViewItem.Icon>
                     <!-- Red dot while a newer version is available (SettingsViewModel.IsUpdateAvailable). -->
                     <NavigationViewItem.InfoBadge>
@@ -72,7 +73,7 @@
                 </NavigationViewItem>
                 <NavigationViewItem x:Uid="Nav_Settings" Content="Settings" Tag="Settings">
                     <NavigationViewItem.Icon>
-                        <FontIcon Glyph="&#xE713;" />
+                        <controls:FluentIcon Symbol="settings" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
             </NavigationView.FooterMenuItems>

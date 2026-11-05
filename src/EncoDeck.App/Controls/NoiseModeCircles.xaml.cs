@@ -23,12 +23,12 @@ public sealed partial class NoiseModeCircles : UserControl
         nameof(ViewModel), typeof(DeviceViewModel), typeof(NoiseModeCircles), new PropertyMetadata(null, OnViewModelChanged));
 
     // Official order: noise cancelling, adaptive, transparency, off.
-    private static readonly (NoiseControlMode Mode, string Glyph, string LabelKey)[] Modes =
+    private static readonly (NoiseControlMode Mode, string Symbol, string LabelKey)[] Modes =
     [
-        (NoiseControlMode.NoiseCancellation, "", "NoiseMode_NoiseCancellation"),
-        (NoiseControlMode.Adaptive, "", "NoiseMode_Adaptive"),
-        (NoiseControlMode.Transparency, "", "NoiseMode_Transparency"),
-        (NoiseControlMode.Off, "", "NoiseMode_Off"),
+        (NoiseControlMode.NoiseCancellation, "headphones", "NoiseMode_NoiseCancellation"),
+        (NoiseControlMode.Adaptive, "sound_wave_circle_sparkle", "NoiseMode_Adaptive"),
+        (NoiseControlMode.Transparency, "person_sound_spatial", "NoiseMode_Transparency"),
+        (NoiseControlMode.Off, "prohibited", "NoiseMode_Off"),
     ];
 
     private readonly List<(NoiseControlMode Mode, ToggleButton Button, FrameworkElement Cell)> _modes = [];
@@ -38,13 +38,13 @@ public sealed partial class NoiseModeCircles : UserControl
     public NoiseModeCircles()
     {
         InitializeComponent();
-        foreach (var (mode, glyph, labelKey) in Modes)
+        foreach (var (mode, symbol, labelKey) in Modes)
         {
             string label = Loc.Get(labelKey);
             var button = new ToggleButton
             {
                 Style = (Style)Resources["CircleModeButtonStyle"],
-                Content = new FontIcon { Glyph = glyph, FontSize = 22 },
+                Content = new FluentIcon(symbol, 22),
                 Tag = mode,
             };
             AutomationProperties.SetName(button, label);

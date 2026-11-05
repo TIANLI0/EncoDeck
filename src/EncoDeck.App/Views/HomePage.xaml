@@ -107,7 +107,7 @@
                         HorizontalAlignment="Left" Visibility="Collapsed">
                     <StackPanel Orientation="Horizontal" Spacing="10" Padding="4,0,0,0">
                         <TextBlock Text="{x:Bind ViewModel.DeviceName, Mode=OneWay}" Style="{StaticResource TitleLargeTextBlockStyle}" TextTrimming="CharacterEllipsis" />
-                        <FontIcon Glyph="&#xE70D;" FontSize="14" VerticalAlignment="Center" Margin="0,6,0,0" />
+                        <controls:FluentIcon Symbol="chevron_down" FontSize="14" VerticalAlignment="Center" Margin="0,6,0,0" />
                     </StackPanel>
                     <Button.Flyout>
                         <MenuFlyout x:Name="DeviceMenu" Placement="BottomEdgeAlignedLeft" Opening="OnDeviceMenuOpening" />
@@ -117,17 +117,17 @@
                     <StackPanel Orientation="Horizontal" Spacing="6" Visibility="{x:Bind ViewModel.Left.HasValue, Mode=OneWay}">
                         <Border Style="{StaticResource BadgeStyle}" Visibility="{x:Bind ViewModel.Right.IsVisible, Mode=OneWay}"><TextBlock Text="L" Style="{StaticResource BadgeTextStyle}" /></Border>
                         <TextBlock Text="{x:Bind ViewModel.Left.LevelText, Mode=OneWay}" Style="{StaticResource LevelTextStyle}" />
-                        <FontIcon Glyph="&#xE945;" FontSize="12" Visibility="{x:Bind ViewModel.Left.IsCharging, Mode=OneWay}" />
+                        <controls:FluentIcon Symbol="flash" FontSize="12" Visibility="{x:Bind ViewModel.Left.IsCharging, Mode=OneWay}" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="6" Visibility="{x:Bind ViewModel.Right.HasVisibleValue, Mode=OneWay}">
                         <Border Style="{StaticResource BadgeStyle}"><TextBlock Text="R" Style="{StaticResource BadgeTextStyle}" /></Border>
                         <TextBlock Text="{x:Bind ViewModel.Right.LevelText, Mode=OneWay}" Style="{StaticResource LevelTextStyle}" />
-                        <FontIcon Glyph="&#xE945;" FontSize="12" Visibility="{x:Bind ViewModel.Right.IsCharging, Mode=OneWay}" />
+                        <controls:FluentIcon Symbol="flash" FontSize="12" Visibility="{x:Bind ViewModel.Right.IsCharging, Mode=OneWay}" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="6" Visibility="{x:Bind ViewModel.Case.HasVisibleValue, Mode=OneWay}">
-                        <Border Style="{StaticResource BadgeStyle}"><FontIcon Glyph="&#xE7F6;" FontSize="11" Foreground="{ThemeResource SolidBackgroundFillColorBaseBrush}" /></Border>
+                        <Border Style="{StaticResource BadgeStyle}"><controls:FluentIcon Symbol="headphones" FontSize="11" Foreground="{ThemeResource SolidBackgroundFillColorBaseBrush}" /></Border>
                         <TextBlock Text="{x:Bind ViewModel.Case.LevelText, Mode=OneWay}" Style="{StaticResource LevelTextStyle}" />
-                        <FontIcon Glyph="&#xE945;" FontSize="12" Visibility="{x:Bind ViewModel.Case.IsCharging, Mode=OneWay}" />
+                        <controls:FluentIcon Symbol="flash" FontSize="12" Visibility="{x:Bind ViewModel.Case.IsCharging, Mode=OneWay}" />
                     </StackPanel>
                     <Rectangle Width="1" Height="16" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" VerticalAlignment="Center" />
                     <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
@@ -223,7 +223,7 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock x:Uid="Home_Eq" Text="Earbud EQ" VerticalAlignment="Center" />
                                 <TextBlock Grid.Column="1" Text="{x:Bind ViewModel.EqualizerText, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" VerticalAlignment="Center" />
-                                <FontIcon Grid.Column="2" Glyph="&#xE76C;" FontSize="12" />
+                                <controls:FluentIcon Symbol="chevron_right" Grid.Column="2" FontSize="12" />
                             </Grid>
                         </Button>
                         <Button x:Name="SpatialRow" Style="{StaticResource NavigationRowStyle}" Click="OnOpenSound">
@@ -235,7 +235,7 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock x:Uid="Home_Spatial" Text="Spatial audio" VerticalAlignment="Center" />
                                 <TextBlock x:Name="SpatialValue" Grid.Column="1" Style="{StaticResource SecondaryTextStyle}" VerticalAlignment="Center" />
-                                <FontIcon Grid.Column="2" Glyph="&#xE76C;" FontSize="12" />
+                                <controls:FluentIcon Symbol="chevron_right" Grid.Column="2" FontSize="12" />
                             </Grid>
                         </Button>
                         <controls:SettingRow x:Name="GameRow" x:Uid="Home_GameMode" Header="Game mode" Margin="0,4,0,8">

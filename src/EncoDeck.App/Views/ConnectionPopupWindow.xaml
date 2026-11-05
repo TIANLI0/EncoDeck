@@ -32,7 +32,7 @@
                         </StackPanel>
                         <Button x:Name="HeadphoneClose" x:Uid="Popup_Close" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-6,-12,0"
                                 Style="{StaticResource SubtleButtonStyle}" Padding="6" Click="OnCloseClick" AutomationProperties.Name="Close">
-                            <FontIcon Glyph="&#xE711;" FontSize="10" />
+                            <controls:FluentIcon Symbol="dismiss" FontSize="10" />
                         </Button>
                     </Grid>
                     <controls:DeviceMedia x:Name="HeadphonePicture" Grid.Row="1" IsHeadphones="True" Margin="10,0" IsHitTestVisible="False" />
@@ -76,7 +76,7 @@
                             HorizontalAlignment="Left" VerticalAlignment="Top" Margin="8" Padding="6"
                             Style="{StaticResource SubtleButtonStyle}" Visibility="Collapsed" Click="OnCloseClick"
                             AutomationProperties.Name="Close">
-                        <FontIcon Glyph="&#xE711;" FontSize="10" />
+                        <controls:FluentIcon Symbol="dismiss" FontSize="10" />
                     </Button>
                 </Grid>
 
@@ -113,7 +113,7 @@
                             </StackPanel>
                             <Button x:Name="CardClose" Grid.Column="1" x:Uid="Popup_Close" Click="OnCloseClick" Style="{StaticResource SubtleButtonStyle}" Padding="6" VerticalAlignment="Top" Margin="0,-2,0,0"
                                     AutomationProperties.Name="Close">
-                                <FontIcon Glyph="&#xE711;" FontSize="10" />
+                                <controls:FluentIcon Symbol="dismiss" FontSize="10" />
                             </Button>
                         </Grid>
                         <!-- Left-aligned with fixed gaps, so the first level lines up under the name instead of floating mid-column. -->

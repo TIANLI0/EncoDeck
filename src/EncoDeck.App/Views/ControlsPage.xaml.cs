@@ -383,9 +383,8 @@ public sealed partial class ControlsPage : Page
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        // Device type icons: 1 phone, 2 computer, 3 tablet, 4 watch.
-        string glyph = device.DeviceType switch { 1 => "", 2 => "", 3 => "", 4 => "", _ => "" };
-        grid.Children.Add(new FontIcon { Glyph = glyph, FontSize = 20, VerticalAlignment = VerticalAlignment.Center });
+        string symbol = FluentIcons.ForDeviceType(device.DeviceType);
+        grid.Children.Add(new FluentIcon(symbol, 20) { VerticalAlignment = VerticalAlignment.Center });
         var text = new StackPanel { Spacing = 0, VerticalAlignment = VerticalAlignment.Center };
         text.Children.Add(new TextBlock { Text = DisplayName(device), TextTrimming = TextTrimming.CharacterEllipsis });
         text.Children.Add(new TextBlock

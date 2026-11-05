@@ -19,6 +19,7 @@ only to describe compatibility.
 | System.Drawing.Common | 10.0.0 | MIT | https://github.com/dotnet/winforms |
 | CommunityToolkit.Mvvm | 8.4.2 | MIT, Copyright (c) .NET Foundation and Contributors | https://github.com/CommunityToolkit/dotnet |
 | Vortice.Direct3D11, Vortice.DXGI, Vortice.D3DCompiler, Vortice.MediaFoundation, Vortice.DirectX, Vortice.Mathematics | 3.8.3 | MIT, Copyright (c) Amer Koleci and Contributors | https://github.com/amerkoleci/Vortice.Windows |
+| Fluent UI System Icons (`Assets/Fonts/FluentSystemIcons-Resizable.ttf`, its em cropped to the 16 px design area with Segoe-style metrics by `build/prepare-fluent-icons.py`, outlines unchanged; its `.json` name map unmodified) | main @ 9bfae3d782fd (2026-11-03) | MIT, Copyright (c) 2020 Microsoft Corporation | https://github.com/microsoft/fluentui-system-icons |
 
 The full license texts are included in the respective NuGet packages and source repositories.
 

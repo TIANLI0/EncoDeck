@@ -5,6 +5,7 @@
     x:Class="EncoDeck.App.Controls.EarbudsIllustration"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:EncoDeck.App.Controls"
     AutomationProperties.AccessibilityView="Raw">
     <Grid>
         <Viewbox x:Name="Earbuds" Stretch="Uniform">
@@ -20,7 +21,7 @@
         </Viewbox>
 
         <Viewbox x:Name="Headphones" Stretch="Uniform" Visibility="Collapsed">
-            <FontIcon Glyph="&#xE7F6;" FontFamily="{ThemeResource SymbolThemeFontFamily}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            <controls:FluentIcon Symbol="headphones" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
         </Viewbox>
     </Grid>
 </UserControl>

@@ -137,7 +137,7 @@
                     </StackPanel>
                     <Button Grid.Column="1" VerticalAlignment="Center" Style="{StaticResource AccentButtonStyle}">
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <FontIcon Glyph="&#xEB51;" FontSize="14" />
+                            <controls:FluentIcon Symbol="heart" FontSize="14" />
                             <TextBlock x:Uid="Settings_SponsorButton" Text="Sponsor" />
                         </StackPanel>
                         <Button.Flyout>

@@ -47,7 +47,9 @@
   <ItemGroup>
     <Manifest Include="$(ApplicationManifest)" />
     <!-- Also publish: the installed app loads its logo, window and tray icons from Assets\. -->
-    <Content Include="Assets\**\*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="Assets\**\*" Exclude="Assets\Fonts\*.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <!-- Fluent UI System Icons: icon name → code point, read by Services\FluentIcons. -->
+    <EmbeddedResource Include="Assets\Fonts\FluentSystemIcons-Resizable.json" LogicalName="EncoDeck.App.FluentSystemIcons.json" />
     <!-- Licensing documents ship next to the executable (opened from Settings → About). -->
     <Content Include="..\..\LICENSE" Link="LICENSE" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\THIRD_PARTY_NOTICES.md" Link="THIRD_PARTY_NOTICES.md" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\THIRD_PARTY_NOTICES.md')" />

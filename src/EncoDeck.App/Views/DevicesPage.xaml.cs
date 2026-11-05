@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 using System.ComponentModel;
+using EncoDeck.App.Controls;
 using EncoDeck.App.Services;
 using EncoDeck.App.ViewModels;
 using EncoDeck.Bluetooth;
@@ -173,7 +174,10 @@ public sealed partial class DevicesPage : Page
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-        var icon = new FontIcon { Glyph = "", FontSize = 20, VerticalAlignment = VerticalAlignment.Center };
+        var icon = new FluentIcon(device.Profile.Form == Core.Profiles.DeviceForm.Headphones ? "headphones" : "surface_earbuds", 20)
+        {
+            VerticalAlignment = VerticalAlignment.Center,
+        };
         var text = new StackPanel();
         text.Children.Add(new TextBlock { Text = device.Identity.Name });
         string status = device.IsDisconnectedByUser ? Loc.Get("Connection_DisconnectedByUser")

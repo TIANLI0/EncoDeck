@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
+using EncoDeck.App.Controls;
 using EncoDeck.App.Services;
 using EncoDeck.App.ViewModels;
 using EncoDeck.Core.Capabilities;
@@ -131,8 +132,7 @@ public sealed partial class HomePage : Page
     /// </summary>
     private Button DeviceCell(SourceDevice device, bool ready, bool cached)
     {
-        // Device type icons: 1 phone, 2 computer, 3 tablet, 4 watch.
-        string glyph = device.DeviceType switch { 1 => "", 2 => "", 3 => "", 4 => "", _ => "" };
+        string symbol = FluentIcons.ForDeviceType(device.DeviceType);
         bool connected = device.IsConnected;
         var circle = new Border
         {
@@ -141,10 +141,8 @@ public sealed partial class HomePage : Page
             CornerRadius = new CornerRadius(28),
             HorizontalAlignment = HorizontalAlignment.Center,
             Background = (Brush)Application.Current.Resources[connected ? "AccentFillColorDefaultBrush" : "ControlFillColorSecondaryBrush"],
-            Child = new FontIcon
+            Child = new FluentIcon(symbol, 22)
             {
-                Glyph = glyph,
-                FontSize = 22,
                 Foreground = (Brush)Application.Current.Resources[connected ? "TextOnAccentFillColorPrimaryBrush" : "TextFillColorSecondaryBrush"],
             },
         };
@@ -276,7 +274,7 @@ public sealed partial class HomePage : Page
             DeviceMenu.Items.Add(item);
         }
         DeviceMenu.Items.Add(new MenuFlyoutSeparator());
-        var manage = new MenuFlyoutItem { Text = Loc.Get("Home_ManageDevices"), Icon = new FontIcon { Glyph = "\uE713" } };
+        var manage = new MenuFlyoutItem { Text = Loc.Get("Home_ManageDevices"), Icon = new FluentIcon("settings") };
         manage.Click += (_, _) => App.Instance.Windows.ShowMain("Devices");
         DeviceMenu.Items.Add(manage);
     }

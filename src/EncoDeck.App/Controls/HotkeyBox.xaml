@@ -2,7 +2,8 @@
 <UserControl
     x:Class="EncoDeck.App.Controls.HotkeyBox"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:EncoDeck.App.Controls">
     <!-- Click, then press the combination; Esc cancels, Backspace clears. -->
     <StackPanel Spacing="2" HorizontalAlignment="Right">
         <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right">
@@ -12,7 +13,7 @@
             </Button>
             <Button x:Name="ClearButton" x:Uid="Hotkey_Clear" Style="{StaticResource SubtleButtonStyle}" Padding="8" Click="OnClearClick"
                     ToolTipService.ToolTip="Remove" AutomationProperties.Name="Remove">
-                <FontIcon Glyph="&#xE711;" FontSize="12" />
+                <controls:FluentIcon Symbol="dismiss" FontSize="12" />
             </Button>
         </StackPanel>
         <TextBlock x:Name="StatusText" HorizontalAlignment="Right" TextWrapping="Wrap" MaxWidth="260" Style="{StaticResource SecondaryTextStyle}"
