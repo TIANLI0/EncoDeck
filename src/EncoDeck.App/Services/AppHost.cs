@@ -208,7 +208,7 @@ internal sealed class SettingsDisconnectedDevices(ISettingsStore settings) : IUs
         settings.Update(s =>
         {
             var ids = (s.DisconnectedDeviceIds ?? []).Where(id => !string.Equals(id, deviceId, StringComparison.OrdinalIgnoreCase));
-            return s with { DisconnectedDeviceIds = disconnected ? [.. ids, deviceId] : [.. ids] };
+            return s with { DisconnectedDeviceIds = (disconnected ? ids.Append(deviceId) : ids).ToArray() };
         });
     }
 }
