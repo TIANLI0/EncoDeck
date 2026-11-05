@@ -5,15 +5,28 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:EncoDeck.App.Controls">
     <StackPanel Spacing="8" AutomationProperties.Name="{x:Bind Item.AutomationText, Mode=OneWay}">
+        <!-- Low battery (LowBatteryStates): glyph, level and bar in the critical colour. -->
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup x:Name="LevelStates">
+                <VisualState x:Name="Normal" />
+                <VisualState x:Name="Low">
+                    <VisualState.Setters>
+                        <Setter Target="LevelGlyph.Foreground" Value="{ThemeResource SystemFillColorCriticalBrush}" />
+                        <Setter Target="LevelValue.Foreground" Value="{ThemeResource SystemFillColorCriticalBrush}" />
+                        <Setter Target="LevelBar.Foreground" Value="{ThemeResource SystemFillColorCriticalBrush}" />
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
         <Grid ColumnSpacing="8">
             <TextBlock Text="{x:Bind Item.Label, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" VerticalAlignment="Center" />
             <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Spacing="7">
-                <FontIcon Glyph="{x:Bind Item.Glyph, Mode=OneWay}" FontSize="18" VerticalAlignment="Center" />
-                <TextBlock Text="{x:Bind Item.LevelText, Mode=OneWay}" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                <FontIcon x:Name="LevelGlyph" FontFamily="{ThemeResource SymbolThemeFontFamily}" Glyph="{x:Bind Item.Glyph, Mode=OneWay}" FontSize="18" VerticalAlignment="Center" />
+                <TextBlock x:Name="LevelValue" Text="{x:Bind Item.LevelText, Mode=OneWay}" Style="{StaticResource BodyStrongTextBlockStyle}" />
                 <controls:FluentIcon Symbol="flash" FontSize="12" VerticalAlignment="Center" Visibility="{x:Bind Item.IsCharging, Mode=OneWay}" />
             </StackPanel>
         </Grid>
-        <ProgressBar Minimum="0" Maximum="100" Value="{x:Bind Item.Percent, Mode=OneWay}" Height="4"
+        <ProgressBar x:Name="LevelBar" Minimum="0" Maximum="100" Value="{x:Bind Item.Percent, Mode=OneWay}" Height="4"
                      Visibility="{x:Bind Item.HasValue, Mode=OneWay}" />
         <TextBlock Text="{x:Bind Item.FreshnessText, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}"
                    Foreground="{ThemeResource TextFillColorTertiaryBrush}" TextWrapping="Wrap" />

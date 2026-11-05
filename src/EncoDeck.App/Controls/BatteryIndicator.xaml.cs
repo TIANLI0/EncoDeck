@@ -13,7 +13,8 @@ public sealed partial class BatteryIndicator : UserControl
     public string? LabelOverride { get => (string?)GetValue(LabelOverrideProperty); set => SetValue(LabelOverrideProperty, value); }
     public string DisplayLabel(string label, string? replacement) => string.IsNullOrEmpty(replacement) ? label : replacement;
     public static readonly DependencyProperty ItemProperty = DependencyProperty.Register(
-        nameof(Item), typeof(BatteryItemViewModel), typeof(BatteryIndicator), new PropertyMetadata(null));
+        nameof(Item), typeof(BatteryItemViewModel), typeof(BatteryIndicator),
+        new PropertyMetadata(null, (d, e) => ((BatteryIndicator)d)._low.Item = e.NewValue as BatteryItemViewModel));
 
     public static readonly DependencyProperty GlyphSizeProperty = DependencyProperty.Register(
         nameof(GlyphSize), typeof(double), typeof(BatteryIndicator), new PropertyMetadata(28.0));
@@ -21,9 +22,12 @@ public sealed partial class BatteryIndicator : UserControl
     public static readonly DependencyProperty LevelFontSizeProperty = DependencyProperty.Register(
         nameof(LevelFontSize), typeof(double), typeof(BatteryIndicator), new PropertyMetadata(20.0));
 
+    private readonly LowBatteryStates _low;
+
     public BatteryIndicator()
     {
         InitializeComponent();
+        _low = new LowBatteryStates(this);
     }
 
     public BatteryItemViewModel? Item

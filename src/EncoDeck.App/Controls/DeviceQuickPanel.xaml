@@ -35,9 +35,9 @@
             </Button>
         </Grid>
 
-        <!-- Battery -->
-        <controls:HeadphoneBattery Item="{x:Bind ViewModel.Left}" Visibility="{x:Bind ViewModel.IsHeadphones, Mode=OneWay}" />
-        <Grid ColumnSpacing="8" Visibility="{x:Bind EarbudBatteryVisibility(ViewModel.HasDevice, ViewModel.IsHeadphones), Mode=OneWay}">
+        <!-- Battery; faded while not linked (only the last levels read). -->
+        <controls:HeadphoneBattery Item="{x:Bind ViewModel.Left}" Visibility="{x:Bind ViewModel.IsHeadphones, Mode=OneWay}" Opacity="{x:Bind ViewModel.BatteryOpacity, Mode=OneWay}" />
+        <Grid ColumnSpacing="8" Visibility="{x:Bind EarbudBatteryVisibility(ViewModel.HasDevice, ViewModel.IsHeadphones), Mode=OneWay}" Opacity="{x:Bind ViewModel.BatteryOpacity, Mode=OneWay}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="*" />

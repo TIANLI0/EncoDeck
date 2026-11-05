@@ -25,6 +25,9 @@ public sealed partial class HomePage : Page
     {
         InitializeComponent();
         AutomationProperties.SetName(Model, Loc.Get("Home_Model_Name"));
+        _ = new LowBatteryStates(this, "Left") { Item = ViewModel.Left };
+        _ = new LowBatteryStates(this, "Right") { Item = ViewModel.Right };
+        _ = new LowBatteryStates(this, "Case") { Item = ViewModel.Case };
         Loaded += (_, _) =>
         {
             Features.Changed += OnFeaturesChanged;

@@ -49,18 +49,27 @@ public sealed partial class BatteryItemViewModel(BatteryComponent component) : O
     [ObservableProperty]
     public partial bool IsStale { get; set; }
 
+    /// <summary>At or below the low-battery threshold (Settings) and not charging: shown in the critical colour.</summary>
+    [ObservableProperty]
+    public partial bool IsLow { get; set; }
+
     /// <summary>"Last read 10:21" for stale values, empty for live ones.</summary>
     [ObservableProperty]
     public partial string FreshnessText { get; set; } = string.Empty;
 
-    /// <summary>Segoe Fluent Icons battery glyph matching the level.</summary>
+    /// <summary>
+    /// The level in tenths as Windows' own battery glyph (Segoe Fluent Icons, with or without the charging bolt): the
+    /// one icon the app keeps from Windows, as Fluent UI System Icons' batteries are too slender (20 px) or too heavy (24 px).
+    /// </summary>
     [ObservableProperty]
-    public partial string Glyph { get; set; } = "";
+    public partial string Glyph { get; set; } = UnknownGlyph;
+
+    private const string UnknownGlyph = "";
 
     [ObservableProperty]
     public partial string AutomationText { get; set; } = string.Empty;
 
-    public void Apply(Observed<BatteryReading>? reading, bool channelReady, DateTimeOffset now)
+    public void Apply(Observed<BatteryReading>? reading, bool channelReady, DateTimeOffset now, int lowThreshold)
     {
         if (reading?.Value.Level is not { } level)
         {
@@ -69,8 +78,9 @@ public sealed partial class BatteryItemViewModel(BatteryComponent component) : O
             LevelText = "--";
             IsCharging = false;
             IsStale = false;
+            IsLow = false;
             FreshnessText = Loc.Get("Battery_Unknown");
-            Glyph = "";
+            Glyph = UnknownGlyph;
             AutomationText = $"{Label} {Loc.Get("Battery_Unknown")}";
             return;
         }
@@ -81,6 +91,7 @@ public sealed partial class BatteryItemViewModel(BatteryComponent component) : O
         LevelText = $"{level}%";
         IsCharging = reading.Value.IsCharging == true && !stale;
         IsStale = stale;
+        IsLow = level <= lowThreshold && !IsCharging;
         FreshnessText = stale ? Loc.Format("Battery_LastRead", reading.Timestamp.ToLocalTime().ToString("t")) : string.Empty;
         int step = Math.Clamp((int)Math.Round(level / 10.0), 0, 10);
         Glyph = ((char)((IsCharging ? 0xEBAB : 0xEBA0) + step)).ToString();

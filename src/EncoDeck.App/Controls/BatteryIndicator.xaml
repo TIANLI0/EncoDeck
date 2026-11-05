@@ -9,13 +9,27 @@
         Spacing="2"
         AutomationProperties.Name="{x:Bind Item.AutomationText, Mode=OneWay}"
         AutomationProperties.LiveSetting="Polite">
+        <!-- Low battery (LowBatteryStates): glyph and level in the critical colour. -->
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup x:Name="LevelStates">
+                <VisualState x:Name="Normal" />
+                <VisualState x:Name="Low">
+                    <VisualState.Setters>
+                        <Setter Target="LevelGlyph.Foreground" Value="{ThemeResource SystemFillColorCriticalBrush}" />
+                        <Setter Target="LevelValue.Foreground" Value="{ThemeResource SystemFillColorCriticalBrush}" />
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
         <FontIcon
+            x:Name="LevelGlyph"
             HorizontalAlignment="Center"
             FontFamily="{ThemeResource SymbolThemeFontFamily}"
             FontSize="{x:Bind GlyphSize, Mode=OneWay}"
             Glyph="{x:Bind Item.Glyph, Mode=OneWay}"
             Opacity="{x:Bind StaleOpacity(Item.IsStale), Mode=OneWay}" />
         <TextBlock
+            x:Name="LevelValue"
             HorizontalAlignment="Center"
             Style="{StaticResource SubtitleTextBlockStyle}"
             FontSize="{x:Bind LevelFontSize, Mode=OneWay}"

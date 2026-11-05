@@ -37,6 +37,33 @@
     <!-- Wide: the device stage stays fixed on the left and only the controls scroll (SideScroll);
          narrow: stage and controls stack in MainScroll. HomePage.xaml.cs moves SidePanel between the two. -->
     <Grid>
+        <!-- Low battery (LowBatteryStates): that level in the critical colour. -->
+        <VisualStateManager.VisualStateGroups>
+                <VisualStateGroup x:Name="LeftLevelStates">
+                    <VisualState x:Name="LeftNormal" />
+                    <VisualState x:Name="LeftLow">
+                        <VisualState.Setters>
+                            <Setter Target="LeftLevelText.Foreground" Value="{ThemeResource SystemFillColorCriticalBrush}" />
+                        </VisualState.Setters>
+                    </VisualState>
+                </VisualStateGroup>
+                <VisualStateGroup x:Name="RightLevelStates">
+                    <VisualState x:Name="RightNormal" />
+                    <VisualState x:Name="RightLow">
+                        <VisualState.Setters>
+                            <Setter Target="RightLevelText.Foreground" Value="{ThemeResource SystemFillColorCriticalBrush}" />
+                        </VisualState.Setters>
+                    </VisualState>
+                </VisualStateGroup>
+                <VisualStateGroup x:Name="CaseLevelStates">
+                    <VisualState x:Name="CaseNormal" />
+                    <VisualState x:Name="CaseLow">
+                        <VisualState.Setters>
+                            <Setter Target="CaseLevelText.Foreground" Value="{ThemeResource SystemFillColorCriticalBrush}" />
+                        </VisualState.Setters>
+                    </VisualState>
+                </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
         <Grid x:Name="PageRoot" MaxWidth="1180" Padding="32,12,32,0" ColumnSpacing="28" RowSpacing="16" SizeChanged="OnPageSizeChanged">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="11*" />
@@ -114,19 +141,19 @@
                     </Button.Flyout>
                 </Button>
                 <StackPanel Orientation="Horizontal" Spacing="14">
-                    <StackPanel Orientation="Horizontal" Spacing="6" Visibility="{x:Bind ViewModel.Left.HasValue, Mode=OneWay}">
+                    <StackPanel Orientation="Horizontal" Spacing="6" Visibility="{x:Bind ViewModel.Left.HasValue, Mode=OneWay}" Opacity="{x:Bind ViewModel.BatteryOpacity, Mode=OneWay}">
                         <Border Style="{StaticResource BadgeStyle}" Visibility="{x:Bind ViewModel.Right.IsVisible, Mode=OneWay}"><TextBlock Text="L" Style="{StaticResource BadgeTextStyle}" /></Border>
-                        <TextBlock Text="{x:Bind ViewModel.Left.LevelText, Mode=OneWay}" Style="{StaticResource LevelTextStyle}" />
+                        <TextBlock x:Name="LeftLevelText" Text="{x:Bind ViewModel.Left.LevelText, Mode=OneWay}" Style="{StaticResource LevelTextStyle}" />
                         <controls:FluentIcon Symbol="flash" FontSize="12" Visibility="{x:Bind ViewModel.Left.IsCharging, Mode=OneWay}" />
                     </StackPanel>
-                    <StackPanel Orientation="Horizontal" Spacing="6" Visibility="{x:Bind ViewModel.Right.HasVisibleValue, Mode=OneWay}">
+                    <StackPanel Orientation="Horizontal" Spacing="6" Visibility="{x:Bind ViewModel.Right.HasVisibleValue, Mode=OneWay}" Opacity="{x:Bind ViewModel.BatteryOpacity, Mode=OneWay}">
                         <Border Style="{StaticResource BadgeStyle}"><TextBlock Text="R" Style="{StaticResource BadgeTextStyle}" /></Border>
-                        <TextBlock Text="{x:Bind ViewModel.Right.LevelText, Mode=OneWay}" Style="{StaticResource LevelTextStyle}" />
+                        <TextBlock x:Name="RightLevelText" Text="{x:Bind ViewModel.Right.LevelText, Mode=OneWay}" Style="{StaticResource LevelTextStyle}" />
                         <controls:FluentIcon Symbol="flash" FontSize="12" Visibility="{x:Bind ViewModel.Right.IsCharging, Mode=OneWay}" />
                     </StackPanel>
-                    <StackPanel Orientation="Horizontal" Spacing="6" Visibility="{x:Bind ViewModel.Case.HasVisibleValue, Mode=OneWay}">
+                    <StackPanel Orientation="Horizontal" Spacing="6" Visibility="{x:Bind ViewModel.Case.HasVisibleValue, Mode=OneWay}" Opacity="{x:Bind ViewModel.BatteryOpacity, Mode=OneWay}">
                         <Border Style="{StaticResource BadgeStyle}"><controls:FluentIcon Symbol="headphones" FontSize="11" Foreground="{ThemeResource SolidBackgroundFillColorBaseBrush}" /></Border>
-                        <TextBlock Text="{x:Bind ViewModel.Case.LevelText, Mode=OneWay}" Style="{StaticResource LevelTextStyle}" />
+                        <TextBlock x:Name="CaseLevelText" Text="{x:Bind ViewModel.Case.LevelText, Mode=OneWay}" Style="{StaticResource LevelTextStyle}" />
                         <controls:FluentIcon Symbol="flash" FontSize="12" Visibility="{x:Bind ViewModel.Case.IsCharging, Mode=OneWay}" />
                     </StackPanel>
                     <Rectangle Width="1" Height="16" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" VerticalAlignment="Center" />

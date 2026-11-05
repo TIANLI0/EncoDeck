@@ -116,6 +116,8 @@ public sealed partial class DeviceViewModel : ObservableObject
     /// <summary>Bluetooth earbuds not linked, or disconnected in EncoDeck: "Connect" is offered.</summary>
     [ObservableProperty] public partial bool CanConnect { get; set; }
     [ObservableProperty] public partial bool IsChangingConnection { get; set; }
+    /// <summary>Batteries fade while the earbuds are not linked: the levels are only the last ones read.</summary>
+    [ObservableProperty] public partial double BatteryOpacity { get; set; } = 1;
 
     /// <summary>The audio runs over LE Audio (shown as an "LC3" tag next to the status).</summary>
     [ObservableProperty] public partial bool IsLeAudio { get; set; }
@@ -450,6 +452,7 @@ public sealed partial class DeviceViewModel : ObservableObject
         bool windowsBluetooth = state.Device is { Transport: DeviceTransport.Bluetooth } && !IsBridgeOnly;
         CanDisconnect = windowsBluetooth && state.Connection.IsLinkUp();
         CanConnect = windowsBluetooth && IsLinkDown;
+        BatteryOpacity = IsLinkDown ? 0.35 : 1;
         CanSwitchAudioTransport = _settings.Current.ShowAudioTransportSwitch != false
             && profile is OppoDeviceProfile { Definition.SupportsLeAudioPairing: true }
             && state.LeAudioLinks is { PrimaryBonded: true, SecondaryBonded: true }
@@ -529,9 +532,10 @@ public sealed partial class DeviceViewModel : ObservableObject
 
         foreach (var item in new[] { Left, Right, Case }) item.SetSingleBattery(IsHeadphones);
         bool batteryReady = IsReady || (state.Connection is DeviceConnectionState.UsbReceiverConnected or DeviceConnectionState.UsbHeadsetConnected && state.LastResponseAt is not null);
-        Left.Apply(state.Battery.Left, batteryReady, now);
-        Right.Apply(state.Battery.Right, batteryReady, now);
-        Case.Apply(state.Battery.Case, batteryReady, now);
+        int lowThreshold = _settings.Current.LowBatteryThreshold;
+        Left.Apply(state.Battery.Left, batteryReady, now, lowThreshold);
+        Right.Apply(state.Battery.Right, batteryReady, now, lowThreshold);
+        Case.Apply(state.Battery.Case, batteryReady, now, lowThreshold);
 
         RebuildOptionsIfNeeded(profile);
         ApplyNoise(state, profile);
