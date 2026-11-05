@@ -86,7 +86,7 @@ internal static class MonitorCommand
             if (ready.Task.IsCompleted && store.Current.Device is { } device)
             {
                 var started = DateTimeOffset.UtcNow;
-                var result = await manager.DisconnectDeviceAsync(device.DeviceId, ct);
+                var result = await manager.DisconnectDeviceAsync(device.DeviceId, cancellationToken: ct);
                 Console.WriteLine($">>> DisconnectDevice = {result} in {(DateTimeOffset.UtcNow - started).TotalMilliseconds:F0} ms");
                 await Task.Delay(TimeSpan.FromSeconds(options.GetInt("dwell", 15)), ct);
                 started = DateTimeOffset.UtcNow;

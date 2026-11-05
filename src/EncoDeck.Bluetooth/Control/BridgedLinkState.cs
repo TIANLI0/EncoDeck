@@ -19,6 +19,8 @@ internal sealed class BridgedLinkState : ILinkStateSource
     private bool _bridge;
     private bool _connected;
 
+    public void ReleaseMaintainedLinks() => _windows.ReleaseMaintainedLinks();
+
     public BridgedLinkState(ILinkStateSource windows, IDeviceStateStore store, string deviceId)
     {
         _windows = windows;

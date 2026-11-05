@@ -342,6 +342,23 @@ public sealed class FeaturesViewModel
     public Task<CommandResult> MultiConnectAsync(MultiConnectOperation operation, SourceDevice device) =>
         Run(() => _commands.MultiConnectAsync(operation, device.Address));
 
+    /// <summary>
+    /// Dual connection is switched off: the earbuds keep one device, so connecting another one ends this PC's link.
+    /// Unknown (no switch, or not read yet) counts as on, as before.
+    /// </summary>
+    public bool ConnectHandsOverThisPc => HasSwitch(DeviceToggle.DualDeviceConnection) && Toggle(DeviceToggle.DualDeviceConnection) == false;
+
+    /// <summary>
+    /// Connects another device. When that hands the earbuds over (<see cref="ConnectHandsOverThisPc"/>), this PC is
+    /// disconnected as "Disconnect" does, prepared before the command so nothing of EncoDeck's brings the earbuds back.
+    /// </summary>
+    public Task ConnectSourceAsync(SourceDevice device) => ConnectHandsOverThisPc
+        ? App.Instance.Device.HandOverAsync(device.Address)
+        : MultiConnectAsync(MultiConnectOperation.Connect, device);
+
+    /// <summary>"This PC" in the device list: the same as Disconnect in the earbuds panel.</summary>
+    public Task DisconnectThisPcAsync() => App.Instance.Device.DisconnectDeviceCommand.ExecuteAsync(null);
+
     public Task<CommandResult> SetPreferredDeviceAsync(byte[]? address) => Run(() => _commands.SetPreferredDeviceAsync(address));
 
     // ---- custom EQ -------------------------------------------------------------------------------

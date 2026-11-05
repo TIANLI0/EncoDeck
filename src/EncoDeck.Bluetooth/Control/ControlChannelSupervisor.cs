@@ -106,6 +106,14 @@ public sealed class ControlChannelSupervisor : IAsyncDisposable
         Wake();
     }
 
+    private volatile bool _held;
+
+    /// <summary>
+    /// Stops opening the control channel (and paging) once the current session ends, while that session stays usable:
+    /// the earbuds are about to be handed over to another device, and reconnecting would bring them back to this PC.
+    /// </summary>
+    public void HoldReconnects() => _held = true;
+
     private int _pageRequested;
 
     /// <summary>
@@ -172,6 +180,13 @@ public sealed class ControlChannelSupervisor : IAsyncDisposable
         while (!ct.IsCancellationRequested)
         {
             var wake = CurrentWake();
+
+            if (_held)
+            {
+                Interlocked.Exchange(ref _pageRequested, 0);
+                await WaitAsync(wake, null, ct).ConfigureAwait(false);
+                continue;
+            }
 
             if (!_link.IsConnected)
             {

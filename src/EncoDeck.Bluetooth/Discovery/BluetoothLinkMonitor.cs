@@ -214,7 +214,7 @@ public sealed class BluetoothLinkMonitor : ILinkStateSource
                 session.MaintainConnection = true;
                 lock (_gate)
                 {
-                    if (!_disposed)
+                    if (!_disposed && !_released)
                     {
                         _sessions = _sessions.Add(session);
                         session = null;
@@ -323,6 +323,20 @@ public sealed class BluetoothLinkMonitor : ILinkStateSource
         if (sender is BluetoothLEDevice && _leDevices.Length == 1 && !_singleUnit) _ = FindSecondaryAsync(1);
         if (transportChanged) TransportChanged?.Invoke(this, EventArgs.Empty);
         if (connectionChanged) ConnectionChanged?.Invoke(this, connected);
+    }
+
+    private bool _released;
+
+    public void ReleaseMaintainedLinks()
+    {
+        ImmutableArray<Windows.Devices.Bluetooth.GenericAttributeProfile.GattSession> sessions;
+        lock (_gate)
+        {
+            _released = true;
+            sessions = _sessions;
+            _sessions = [];
+        }
+        foreach (var session in sessions) session.Dispose();
     }
 
     public void Dispose()

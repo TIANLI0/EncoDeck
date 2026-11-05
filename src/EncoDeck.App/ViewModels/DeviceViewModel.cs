@@ -277,12 +277,18 @@ public sealed partial class DeviceViewModel : ObservableObject
 
     /// <summary>Disconnects the earbuds from this PC; EncoDeck then leaves them alone until "Connect".</summary>
     [RelayCommand]
-    private Task DisconnectDeviceAsync() => ChangeConnectionAsync(connect: false);
+    private Task DisconnectDeviceAsync() => ChangeConnectionAsync((devices, id) => devices.DisconnectDeviceAsync(id));
+
+    /// <summary>
+    /// With dual connection off: has the earbuds connect another device and disconnects this PC as "Disconnect" does
+    /// (IDeviceManager.HandOverAsync), so neither the control channel nor the LE links bring them back.
+    /// </summary>
+    public Task HandOverAsync(byte[] otherDevice) => ChangeConnectionAsync((devices, id) => devices.HandOverAsync(id, otherDevice));
 
     [RelayCommand]
-    private Task ConnectDeviceAsync() => ChangeConnectionAsync(connect: true);
+    private Task ConnectDeviceAsync() => ChangeConnectionAsync((devices, id) => devices.ConnectDeviceAsync(id));
 
-    private async Task ChangeConnectionAsync(bool connect)
+    private async Task ChangeConnectionAsync(Func<EncoDeck.Bluetooth.IDeviceManager, string, Task<CommandResult>> change)
     {
         if (IsChangingConnection || _store.Current.Device is not { Transport: DeviceTransport.Bluetooth } device) return;
         IsChangingConnection = true;
@@ -290,7 +296,7 @@ public sealed partial class DeviceViewModel : ObservableObject
         try
         {
             var devices = App.Instance.Host.Devices;
-            await RunAsync(() => connect ? devices.ConnectDeviceAsync(device.DeviceId) : devices.DisconnectDeviceAsync(device.DeviceId));
+            await RunAsync(() => change(devices, device.DeviceId));
         }
         finally
         {

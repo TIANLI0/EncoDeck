@@ -407,8 +407,12 @@ public sealed partial class ControlsPage : Page
         }
         else if (Features.CanManageSourceDevices && device.IsConnected && !device.IsThisDevice)
         {
-            // This PC disconnects through Windows, as the official client does for the phone.
             actions.Children.Add(ActionButton("Dual_Disconnect", device, ready, OnDisconnectSourceClick));
+        }
+        else if (device.IsThisDevice && device.IsConnected && App.Instance.Device.CanDisconnect)
+        {
+            // This PC: EncoDeck's own Disconnect, which also keeps it from reconnecting the earbuds.
+            actions.Children.Add(ActionButton("Dual_Disconnect", device, !App.Instance.Device.IsChangingConnection, OnDisconnectThisPcClick));
         }
         Grid.SetColumn(actions, 2);
         grid.Children.Add(actions);
@@ -696,14 +700,26 @@ public sealed partial class ControlsPage : Page
     private async void OnConnectSourceClick(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: SourceDevice device }) return;
+        // Dual connection off: the earbuds leave this PC for the other device, and EncoDeck disconnects with them.
+        if (Features.ConnectHandsOverThisPc)
+        {
+            if (!await ConfirmAsync("Dual_HandOver_Title", Loc.Format("Dual_HandOver_Message", DisplayName(device)), "Dual_Connect")) return;
+        }
         // Official: with two devices already connected, connecting a third drops one of them.
         // Connect-only lists (Sennheiser) refuse instead of dropping a device, so there is nothing to confirm.
-        if (Features.CanManageSourceDevices && Features.SourceDevices.Count(d => d.IsConnected) >= 2
+        else if (Features.CanManageSourceDevices && Features.SourceDevices.Count(d => d.IsConnected) >= 2
             && !await ConfirmAsync("Dual_ConnectNew_Title", Loc.Format("Dual_ConnectNew_Message", DisplayName(device)), "Dual_Connect"))
         {
             return;
         }
-        await Features.MultiConnectAsync(MultiConnectOperation.Connect, device);
+        await Features.ConnectSourceAsync(device);
+        Sync();
+    }
+
+    private async void OnDisconnectThisPcClick(object sender, RoutedEventArgs e)
+    {
+        if (!await ConfirmAsync("Dual_DisconnectThisPc_Title", Loc.Get("Dual_DisconnectThisPc_Message"), "Dual_Disconnect")) return;
+        await Features.DisconnectThisPcAsync();
         Sync();
     }
 

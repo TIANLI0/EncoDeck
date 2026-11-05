@@ -63,9 +63,18 @@ public interface IDeviceManager : IDeviceCommandService, IAdvancedDeviceCommands
     /// <summary>
     /// Disconnects the earbuds from this PC and leaves them alone until <see cref="ConnectDeviceAsync"/>: closes the
     /// control channel and stops keeping their LE links, asks Windows' audio drivers to disconnect, and forces the
-    /// Classic link down if it is still up after that. Remembered across restarts.
+    /// Classic link down if it is still up after that. Remembered across restarts. <paramref name="handedOver"/>: the
+    /// earbuds are leaving this PC for another device (<see cref="HandOverAsync"/>), so the audio is not closed first.
     /// </summary>
-    Task<CommandResult> DisconnectDeviceAsync(string deviceId, CancellationToken cancellationToken = default);
+    Task<CommandResult> DisconnectDeviceAsync(string deviceId, bool handedOver = false, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Has earbuds that keep one device (dual connection off) connect <paramref name="otherDevice"/>, then disconnects
+    /// this PC as <see cref="DisconnectDeviceAsync"/> does. Before the command EncoDeck already stops reconnecting control
+    /// and keeping the LE links: the earbuds drop this PC before they acknowledge it, and either would bring them back.
+    /// A refusal while this PC stays linked undoes that.
+    /// </summary>
+    Task<CommandResult> HandOverAsync(string deviceId, byte[] otherDevice, CancellationToken cancellationToken = default);
 
     /// <summary>Undoes <see cref="DisconnectDeviceAsync"/>: makes the device the active one and connects it to this PC again.</summary>
     Task<CommandResult> ConnectDeviceAsync(string deviceId, CancellationToken cancellationToken = default);
@@ -509,18 +518,22 @@ public sealed class DeviceManager : IDeviceManager
         return Task.FromResult(CommandResult.Ok);
     }
 
-    public async Task<CommandResult> DisconnectDeviceAsync(string deviceId, CancellationToken cancellationToken = default)
+    public async Task<CommandResult> DisconnectDeviceAsync(string deviceId, bool handedOver = false, CancellationToken cancellationToken = default)
     {
         if (KnownDevices.FirstOrDefault(d => d.Identity.DeviceId == deviceId) is not { Identity.Transport: DeviceTransport.Bluetooth } device)
             return CommandResult.NotConnected;
-        _logger.LogInformation("Disconnecting {Device} at the user's request", device.Identity);
+        _logger.LogInformation("Disconnecting {Device} at the user's request{HandedOver}", device.Identity, handedOver ? " (handed over to another device)" : "");
         ulong address = device.Identity.Address.Value;
         // Audio first: closing control drops the Classic link, LE Audio earbuds drop their LE links with it (Enco X4), and
-        // an LE link dropped mid-stream can leave Windows' LE Audio output unusable until Bluetooth restarts.
-        var endpoints = await AudioEndpointIdsAsync(address, cancellationToken).ConfigureAwait(false);
-        var results = await Task.Run(() => BluetoothAudioLink.Send(endpoints, BluetoothAudioLinkRequest.Disconnect), cancellationToken).ConfigureAwait(false);
-        _logger.LogInformation("Audio disconnect requests: {Results}", Describe(results));
-        if (results.Any(r => r.IsSuccess)) await Task.Delay(AudioReleaseGrace, cancellationToken).ConfigureAwait(false);
+        // an LE link dropped mid-stream can leave Windows' LE Audio output unusable until Bluetooth restarts. Earbuds
+        // handed over to another device are dropping this PC anyway, and waiting would let control reconnect them.
+        if (!handedOver)
+        {
+            var endpoints = await AudioEndpointIdsAsync(address, cancellationToken).ConfigureAwait(false);
+            var results = await Task.Run(() => BluetoothAudioLink.Send(endpoints, BluetoothAudioLinkRequest.Disconnect), cancellationToken).ConfigureAwait(false);
+            _logger.LogInformation("Audio disconnect requests: {Results}", Describe(results));
+            if (results.Any(r => r.IsSuccess)) await Task.Delay(AudioReleaseGrace, cancellationToken).ConfigureAwait(false);
+        }
 
         _disconnected.Set(deviceId, true);
         await _selectionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -537,6 +550,30 @@ public sealed class DeviceManager : IDeviceManager
         await ReselectAsync(cancellationToken).ConfigureAwait(false);
         KnownDevicesChanged?.Invoke(this, EventArgs.Empty);
         return await ReleaseClassicLinkAsync(device.Identity, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<CommandResult> HandOverAsync(string deviceId, byte[] otherDevice, CancellationToken cancellationToken = default)
+    {
+        if (_active is not { Supervisor: { Controller: { } controller } supervisor } active || active.Identity.DeviceId != deviceId)
+            return CommandResult.NotConnected;
+        _logger.LogInformation("Handing {Device} over to another device", active.Identity);
+        _disconnected.Set(deviceId, true);
+        supervisor.HoldReconnects();
+        active.Link.ReleaseMaintainedLinks();
+        var result = await controller.MultiConnectAsync(MultiConnectOperation.Connect, otherDevice, cancellationToken).ConfigureAwait(false);
+        // The earbuds often drop this PC before their acknowledgement arrives: the session closing is the answer then.
+        bool leaving = result.IsSuccess || result.Status is CommandStatus.NotConnected or CommandStatus.TransportError || !active.Link.IsConnected;
+        _logger.LogInformation("Hand-over command: {Result}; the earbuds are {State}", result, leaving ? "leaving" : "staying");
+        if (!leaving)
+        {
+            // Refused while still linked: nothing changed, so EncoDeck opens them as before.
+            _disconnected.Set(deviceId, false);
+            _reopenActive = true;
+            await ReselectAsync(cancellationToken).ConfigureAwait(false);
+            return result;
+        }
+        await DisconnectDeviceAsync(deviceId, handedOver: true, cancellationToken).ConfigureAwait(false);
+        return CommandResult.Ok;
     }
 
     public async Task<CommandResult> ConnectDeviceAsync(string deviceId, CancellationToken cancellationToken = default)

@@ -131,7 +131,7 @@ public sealed partial class HomePage : Page
     /// <summary>
     /// A round device icon (accent when connected) with its name and state. Tapping a disconnected
     /// device connects it, tapping a connected one disconnects it (after a confirmation); this PC is
-    /// disconnected from Windows Bluetooth settings, as the official client does for the phone.
+    /// disconnected as the earbuds panel's Disconnect does, so EncoDeck does not reconnect it.
     /// </summary>
     private Button DeviceCell(SourceDevice device, bool ready, bool cached)
     {
@@ -189,7 +189,7 @@ public sealed partial class HomePage : Page
             IsEnabled = ready && !busy && (connected || Features.CanConnectAnother),
         };
         AutomationProperties.SetName(cell, $"{name.Text}, {status.Text}");
-        ToolTipService.SetToolTip(cell, Loc.Get(device.IsThisDevice ? "Home_DeviceThisPc_Hint" : connected ? "Dual_Disconnect" : "Dual_Connect"));
+        ToolTipService.SetToolTip(cell, Loc.Get(device.IsThisDevice ? "Device_DisconnectThisPc" : connected ? "Dual_Disconnect" : "Dual_Connect"));
         cell.Click += OnDeviceClick;
         return cell;
     }
@@ -200,16 +200,20 @@ public sealed partial class HomePage : Page
         string name = string.IsNullOrWhiteSpace(device.Name) ? device.AddressText : device.Name;
         if (device.IsThisDevice)
         {
-            var hint = new ContentDialog
+            if (!ViewModel.CanDisconnect || ViewModel.IsChangingConnection) return;
+            var confirmThisPc = new ContentDialog
             {
                 XamlRoot = XamlRoot,
-                Title = Loc.Get("Home_DeviceThisPc_Title"),
-                Content = new TextBlock { Text = Loc.Get("Home_DeviceThisPc_Message"), TextWrapping = TextWrapping.Wrap },
-                PrimaryButtonText = Loc.Get("Home_OpenBluetoothSettings"),
+                Title = Loc.Get("Dual_DisconnectThisPc_Title"),
+                Content = new TextBlock { Text = Loc.Get("Dual_DisconnectThisPc_Message"), TextWrapping = TextWrapping.Wrap },
+                PrimaryButtonText = Loc.Get("Dual_Disconnect"),
                 CloseButtonText = Loc.Get("Common_Cancel"),
                 DefaultButton = ContentDialogButton.Close,
             };
-            if (await hint.ShowAsync() == ContentDialogResult.Primary) await Windows.System.Launcher.LaunchUriAsync(new Uri("ms-settings:bluetooth"));
+            if (await confirmThisPc.ShowAsync() != ContentDialogResult.Primary) return;
+            _devicesSignature = string.Empty;
+            await Features.DisconnectThisPcAsync();
+            Sync();
             return;
         }
         if (device.IsConnected)
@@ -229,8 +233,22 @@ public sealed partial class HomePage : Page
             Sync();
             return;
         }
+        // Dual connection off: the earbuds leave this PC for the other device, and EncoDeck disconnects with them.
+        if (Features.ConnectHandsOverThisPc)
+        {
+            var handOver = new ContentDialog
+            {
+                XamlRoot = XamlRoot,
+                Title = Loc.Get("Dual_HandOver_Title"),
+                Content = new TextBlock { Text = Loc.Format("Dual_HandOver_Message", name), TextWrapping = TextWrapping.Wrap },
+                PrimaryButtonText = Loc.Get("Dual_Connect"),
+                CloseButtonText = Loc.Get("Common_Cancel"),
+                DefaultButton = ContentDialogButton.Close,
+            };
+            if (await handOver.ShowAsync() != ContentDialogResult.Primary) return;
+        }
         // Official: with two devices already connected, connecting a third drops one of them.
-        if (Features.SourceDevices.Count(d => d.IsConnected) >= 2)
+        else if (Features.SourceDevices.Count(d => d.IsConnected) >= 2)
         {
             var dialog = new ContentDialog
             {
@@ -244,7 +262,7 @@ public sealed partial class HomePage : Page
             if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
         }
         _devicesSignature = string.Empty;
-        await Features.MultiConnectAsync(MultiConnectOperation.Connect, device);
+        await Features.ConnectSourceAsync(device);
         Sync();
     }
 

@@ -25,4 +25,10 @@ public interface ILinkStateSource : IDisposable
 
     /// <summary>Only A2DP Windows Bridge's own adapter is linked to the device, not Windows: control runs through the bridge.</summary>
     bool IsViaBridge => false;
+
+    /// <summary>
+    /// Stops asking Windows to keep (and re-establish) the earbuds' LE links, keeping the watch: they are being handed
+    /// over to another device and must not be brought back.
+    /// </summary>
+    void ReleaseMaintainedLinks() { }
 }

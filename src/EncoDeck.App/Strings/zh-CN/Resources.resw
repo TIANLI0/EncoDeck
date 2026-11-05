@@ -259,6 +259,10 @@
   <data name="Dual_Remove" xml:space="preserve"><value>移除</value></data>
   <data name="Dual_ConnectNew_Title" xml:space="preserve"><value>连接新设备</value></data>
   <data name="Dual_ConnectNew_Message" xml:space="preserve"><value>连接“{0}”将会断开另一台设备的连接。</value></data>
+  <data name="Dual_HandOver_Title" xml:space="preserve"><value>切换设备</value></data>
+  <data name="Dual_HandOver_Message" xml:space="preserve"><value>设备双连已关闭，耳机连接“{0}”后会断开这台电脑。EncoDeck 也会随之断开，不再自动重连；需要连回这台电脑时，在 EncoDeck 中点“连接”。</value></data>
+  <data name="Dual_DisconnectThisPc_Title" xml:space="preserve"><value>从这台电脑断开</value></data>
+  <data name="Dual_DisconnectThisPc_Message" xml:space="preserve"><value>耳机会断开与这台电脑的连接，包括音频。EncoDeck 不会再自动连接；需要时在 EncoDeck 中点“连接”。</value></data>
   <data name="Dual_Disconnect_Title" xml:space="preserve"><value>断开设备连接</value></data>
   <data name="Dual_Disconnect_Message" xml:space="preserve"><value>此操作将断开“{0}”的连接</value></data>
   <data name="Dual_Remove_Title" xml:space="preserve"><value>确认移除设备？</value></data>
@@ -435,10 +439,6 @@
   <data name="Home_DeviceTapToConnect" xml:space="preserve"><value>点按连接</value></data>
   <data name="Home_DeviceLastConnected" xml:space="preserve"><value>上次已连接</value></data>
   <data name="Home_DeviceNotConnected" xml:space="preserve"><value>未连接</value></data>
-  <data name="Home_DeviceThisPc_Hint" xml:space="preserve"><value>在 Windows 蓝牙设置中断开本机</value></data>
-  <data name="Home_DeviceThisPc_Title" xml:space="preserve"><value>这是本机</value></data>
-  <data name="Home_DeviceThisPc_Message" xml:space="preserve"><value>耳机正通过蓝牙连接这台电脑。要断开本机，请在 Windows 蓝牙设置中断开耳机。</value></data>
-  <data name="Home_OpenBluetoothSettings" xml:space="preserve"><value>打开蓝牙设置</value></data>
   <data name="Home_DeviceDisconnect_Title" xml:space="preserve"><value>断开“{0}”？</value></data>
   <data name="Home_DeviceDisconnect_Message" xml:space="preserve"><value>耳机将与这台设备断开连接，之后可以在这里重新连接。</value></data>
   <data name="Settings_Artwork.Text" xml:space="preserve"><value>设备素材</value></data>

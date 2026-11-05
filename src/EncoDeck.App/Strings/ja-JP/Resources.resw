@@ -259,6 +259,10 @@
   <data name="Dual_Remove" xml:space="preserve"><value>削除</value></data>
   <data name="Dual_ConnectNew_Title" xml:space="preserve"><value>新しいデバイスに接続</value></data>
   <data name="Dual_ConnectNew_Message" xml:space="preserve"><value>"{0}" に接続すると、別のデバイスが切断されます。</value></data>
+  <data name="Dual_HandOver_Title" xml:space="preserve"><value>デバイスを切り替え</value></data>
+  <data name="Dual_HandOver_Message" xml:space="preserve"><value>デュアル接続がオフのため、イヤホンは「{0}」に接続するとこの PC から切断されます。EncoDeck も切断し、自動で再接続しません。この PC に戻すには EncoDeck で［接続］を選びます。</value></data>
+  <data name="Dual_DisconnectThisPc_Title" xml:space="preserve"><value>この PC から切断</value></data>
+  <data name="Dual_DisconnectThisPc_Message" xml:space="preserve"><value>イヤホンとこの PC の接続（音声を含む）を切断します。EncoDeck は自動で再接続しません。戻すときは EncoDeck で［接続］を選びます。</value></data>
   <data name="Dual_Disconnect_Title" xml:space="preserve"><value>デバイスの切断</value></data>
   <data name="Dual_Disconnect_Message" xml:space="preserve"><value>"{0}" を切断します。</value></data>
   <data name="Dual_Remove_Title" xml:space="preserve"><value>このデバイスを削除しますか？</value></data>
@@ -435,10 +439,6 @@
   <data name="Home_DeviceTapToConnect" xml:space="preserve"><value>タップで接続</value></data>
   <data name="Home_DeviceLastConnected" xml:space="preserve"><value>前回接続済み</value></data>
   <data name="Home_DeviceNotConnected" xml:space="preserve"><value>未接続</value></data>
-  <data name="Home_DeviceThisPc_Hint" xml:space="preserve"><value>この PC の切断は Windows の Bluetooth 設定で行います</value></data>
-  <data name="Home_DeviceThisPc_Title" xml:space="preserve"><value>これはこの PC です</value></data>
-  <data name="Home_DeviceThisPc_Message" xml:space="preserve"><value>イヤホンはこの PC に接続されています。この PC を切断するには、Windows の Bluetooth 設定でイヤホンを切断してください。</value></data>
-  <data name="Home_OpenBluetoothSettings" xml:space="preserve"><value>Bluetooth 設定を開く</value></data>
   <data name="Home_DeviceDisconnect_Title" xml:space="preserve"><value>「{0}」を切断しますか？</value></data>
   <data name="Home_DeviceDisconnect_Message" xml:space="preserve"><value>イヤホンとこのデバイスとの接続が切断されます。ここから再度接続できます。</value></data>
   <data name="Settings_Artwork.Text" xml:space="preserve"><value>デバイスのアートワーク</value></data>

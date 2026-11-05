@@ -259,6 +259,10 @@
   <data name="Dual_Remove" xml:space="preserve"><value>Remove</value></data>
   <data name="Dual_ConnectNew_Title" xml:space="preserve"><value>Connect to a new device</value></data>
   <data name="Dual_ConnectNew_Message" xml:space="preserve"><value>Connecting to "{0}" will disconnect another device.</value></data>
+  <data name="Dual_HandOver_Title" xml:space="preserve"><value>Switch device</value></data>
+  <data name="Dual_HandOver_Message" xml:space="preserve"><value>Dual connection is off, so the earbuds disconnect from this PC once they connect to “{0}”. EncoDeck disconnects too and stops reconnecting them; to bring them back, select Connect in EncoDeck.</value></data>
+  <data name="Dual_DisconnectThisPc_Title" xml:space="preserve"><value>Disconnect from this PC</value></data>
+  <data name="Dual_DisconnectThisPc_Message" xml:space="preserve"><value>The earbuds disconnect from this PC, audio included. EncoDeck no longer reconnects them; select Connect in EncoDeck when you want them back.</value></data>
   <data name="Dual_Disconnect_Title" xml:space="preserve"><value>Device disconnection</value></data>
   <data name="Dual_Disconnect_Message" xml:space="preserve"><value>This will disconnect "{0}".</value></data>
   <data name="Dual_Remove_Title" xml:space="preserve"><value>Remove this device?</value></data>
@@ -435,10 +439,6 @@
   <data name="Home_DeviceTapToConnect" xml:space="preserve"><value>Tap to connect</value></data>
   <data name="Home_DeviceLastConnected" xml:space="preserve"><value>Connected last time</value></data>
   <data name="Home_DeviceNotConnected" xml:space="preserve"><value>Not connected</value></data>
-  <data name="Home_DeviceThisPc_Hint" xml:space="preserve"><value>Disconnect this PC in Windows Bluetooth settings</value></data>
-  <data name="Home_DeviceThisPc_Title" xml:space="preserve"><value>This is this PC</value></data>
-  <data name="Home_DeviceThisPc_Message" xml:space="preserve"><value>The earbuds are connected to this PC. To disconnect this PC, disconnect the earbuds in Windows Bluetooth settings.</value></data>
-  <data name="Home_OpenBluetoothSettings" xml:space="preserve"><value>Open Bluetooth settings</value></data>
   <data name="Home_DeviceDisconnect_Title" xml:space="preserve"><value>Disconnect “{0}”?</value></data>
   <data name="Home_DeviceDisconnect_Message" xml:space="preserve"><value>The earbuds disconnect from this device. You can connect it again here.</value></data>
   <data name="Settings_Artwork.Text" xml:space="preserve"><value>Device artwork</value></data>
