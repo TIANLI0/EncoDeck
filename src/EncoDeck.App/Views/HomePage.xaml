@@ -64,7 +64,7 @@
                     </VisualState>
                 </VisualStateGroup>
         </VisualStateManager.VisualStateGroups>
-        <Grid x:Name="PageRoot" MaxWidth="1180" Padding="32,12,32,0" ColumnSpacing="28" RowSpacing="16" SizeChanged="OnPageSizeChanged">
+        <Grid x:Name="PageRoot" MaxWidth="1180" Padding="32,12,32,0" ColumnSpacing="28" SizeChanged="OnPageSizeChanged">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="11*" />
                 <ColumnDefinition Width="9*" />
@@ -74,16 +74,21 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <!-- Messages and the no-device / unavailable states. -->
-            <StackPanel Grid.ColumnSpan="2" Spacing="16">
+            <!-- Messages and the no-device / unavailable states. Each takes its own space below it and collapses
+                 when not shown (a closed InfoBar still counts for Spacing), so without any the row has no height. -->
+            <StackPanel Grid.ColumnSpan="2">
                 <InfoBar
+                    Margin="0,0,0,16"
                     IsOpen="{x:Bind ViewModel.HasError, Mode=OneWay}"
+                    Visibility="{x:Bind ViewModel.HasError, Mode=OneWay}"
                     Severity="Error"
                     Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
                     CloseButtonCommand="{x:Bind ViewModel.DismissErrorCommand}" />
                 <InfoBar
                     x:Uid="Home_GenericModel"
+                    Margin="0,0,0,16"
                     IsOpen="{x:Bind ViewModel.IsGenericModel, Mode=OneWay}"
+                    Visibility="{x:Bind ViewModel.IsGenericModel, Mode=OneWay}"
                     IsClosable="False"
                     Severity="Informational"
                     Title="Unrecognized model"
@@ -91,7 +96,9 @@
                 <!-- A2DP Windows Bridge streams to these earbuds over its own adapter, but their controls are unreachable. -->
                 <InfoBar
                     x:Uid="Home_Bridge"
+                    Margin="0,0,0,16"
                     IsOpen="{x:Bind ViewModel.HasBridgeNotice, Mode=OneWay}"
+                    Visibility="{x:Bind ViewModel.HasBridgeNotice, Mode=OneWay}"
                     IsClosable="False"
                     Severity="Informational"
                     Title="Connected through A2DP Bridge"
@@ -101,7 +108,7 @@
                     </InfoBar.ActionButton>
                 </InfoBar>
 
-                <Border Style="{StaticResource CardStyle}" Visibility="{x:Bind services:Ui.Collapsed(ViewModel.HasDevice), Mode=OneWay}">
+                <Border Style="{StaticResource CardStyle}" Margin="0,0,0,16" Visibility="{x:Bind services:Ui.Collapsed(ViewModel.HasDevice), Mode=OneWay}">
                     <StackPanel Spacing="12">
                         <TextBlock x:Uid="Home_NoDevice_Title" Text="No supported earbuds found" Style="{StaticResource SubtitleTextBlockStyle}" />
                         <TextBlock x:Uid="Home_NoDevice_Body" TextWrapping="Wrap" Style="{StaticResource BodyTextBlockStyle}"
@@ -110,7 +117,7 @@
                     </StackPanel>
                 </Border>
 
-                <Border Style="{StaticResource CardStyle}" Visibility="{x:Bind ViewModel.IsControlUnavailable, Mode=OneWay}">
+                <Border Style="{StaticResource CardStyle}" Margin="0,0,0,16" Visibility="{x:Bind ViewModel.IsControlUnavailable, Mode=OneWay}">
                     <StackPanel Spacing="8">
                         <TextBlock x:Uid="Home_Unavailable_Title" Text="Earbud controls are unavailable" Style="{StaticResource BodyStrongTextBlockStyle}" />
                         <TextBlock x:Uid="Home_Unavailable_Body" TextWrapping="Wrap" Style="{StaticResource BodyTextBlockStyle}"
