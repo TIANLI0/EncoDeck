@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: GPL-3.0-only
-using EncoDeck.Bluetooth.Discovery;
 using EncoDeck.Bluetooth.Rfcomm;
 using EncoDeck.Protocol.Brands.Sony;
 using EncoDeck.Protocol.Transport;
@@ -15,9 +14,14 @@ internal static class SonyProbeCommand
 {
     public static async Task<int> RunAsync(ProbeOptions options, CancellationToken ct)
     {
-        var catalog = new BluetoothDeviceCatalog();
-        var picked = await DeviceSelector.SelectAsync(catalog, options, ct);
-        if (picked is null) return 3;
+        var resolved = await ProbeSession.ResolveAsync(options, ct);
+        if (resolved is null) return 3;
+        var (picked, profile) = resolved.Value;
+        if (profile is not (null or SonyAkgProfile))
+        {
+            Console.Error.WriteLine($"{picked.Name} is model '{profile.ModelId}', not a Sony MDR model; the Sony probe frame is not sent to it.");
+            return 2;
+        }
 
         int channel = options.GetInt("channel", 9);
         using var device = await BluetoothDevice.FromIdAsync(picked.DeviceId).AsTask(ct);

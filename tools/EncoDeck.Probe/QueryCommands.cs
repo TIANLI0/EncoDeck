@@ -73,6 +73,15 @@ internal static class QueryCommands
     /// <summary>Subscribes to events and also polls battery / noise control / features, printing only changes.</summary>
     public static async Task<int> WatchAsync(ProbeOptions options, CancellationToken ct)
     {
+        // Other brands are watched through the app's own runtime, which picks the model's control
+        // service and protocol; OPPO frames are never sent to them.
+        var resolved = await ProbeSession.ResolveAsync(options, ct);
+        if (resolved is null) return 4;
+        if (!ProbeSession.SpeaksOppoProtocol(resolved.Value.Profile))
+        {
+            return await MonitorCommand.RunAsync(options, ct, watch: true);
+        }
+
         var trace = new ConsoleTrace(printRaw: false) { Quiet = true };
         var opened = await ProbeSession.OpenAsync(options, trace, ct);
         if (opened is null) return 4;

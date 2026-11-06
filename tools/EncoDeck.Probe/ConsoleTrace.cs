@@ -26,6 +26,20 @@ internal sealed class ConsoleTrace(bool printRaw) : IProtocolTrace
         }
     }
 
+    /// <summary>A non-OPPO frame as its controller summarized it (identifiers already left out).</summary>
+    public void OnBrandFrame(FrameDirection direction, string summary, DateTimeOffset timestamp)
+    {
+        lock (_gate)
+        {
+            string dir = direction == FrameDirection.Sent ? "TX" : "RX";
+            Transcript.Add(new TranscriptEntry((timestamp - _start).TotalMilliseconds, dir, summary, "brand"));
+            if (Quiet) return;
+            Console.ForegroundColor = direction == FrameDirection.Sent ? ConsoleColor.Cyan : ConsoleColor.Green;
+            Console.WriteLine($"{DateTimeOffset.Now:HH:mm:ss.fff} {(timestamp - _start).TotalMilliseconds,8:F0}ms {dir} {summary}");
+            Console.ResetColor();
+        }
+    }
+
     /// <summary>Spaced hex payload, masked when it carries personal data (unless --show-sensitive).</summary>
     public static string PayloadText(OppoFrame frame) =>
         OppoRedaction.IsSensitive(frame) && !ShowSensitive ? OppoRedaction.PayloadHex(frame) : Spaced(frame.Payload);

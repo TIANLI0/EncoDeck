@@ -13,10 +13,12 @@ namespace EncoDeck.Probe;
 /// <summary>
 /// Runs the same runtime stack as the app (DeviceManager → supervisor → controller → state store)
 /// headlessly and prints every state change. Optional --set-anc exercises the command path.
+/// With <paramref name="watch"/> (Probe 'watch' on a non-OPPO model) it also prints every control frame
+/// the model's controller sends and receives, and runs no write.
 /// </summary>
 internal static class MonitorCommand
 {
-    public static async Task<int> RunAsync(ProbeOptions options, CancellationToken ct)
+    public static async Task<int> RunAsync(ProbeOptions options, CancellationToken ct, bool watch = false)
     {
         using var loggers = LoggerFactory.Create(b => b
             .AddSimpleConsole(o => { o.SingleLine = true; o.TimestampFormat = "HH:mm:ss.fff "; })
@@ -43,7 +45,7 @@ internal static class MonitorCommand
             preferredDeviceId: () => selectedId,
             allowExperimental: static () => false,
             loggers,
-            trace: options.Has("trace") ? new ConsoleTrace(printRaw: false) : null);
+            trace: watch || options.Has("trace") ? new ConsoleTrace(printRaw: watch && options.Has("raw")) : null);
 
         var ready = new TaskCompletionSource();
         store.StateChanged += (_, e) =>
@@ -59,10 +61,17 @@ internal static class MonitorCommand
             await manager.SelectDeviceAsync(selectedId, ct).ConfigureAwait(false);
         }
 
-        int seconds = options.GetInt("seconds", 30);
+        int seconds = options.GetInt("seconds", watch ? 120 : 30);
         var deadline = Task.Delay(TimeSpan.FromSeconds(seconds), ct);
 
-        if (options.Get("set-anc") is { } target && options.Has("confirm-write"))
+        if (watch)
+        {
+            Console.WriteLine($"Watching for {seconds}s through the app's runtime, with the model's own control service and protocol. "
+                + "Every control frame is printed (TX = sent, RX = received; 'unsolicited' = pushed by the device). "
+                + "Once ControlReady appears, change noise control on the headset or in its phone app, and note the time of each change. Ctrl+C to stop.");
+        }
+
+        if (!watch && options.Get("set-anc") is { } target && options.Has("confirm-write"))
         {
             await Task.WhenAny(ready.Task, deadline);
             if (ready.Task.IsCompleted)
@@ -80,7 +89,7 @@ internal static class MonitorCommand
         }
 
         // What the app's Disconnect and Connect do, once each, on the active device (kept in memory only).
-        if (options.Has("disconnect-cycle") && options.Has("confirm-write"))
+        if (!watch && options.Has("disconnect-cycle") && options.Has("confirm-write"))
         {
             await Task.WhenAny(ready.Task, deadline);
             if (ready.Task.IsCompleted && store.Current.Device is { } device)

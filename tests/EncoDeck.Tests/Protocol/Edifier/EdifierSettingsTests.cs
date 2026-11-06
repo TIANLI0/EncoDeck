@@ -423,9 +423,46 @@ public sealed class EdifierSettingsTests
             Assert.Contains("TX EDIFIER v1 D0 ", trace.Lines);
             Assert.Contains("RX EDIFIER v1 D0 50", trace.Lines);
             Assert.Contains("RX EDIFIER v1 CC 0206", trace.Lines);
-            Assert.Contains("RX EDIFIER v1 C9 <6 bytes>", trace.Lines);
+            Assert.Contains("RX EDIFIER v1 C9 <6 bytes> unsolicited", trace.Lines);
             Assert.Contains("RX EDIFIER no complete frame in 4 bytes, head 010203", trace.Lines);
             Assert.DoesNotContain(trace.Lines, l => l.Contains("536563726574", StringComparison.Ordinal));
+        }
+        finally
+        {
+            await stop.CancelAsync();
+            await emulator;
+        }
+    }
+
+    [Fact]
+    public async Task W830nb_RawTraceShowsShortUnsolicitedFramesInPlaintextWithoutReacting()
+    {
+        // Issue #18: a noise change pushed in a command nobody recorded must be visible in the trace,
+        // XOR removed, while an address-sized payload still shows only its length.
+        var device = new FakeEdifier(Hex("10 05"), version2: true, xor: true) { Battery = [55] };
+        var trace = new RecordingTrace();
+        var identity = Device("EDIFIER W830NB");
+        var profile = (IControllableProfile)new DeviceProfileRegistry(EdifierProfiles.CreateBuiltIn()).Match(identity)!;
+        var store = new DeviceStateStore();
+        store.Reset(DeviceState.Empty with { Device = identity, Profile = profile });
+        var context = new ControllerContext(identity, store, () => false, NullLoggerFactory.Instance, TimeProvider.System, trace);
+        using var stop = CancellationTokenSource.CreateLinkedTokenSource(Ct);
+        var emulator = Task.Run(() => device.RunAsync(stop.Token), Ct);
+        await using var controller = profile.CreateController(device.Channel, context);
+        try
+        {
+            Assert.True(await controller.InitializeAsync(Ct));
+            int written = device.Written.Count;
+            device.Channel.Receive(EdifierFrameCodec.EncodeV2(0x3A, [0x02], EdifierConstants.ResponseHeadBb, xor: true));
+            device.Channel.Receive(EdifierFrameCodec.EncodeV2(0xC8, [0x11, 0x22, 0x33, 0x44, 0x55, 0x66], EdifierConstants.ResponseHeadBb, xor: true));
+            await Task.Delay(100, Ct);
+            Assert.Contains("TX EDIFIER v2 D0 ", trace.Lines);
+            Assert.Contains("RX EDIFIER v2 D0 37", trace.Lines);
+            Assert.Contains("RX EDIFIER v2 3A 02 unsolicited", trace.Lines);
+            Assert.Contains("RX EDIFIER v2 C8 <6 bytes> unsolicited", trace.Lines);
+            Assert.DoesNotContain(trace.Lines, l => l.Contains("112233", StringComparison.Ordinal));
+            Assert.Null(store.Current.NoiseControl);
+            Assert.Equal(written, device.Written.Count);
         }
         finally
         {

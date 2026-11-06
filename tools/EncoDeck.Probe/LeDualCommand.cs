@@ -43,8 +43,14 @@ internal static class LeDualCommand
             return 2;
         }
 
-        var device = await DeviceSelector.SelectAsync(new BluetoothDeviceCatalog(), options, ct);
-        if (device is null) return 3;
+        var resolved = await ProbeSession.ResolveAsync(options, ct);
+        if (resolved is null) return 3;
+        var (device, profile) = resolved.Value;
+        if (!ProbeSession.SpeaksOppoProtocol(profile))
+        {
+            Console.Error.WriteLine($"{device.Name} is model '{profile!.ModelId}'; le-dual speaks the OPPO protocol and is not run on it.");
+            return 2;
+        }
         ulong address = device.Address.Value;
         var clock = Stopwatch.StartNew();
         var gate = new object();

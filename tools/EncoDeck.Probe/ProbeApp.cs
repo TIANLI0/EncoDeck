@@ -77,6 +77,8 @@ internal static class ProbeApp
 
             Usage: EncoDeck.Probe <command> [options]
 
+            query, listen, get and the write commands speak only the OPPO protocol and refuse other models.
+
             Read-only commands:
               devices                     List paired Bluetooth Classic devices.
               usb-devices                 List verified supported USB receivers and read standard HID battery.
@@ -92,6 +94,8 @@ internal static class ProbeApp
               watch  [--seconds N]        Subscribe and also poll battery / noise control / features,
                      [--interval-ms N]    printing only changes (default 120 s, 2000 ms).
                      [--codec]            Also poll codec reports; vendor ids need model validation.
+                                          Other brands: runs the app's runtime with the model's own protocol
+                                          (as 'monitor') and prints every control frame it sends and receives.
               get --cmd 0x01NN            Send exactly one read (GET-group) request.
                   [--payload HEX]         Commands outside 0x01xx are refused.
 

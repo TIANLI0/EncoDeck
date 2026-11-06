@@ -193,7 +193,6 @@ public sealed class EdifierDeviceController : BrandControllerBase
         {
             Touch();
             var frame = Decrypt(raw);
-            TraceFrame(FrameDirection.Received, frame.Command, frame.Payload, version2);
             TaskCompletionSource<EdifierFrame>? waiter = null;
             lock (_gate)
             {
@@ -204,6 +203,7 @@ public sealed class EdifierDeviceController : BrandControllerBase
                     _waiters.RemoveAt(index);
                 }
             }
+            TraceFrame(FrameDirection.Received, frame.Command, frame.Payload, version2, unsolicited: waiter is null);
             if (waiter is not null)
             {
                 waiter.TrySetResult(frame);
@@ -584,12 +584,23 @@ public sealed class EdifierDeviceController : BrandControllerBase
         EdifierConstants.SetSoundEffect, EdifierConstants.QuerySoundEffect, EdifierConstants.QueryInEarSwitch, EdifierConstants.SetInEarSwitch,
     ];
 
-    /// <summary>Raw protocol log: plaintext payloads of known commands; only the length of anything else.</summary>
-    private void TraceFrame(FrameDirection direction, byte command, byte[] payload, bool version2)
+    /// <summary>
+    /// Payloads of other commands up to this length are logged too: too short for a name or a 6-byte
+    /// address, long enough for a mode or level a model pushes in an unrecorded command (issue #18).
+    /// </summary>
+    internal const int TracedShortPayload = 4;
+
+    /// <summary>
+    /// Raw protocol log: plaintext (XOR removed) payloads of known commands and of short payloads;
+    /// only the length of anything else. Frames nobody waited for are marked unsolicited.
+    /// </summary>
+    private void TraceFrame(FrameDirection direction, byte command, byte[] payload, bool version2, bool unsolicited = false)
     {
         if (Context.Trace is not { } trace) return;
-        string body = TracedPayloads.Contains(command) ? Convert.ToHexString(payload) : $"<{payload.Length} bytes>";
-        trace.OnBrandFrame(direction, $"EDIFIER {(version2 ? "v2" : "v1")} {command:X2} {body}", Now);
+        string body = TracedPayloads.Contains(command) || payload.Length <= TracedShortPayload
+            ? Convert.ToHexString(payload)
+            : $"<{payload.Length} bytes>";
+        trace.OnBrandFrame(direction, $"EDIFIER {(version2 ? "v2" : "v1")} {command:X2} {body}{(unsolicited ? " unsolicited" : string.Empty)}", Now);
     }
 
     private async Task PollAsync(CancellationToken cancellationToken)

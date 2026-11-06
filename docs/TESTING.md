@@ -44,7 +44,7 @@ Windows EDGE 优先通过公共 Winsock `AF_BTH/SOCK_STREAM/BTHPROTO_RFCOMM` 打
 
 EDGE 固件 1.3.0 真机：生产 supervisor 约 4.4 秒进入 `ControlReady`，二次刷新成功，可读到电量、降噪、增益和双设备状态；`EncoDeck.Probe monitor --seconds 15 --verbose` 同样进入控制就绪。验证期间未发送设置写入，经典音频链路保持连接；主页、控制页显示正常。其他型号与 BLE 不同地址端点的跨协议绑定未验证。
 
-以下 Probe 命令示例主要面向 OPPO。其他品牌的 `monitor` 可用于观察统一设备运行时，不能把 OPPO 专用写入命令直接用于其他品牌。
+以下 Probe 命令示例主要面向 OPPO。其他品牌的 `monitor` 可用于观察统一设备运行时；其他品牌的 `watch` 同样走统一设备运行时，按型号选择控制服务和协议，并逐帧打印收发的控制数据（`unsolicited` 表示耳机主动推送），用于记录尚无文档的状态变化。`query`、`listen`、`get` 与 OPPO 写入命令只会说 OPPO 协议，匹配到其他品牌型号时直接拒绝，不发送任何数据。
 
 ### AKG N5 / N9 Hybrid 停留在 AudioConnected
 
