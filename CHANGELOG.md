@@ -4,6 +4,32 @@
 
 This file records the user-visible changes of every EncoDeck version (Keep a Changelog, Semantic Versioning). Since 1.15.0 each version lists the Chinese notes first and the English ones below the divider.
 
+## [1.15.0-beta.2] - 2026-11-06 · 华为空间音频与 EarFun 降噪档位 / HUAWEI spatial audio and EarFun noise cancelling levels
+
+### 改进
+
+- EarFun Air Pro 4+ / 5 和 Wave Pro X 的降噪子模式改为“耳道智能自适应 / 自适应 / 手动 / 抗风噪”，选“手动”后在下方选 1–4 档（[#16](https://github.com/TIANLI0/EncoDeck/issues/16)）。
+- Probe 的 `watch` 支持 EDIFIER W830NB 等非 OPPO 耳机：按型号选择控制通道，并逐帧打印收发的控制数据，便于记录降噪等状态变化；只支持 OPPO 协议的命令遇到其他品牌时直接拒绝，不发送任何数据（[#18](https://github.com/TIANLI0/EncoDeck/issues/18)）。
+
+### 修复
+
+- 华为耳机的音效页现在显示空间音频卡片：耳机回读到空间音频状态后，可切换“关闭 / 固定 / 头部跟踪”，每次切换都以回读确认；某个模式未被确认时，本次连接内隐藏该模式，其余模式照常可用。主页“空间音频”一行和音效页卡片使用同一判断，不再点进去是空页（[#19](https://github.com/TIANLI0/EncoDeck/issues/19)）。
+- 托盘右键菜单的“降噪模式”只列出耳机支持的模式；不支持降噪的耳机不再显示该菜单（[#16](https://github.com/TIANLI0/EncoDeck/issues/16)）。
+- Probe 的 `watch` 不再对 EDIFIER W830NB 报 `ServiceNotFound`（[#18](https://github.com/TIANLI0/EncoDeck/issues/18)）。
+
+---
+
+### Improved
+
+- EarFun Air Pro 4+ / 5 and Wave Pro X noise cancelling sub-modes are now Ear adaptive / Adaptive / Manual / Wind reduction; with Manual selected, pick level 1–4 below it ([#16](https://github.com/TIANLI0/EncoDeck/issues/16)).
+- Probe `watch` works with non-OPPO earbuds such as the EDIFIER W830NB: it picks the control channel by model and prints every control frame sent and received, so state changes like noise control can be recorded. OPPO-only commands refuse other brands without sending anything ([#18](https://github.com/TIANLI0/EncoDeck/issues/18)).
+
+### Fixed
+
+- HUAWEI earbuds now show the spatial audio card on the Sound page: once the earbuds report a spatial audio state, Off / Fixed / Head tracking can be switched, each change confirmed by read-back. A mode the earbuds do not confirm is hidden for the rest of the connection while the others stay available. The Home page's spatial audio row and the Sound page card use the same check, so the row never opens an empty page ([#19](https://github.com/TIANLI0/EncoDeck/issues/19)).
+- The tray menu's Noise control lists only the modes the earbuds support, and is hidden for earbuds without noise control ([#16](https://github.com/TIANLI0/EncoDeck/issues/16)).
+- Probe `watch` no longer fails with `ServiceNotFound` on the EDIFIER W830NB ([#18](https://github.com/TIANLI0/EncoDeck/issues/18)).
+
 ## [1.15.0-beta.1] - 2026-11-05 · 连接与断开 / Connect and disconnect
 
 ### 新增
