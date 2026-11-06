@@ -23,6 +23,8 @@ public sealed partial class TrayIconService : IDisposable
     private readonly WindowManager _windows;
     private readonly Action _exit;
     private TaskbarIcon? _icon;
+    private MenuFlyout? _menu;
+    private MenuFlyoutSubItem? _noiseMenu;
     private MenuFlyoutItem? _statusItem;
     private ToggleMenuFlyoutItem? _popupItem;
     private ToggleMenuFlyoutItem? _offItem;
@@ -49,16 +51,13 @@ public sealed partial class TrayIconService : IDisposable
         _statusItem = new MenuFlyoutItem { Text = _device.DeviceName, IsEnabled = false };
         menu.Items.Add(_statusItem);
 
-        var noise = new MenuFlyoutSubItem { Text = Loc.Get("Tray_NoiseControl") };
+        // Items are added and removed in Refresh(): the native popup menu ignores Visibility.
+        _noiseMenu = new MenuFlyoutSubItem { Text = Loc.Get("Tray_NoiseControl") };
         _ancItem = NoiseItem("NoiseMode_NoiseCancellation", "NoiseCancellation");
         _adaptiveItem = NoiseItem("NoiseMode_Adaptive", "Adaptive");
         _transparencyItem = NoiseItem("NoiseMode_Transparency", "Transparency");
         _offItem = NoiseItem("NoiseMode_Off", "Off");
-        noise.Items.Add(_ancItem);
-        noise.Items.Add(_adaptiveItem);
-        noise.Items.Add(_transparencyItem);
-        noise.Items.Add(_offItem);
-        menu.Items.Add(noise);
+        menu.Items.Add(_noiseMenu);
 
         _popupItem = new ToggleMenuFlyoutItem
         {
@@ -70,6 +69,7 @@ public sealed partial class TrayIconService : IDisposable
         menu.Items.Add(new MenuFlyoutItem { Text = Loc.Get("Tray_Settings"), Command = new RelayCommand(() => _windows.ShowMain("Settings")) });
         menu.Items.Add(new MenuFlyoutSeparator());
         menu.Items.Add(new MenuFlyoutItem { Text = Loc.Get("Tray_Exit"), Command = new RelayCommand(_exit) });
+        _menu = menu;
 
         _icon = new TaskbarIcon
         {
@@ -100,6 +100,7 @@ public sealed partial class TrayIconService : IDisposable
             nameof(DeviceViewModel.TrayToolTip) or nameof(DeviceViewModel.HasDevice) or
             nameof(DeviceViewModel.DeviceName) or nameof(DeviceViewModel.ConnectionText) or
             nameof(DeviceViewModel.CanSetNoise) or nameof(DeviceViewModel.IsNoisePending) or
+            nameof(DeviceViewModel.IsNoiseAvailable) or
             nameof(DeviceViewModel.HasAncMode) or nameof(DeviceViewModel.HasAdaptiveMode) or
             nameof(DeviceViewModel.HasTransparencyMode) or nameof(DeviceViewModel.HasOffMode) or
             nameof(DeviceViewModel.IsAncSelected) or nameof(DeviceViewModel.IsAdaptiveSelected) or
@@ -117,18 +118,38 @@ public sealed partial class TrayIconService : IDisposable
         if (_statusItem is not null) _statusItem.Text = _device.HasDevice ? $"{_device.DeviceName} · {_device.ConnectionText}" : Loc.Get("Device_None");
 
         bool available = _device.CanSetNoise && !_device.IsNoisePending;
-        Set(_ancItem, _device.HasAncMode, _device.IsAncSelected, available);
-        Set(_adaptiveItem, _device.HasAdaptiveMode, _device.IsAdaptiveSelected, available);
-        Set(_transparencyItem, _device.HasTransparencyMode, _device.IsTransparencySelected, available);
-        Set(_offItem, _device.HasOffMode, _device.IsOffSelected, available);
+        var shown = new List<MenuFlyoutItemBase>(4);
+        Set(_ancItem, _device.HasAncMode, _device.IsAncSelected);
+        Set(_adaptiveItem, _device.HasAdaptiveMode, _device.IsAdaptiveSelected);
+        Set(_transparencyItem, _device.HasTransparencyMode, _device.IsTransparencySelected);
+        Set(_offItem, _device.HasOffMode, _device.IsOffSelected);
+        SyncNoiseMenu(_device.IsNoiseAvailable ? shown : []);
 
-        static void Set(ToggleMenuFlyoutItem? item, bool visible, bool isChecked, bool enabled)
+        void Set(ToggleMenuFlyoutItem? item, bool visible, bool isChecked)
         {
             if (item is null) return;
-            item.Visibility = visible ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
             item.IsChecked = isChecked;
-            item.IsEnabled = enabled;
+            item.IsEnabled = available;
+            if (visible) shown.Add(item);
         }
+    }
+
+    /// <summary>
+    /// H.NotifyIcon's PopupMenu mode copies Text/IsEnabled/IsChecked into a native menu but ignores
+    /// Visibility, so modes the device lacks (and the whole submenu when noise control is unavailable)
+    /// must be left out of the item lists instead of collapsed.
+    /// </summary>
+    private void SyncNoiseMenu(IReadOnlyList<MenuFlyoutItemBase> items)
+    {
+        if (_menu is null || _noiseMenu is null) return;
+        if (!_noiseMenu.Items.SequenceEqual(items))
+        {
+            _noiseMenu.Items.Clear();
+            foreach (var item in items) _noiseMenu.Items.Add(item);
+        }
+        int index = _menu.Items.IndexOf(_noiseMenu);
+        if (items.Count == 0 && index >= 0) _menu.Items.RemoveAt(index);
+        else if (items.Count > 0 && index < 0 && _statusItem is not null) _menu.Items.Insert(_menu.Items.IndexOf(_statusItem) + 1, _noiseMenu);
     }
 
     /// <summary>Balloon notification (shown as a toast on Windows 10/11).</summary>
