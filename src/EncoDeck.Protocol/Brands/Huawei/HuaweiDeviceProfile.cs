@@ -18,37 +18,62 @@ public sealed class HuaweiDeviceProfile : IControllableProfile
 
     private readonly IReadOnlyCollection<DeviceToggle> _reportedToggles;
     private readonly IReadOnlyList<byte>? _reportedEq;
+    private readonly IReadOnlyCollection<SpatialAudioMode> _failedSpatial;
+
+    /// <summary>
+    /// Spatial modes offered on a model without community records: the feature-24 values are shared
+    /// across the HUAWEI models that have them.
+    /// </summary>
+    public static IReadOnlyList<SpatialAudioMode> DefaultSpatialModes { get; } = [SpatialAudioMode.Off, SpatialAudioMode.Fixed, SpatialAudioMode.HeadTracking];
 
     public HuaweiDeviceProfile(HuaweiModel model, bool spatialConfirmed = false)
-        : this(model, spatialConfirmed, [], null)
+        : this(model, spatialConfirmed, [], null, [])
     {
     }
 
-    private HuaweiDeviceProfile(HuaweiModel model, bool spatialConfirmed, IReadOnlyCollection<DeviceToggle> reportedToggles, IReadOnlyList<byte>? reportedEq)
+    private HuaweiDeviceProfile(HuaweiModel model, bool spatialConfirmed, IReadOnlyCollection<DeviceToggle> reportedToggles, IReadOnlyList<byte>? reportedEq,
+        IReadOnlyCollection<SpatialAudioMode> failedSpatial)
     {
         Model = model;
         _reportedToggles = reportedToggles;
         _reportedEq = reportedEq;
+        _failedSpatial = failedSpatial;
         NoiseControlOptions = BuildNoiseOptions(model);
         // The earbuds list the built-in presets they offer (EQ TLV 3); presets they do not list stay hidden.
         EqualizerPresets = [.. model.EqPresets
             .Where(p => reportedEq is null || reportedEq.Contains(p.ProtocolId))
             .Select(p => new EqualizerPreset(p.PresetId, p.DisplayName, p.ResourceKey, CapabilitySupport.Supported))];
         SpatialConfirmed = spatialConfirmed;
-        Capabilities = BuildCapabilities(model, spatialConfirmed, EqualizerPresets.Count > 0);
+        SpatialModes = spatialConfirmed
+            ? [.. (model.SpatialModes.Count > 0 ? model.SpatialModes : DefaultSpatialModes).Where(m => !failedSpatial.Contains(m))]
+            : [];
+        Capabilities = BuildCapabilities(model, SpatialModes, EqualizerPresets.Count > 0);
     }
 
     public HuaweiModel Model { get; }
     public bool SpatialConfirmed { get; }
-    internal HuaweiDeviceProfile WithSpatial() => SpatialConfirmed ? this : new(Model, true, _reportedToggles, _reportedEq);
+
+    /// <summary>
+    /// The spatial modes to offer. None until the earbuds report a valid spatial state; then the model's
+    /// recorded modes (or <see cref="DefaultSpatialModes"/>), minus the modes the earbuds did not confirm
+    /// during this connection. The built-in profile is used again on the next connection, so a failed mode
+    /// is retried then.
+    /// </summary>
+    public IReadOnlyList<SpatialAudioMode> SpatialModes { get; }
+
+    internal HuaweiDeviceProfile WithSpatial() => SpatialConfirmed ? this : new(Model, true, _reportedToggles, _reportedEq, _failedSpatial);
+
+    /// <summary>Hides a spatial mode the earbuds rejected or did not read back. "Off" always stays available.</summary>
+    internal HuaweiDeviceProfile WithFailedSpatial(SpatialAudioMode mode) =>
+        mode == SpatialAudioMode.Off || _failedSpatial.Contains(mode) ? this : new(Model, SpatialConfirmed, _reportedToggles, _reportedEq, [.. _failedSpatial, mode]);
 
     /// <summary>Opens a feature switch the earbuds just reported a valid state for.</summary>
     internal HuaweiDeviceProfile WithReportedToggle(DeviceToggle toggle) =>
-        _reportedToggles.Contains(toggle) ? this : new(Model, SpatialConfirmed, [.. _reportedToggles, toggle], _reportedEq);
+        _reportedToggles.Contains(toggle) ? this : new(Model, SpatialConfirmed, [.. _reportedToggles, toggle], _reportedEq, _failedSpatial);
 
     /// <summary>Limits the EQ presets to the built-in ids the earbuds reported.</summary>
     internal HuaweiDeviceProfile WithReportedEqualizer(IReadOnlyList<byte> ids) =>
-        _reportedEq is not null && _reportedEq.SequenceEqual(ids) ? this : new(Model, SpatialConfirmed, _reportedToggles, [.. ids]);
+        _reportedEq is not null && _reportedEq.SequenceEqual(ids) ? this : new(Model, SpatialConfirmed, _reportedToggles, [.. ids], _failedSpatial);
 
     public string Brand => "huawei";
 
@@ -115,7 +140,7 @@ public sealed class HuaweiDeviceProfile : IControllableProfile
         return [.. options];
     }
 
-    private static DeviceCapabilities BuildCapabilities(HuaweiModel model, bool spatialConfirmed, bool hasEq)
+    private static DeviceCapabilities BuildCapabilities(HuaweiModel model, IReadOnlyList<SpatialAudioMode> spatialModes, bool hasEq)
     {
         static CapabilitySupport S(bool on) => on ? CapabilitySupport.Supported : CapabilitySupport.Unsupported;
         return DeviceCapabilities.CreateBuilder()
@@ -129,8 +154,8 @@ public sealed class HuaweiDeviceProfile : IControllableProfile
             .Set(DeviceCapability.InEarDetection, S(model.WearDetection), Evidence)
             .Set(DeviceCapability.GamingMode, S(model.LowLatency), Evidence)
             .Set(DeviceCapability.DualDeviceConnection, S(model.DualConnect), Evidence)
-            .Set(DeviceCapability.SpatialAudio, S(spatialConfirmed), "MBB feature 24, enabled after live readback.")
-            .Set(DeviceCapability.HeadTracking, S(spatialConfirmed), "Independent spatial audio mode 1, confirmed by device.")
+            .Set(DeviceCapability.SpatialAudio, S(spatialModes.Count > 0), "Feature 24, enabled after live readback.")
+            .Set(DeviceCapability.HeadTracking, S(spatialModes.Contains(SpatialAudioMode.HeadTracking)), "Independent spatial audio mode 1, confirmed by device.")
             .Set(DeviceCapability.FindMyEarbuds, CapabilitySupport.Unsupported, "Find-device commands are unverified upstream.")
             .Build();
     }

@@ -198,6 +198,9 @@ public sealed class FeaturesViewModel
     /// <summary>While Hi-Res is on the official page shows spatial audio as off.</summary>
     public SpatialAudioMode? SpatialMode => State.Spatial is null ? null : IsHiResOn && !IsMoondrop ? SpatialAudioMode.Off : State.Spatial.Value;
 
+    /// <summary>The spatial modes to offer. The home row and the sound card share it, so a row never opens an empty card.</summary>
+    public SpatialAudioOptions SpatialOptions => SpatialAudioOptions.For(State.Profile, Has);
+
     public Task<CommandResult> SetSpatialAudioAsync(SpatialAudioMode mode) => Run(() => _commands.SetSpatialAudioAsync(mode));
 
     // ---- prompt volume and bass engine -----------------------------------------------------------

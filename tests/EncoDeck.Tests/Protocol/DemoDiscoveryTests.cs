@@ -42,8 +42,12 @@ public sealed class DemoDiscoveryTests
     }
 
     [Fact]
-    public void HuaweiConfirmsSpatialAudio() =>
+    public void HuaweiConfirmsSpatialAudio()
+    {
+        Assert.Equal(CapabilitySupport.Supported, Support(After("HUAWEI FreeClip 2"), DeviceCapability.SpatialAudio));
+        // Models without community records open too once the feature is confirmed.
         Assert.Equal(CapabilitySupport.Supported, Support(After("HUAWEI FreeBuds Pro 3"), DeviceCapability.SpatialAudio));
+    }
 
     [Fact]
     public void MoondropDiscoversOnlyCatalogFeatures()

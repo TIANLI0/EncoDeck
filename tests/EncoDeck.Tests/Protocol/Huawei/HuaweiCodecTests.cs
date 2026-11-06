@@ -12,6 +12,11 @@ public class HuaweiCodecTests
         { 0x2B2A, "0100", "5A0005002B2A0100427E" },
         { 0x2B10, "010100", "5A0006002B10010100B977" },
         { 0x2B04, "01020101", "5A0007002B0401020101F13D" },
+        // HuaweiPods FreeClip 2 spatial audio: state query, then off / head tracking / fixed writes.
+        { 0x2BB4, "01011802000300", "5A000A002BB4010118020003009B3F" },
+        { 0x2BB4, "010118020100", "5A0009002BB401011802010060ED" },
+        { 0x2BB4, "010118020101", "5A0009002BB401011802010170CC" },
+        { 0x2BB4, "010118020102", "5A0009002BB401011802010240AF" },
     };
 
     [Theory]

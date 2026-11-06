@@ -64,7 +64,7 @@ public sealed partial class HomePage : Page
 
             // Rows follow the (cached) model capabilities only, not whether the live value has been
             // read yet, so the layout is the same right after a restart as once connected.
-            bool spatial = f.Has(DeviceCapability.SpatialAudio);
+            bool spatial = f.SpatialOptions.IsAvailable;
             SpatialRow.Visibility = spatial ? Visibility.Visible : Visibility.Collapsed;
             SpatialValue.Text = f.State.Spatial is null ? string.Empty : f.SpatialMode switch
             {

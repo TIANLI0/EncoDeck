@@ -2,6 +2,8 @@
 // Byte fixtures are real-device captures published by community projects: OpenFreebuds and its
 // vicrodh fork (write acknowledgements, FreeBuds 7i wear state), HuaweiPods (FreeBuds 7 EQ state),
 // EZBuds (FreeClip 2 battery and device-list layout) and OpenFreebuds-Android (FreeBuds 5i handshake).
+// The FreeBuds 7i spatial-audio state report is from the OpenFreebuds vicrodh fork.
+using EncoDeck.Core.Capabilities;
 using EncoDeck.Core.Commands;
 using EncoDeck.Core.Devices;
 using EncoDeck.Core.Privacy;
@@ -36,10 +38,15 @@ public class HuaweiDeviceControllerTests
     public async Task IndependentSpatial_RequiresProbeAndConfirmsWrites()
     {
         var device = new FakeHuaweiDevice { SpatialAvailable = true };
-        var (controller, store) = Create(device); await using var session = controller;
+        var (controller, store) = Create(device, "HUAWEI FreeClip 2"); await using var session = controller;
+        Assert.False(store.Current.Profile!.Capabilities.IsAvailable(DeviceCapability.SpatialAudio, false));
         Assert.True(await controller.InitializeAsync(Ct));
         Assert.Equal(SpatialAudioMode.Off, store.Current.Spatial!.Value);
-        Assert.True(((HuaweiDeviceProfile)store.Current.Profile!).SpatialConfirmed);
+        var profile = (HuaweiDeviceProfile)store.Current.Profile!;
+        Assert.True(profile.SpatialConfirmed);
+        Assert.True(profile.Capabilities.IsAvailable(DeviceCapability.SpatialAudio, false));
+        Assert.True(profile.Capabilities.IsAvailable(DeviceCapability.HeadTracking, false));
+        Assert.Equal([SpatialAudioMode.Off, SpatialAudioMode.Fixed, SpatialAudioMode.HeadTracking], profile.SpatialModes);
         Assert.True((await controller.SetSpatialAudioAsync(SpatialAudioMode.HeadTracking, Ct)).IsSuccess);
         Assert.Equal(1, device.SpatialMode);
         Assert.Equal(StateSource.CommandConfirmation, store.Current.Spatial!.Source);
@@ -47,7 +54,90 @@ public class HuaweiDeviceControllerTests
         Assert.Equal(CommandStatus.Rejected, (await controller.SetSpatialAudioAsync(SpatialAudioMode.Fixed, Ct)).Status);
         Assert.Equal(SpatialAudioMode.HeadTracking, store.Current.Spatial!.Value);
         Assert.NotNull(store.Current.LastError);
+        // Only the mode that did not read back is hidden; the others stay usable.
+        Assert.Equal([SpatialAudioMode.Off, SpatialAudioMode.HeadTracking], ((HuaweiDeviceProfile)store.Current.Profile!).SpatialModes);
+        device.IgnoreSpatialWrites = false;
+        Assert.True((await controller.SetSpatialAudioAsync(SpatialAudioMode.Off, Ct)).IsSuccess);
+        Assert.Equal(SpatialAudioMode.Off, store.Current.Spatial!.Value);
         Assert.Contains(device.Received, f => f.Command == 0x2BB4 && f.Payload.SequenceEqual(new byte[] { 1, 1, 24, 2, 0, 3, 0 }));
+    }
+
+    [Theory]
+    [InlineData(SpatialAudioMode.Fixed, 2)]
+    [InlineData(SpatialAudioMode.HeadTracking, 1)]
+    [InlineData(SpatialAudioMode.Off, 0)]
+    public async Task FreeClip2Spatial_EveryModeIsWrittenAndReadBack(SpatialAudioMode mode, byte wire)
+    {
+        var device = new FakeHuaweiDevice { SpatialAvailable = true, SpatialMode = wire == 0 ? (byte)1 : (byte)0 };
+        var (controller, store) = Create(device, "HUAWEI FreeClip 2"); await using var session = controller;
+        Assert.True(await controller.InitializeAsync(Ct));
+        Assert.True((await controller.SetSpatialAudioAsync(mode, Ct)).IsSuccess);
+        Assert.Equal(wire, device.SpatialMode);
+        Assert.Equal(mode, store.Current.Spatial!.Value);
+        Assert.Equal(StateSource.CommandConfirmation, store.Current.Spatial!.Source);
+        Assert.Contains(device.Received, f => f.Command == 0x2BB4 && f.Payload.SequenceEqual(new byte[] { 1, 1, 24, 2, 1, wire }));
+    }
+
+    [Theory]
+    [InlineData("HUAWEI FreeBuds Pro 3")]
+    [InlineData("HUAWEI FreeBuds Pro 4")]
+    [InlineData("HUAWEI FreeBuds 6")]
+    public async Task UnrecordedModel_OpensAllModesOnceTheEarbudsReadBack(string name)
+    {
+        var device = new FakeHuaweiDevice { SpatialAvailable = true };
+        var (controller, store) = Create(device, name); await using var session = controller;
+        Assert.True(await controller.InitializeAsync(Ct));
+        var profile = (HuaweiDeviceProfile)store.Current.Profile!;
+        Assert.True(profile.SpatialConfirmed);
+        Assert.Empty(profile.Model.SpatialModes);
+        Assert.Equal([SpatialAudioMode.Off, SpatialAudioMode.Fixed, SpatialAudioMode.HeadTracking], profile.SpatialModes);
+        Assert.True(profile.Capabilities.IsAvailable(DeviceCapability.SpatialAudio, false));
+        Assert.True((await controller.SetSpatialAudioAsync(SpatialAudioMode.Fixed, Ct)).IsSuccess);
+        Assert.Equal(2, device.SpatialMode);
+    }
+
+    [Fact]
+    public async Task SpatialWithoutReadBack_StaysClosed()
+    {
+        var device = new FakeHuaweiDevice { SpatialAvailable = false };
+        var (controller, store) = Create(device); await using var session = controller;
+        Assert.True(await controller.InitializeAsync(Ct));
+        Assert.Contains(device.Received, f => f.Command == 0x2BB4 && f.Payload.SequenceEqual(new byte[] { 1, 1, 24, 2, 0, 3, 0 }));
+        var profile = (HuaweiDeviceProfile)store.Current.Profile!;
+        Assert.False(profile.SpatialConfirmed);
+        Assert.Empty(profile.SpatialModes);
+        Assert.Null(store.Current.Spatial);
+        Assert.False(profile.Capabilities.IsAvailable(DeviceCapability.SpatialAudio, false));
+        Assert.False(SpatialAudioOptions.For(profile, c => profile.Capabilities.IsAvailable(c, false)).IsAvailable);
+        Assert.Equal(CommandStatus.Unsupported, (await controller.SetSpatialAudioAsync(SpatialAudioMode.HeadTracking, Ct)).Status);
+        Assert.DoesNotContain(device.Received, f => f.Command == 0x2BB4 && f.Payload.SequenceEqual(new byte[] { 1, 1, 24, 2, 1, 1 }));
+    }
+
+    [Fact]
+    public async Task RefusedSpatialMode_IsHiddenAloneAndTheOthersStayUsable()
+    {
+        var device = new FakeHuaweiDevice { SpatialAvailable = true };
+        device.RefusedSpatialValues.Add(1); // head tracking
+        var (controller, store) = Create(device, "HUAWEI FreeBuds Pro 3"); await using var session = controller;
+        Assert.True(await controller.InitializeAsync(Ct));
+        Assert.Equal(CommandStatus.Rejected, (await controller.SetSpatialAudioAsync(SpatialAudioMode.HeadTracking, Ct)).Status);
+        var profile = (HuaweiDeviceProfile)store.Current.Profile!;
+        Assert.Equal([SpatialAudioMode.Off, SpatialAudioMode.Fixed], profile.SpatialModes);
+        Assert.False(profile.Capabilities.IsAvailable(DeviceCapability.HeadTracking, false));
+        Assert.True(profile.Capabilities.IsAvailable(DeviceCapability.SpatialAudio, false));
+        Assert.Equal([SpatialAudioMode.Off, SpatialAudioMode.Fixed], SpatialAudioOptions.For(profile, c => profile.Capabilities.IsAvailable(c, false)).Modes);
+        Assert.Equal(SpatialAudioMode.Off, store.Current.Spatial!.Value);
+        Assert.True((await controller.SetSpatialAudioAsync(SpatialAudioMode.Fixed, Ct)).IsSuccess);
+        Assert.Equal(SpatialAudioMode.Fixed, store.Current.Spatial!.Value);
+        Assert.Equal([SpatialAudioMode.Off, SpatialAudioMode.Fixed], ((HuaweiDeviceProfile)store.Current.Profile!).SpatialModes);
+    }
+
+    [Fact]
+    public void FreeBuds7iSpatialCapture_IsHeadTracking()
+    {
+        var frame = Assert.Single(new LegacyHuaweiFrameCodec().Feed(Convert.FromHexString("5A000C002BB4010118020101030100A19E")));
+        Assert.Equal(HuaweiCommands.FeatureState, frame.Command);
+        Assert.Equal(SpatialAudioMode.HeadTracking, HuaweiDeviceController.ParseSpatial(frame.Payload));
     }
 
     [Theory]

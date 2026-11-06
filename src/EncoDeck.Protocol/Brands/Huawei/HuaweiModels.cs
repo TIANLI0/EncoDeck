@@ -5,6 +5,7 @@
 // (https://github.com/Nshpiter/HuaweiPods, Nshpiter and contributors, GPL-3.0) and EZBuds
 // (https://github.com/CenSher/EZBuds, CenSher, GPL-3.0). Revisions are pinned in THIRD_PARTY_NOTICES.md.
 using System.Text;
+using EncoDeck.Core.State;
 
 namespace EncoDeck.Protocol.Brands.Huawei;
 
@@ -55,6 +56,13 @@ public sealed record HuaweiModel(
     /// <summary>Feature-id switches probed (read only) at session start.</summary>
     public HuaweiSmartFeatures SmartFeatures { get; init; }
 
+    /// <summary>
+    /// Independent spatial audio modes (feature 24) that community real-device records cover for this
+    /// model. Not a gate: every model is probed (read only) and the control opens once the earbuds report
+    /// a valid state; models without records offer <see cref="HuaweiDeviceProfile.DefaultSpatialModes"/>.
+    /// </summary>
+    public IReadOnlyList<SpatialAudioMode> SpatialModes { get; init; } = [];
+
     /// <summary>Noise control is offered only where the state can be read back to confirm a write.</summary>
     public bool NoiseControlUsable => Anc && AncReadback;
 }
@@ -86,6 +94,11 @@ public static class HuaweiModels
         new("normal", 0x02, "Standard transparency", "NoiseLevel_TransparencyStandard"),
         new("voice", 0x01, "Voice boost", "NoiseLevel_EnhancedVoices"),
     ];
+
+    // Independent spatial audio (feature 24, TLV 2): 0 = off, 1 = head tracking, 2 = fixed. HuaweiPods
+    // writes and reads back all three on FreeClip 2 (both editions), FreeBuds 7, 7i and Pro 5; the
+    // OpenFreebuds vicrodh fork tests the same values on FreeBuds 7i.
+    private static readonly SpatialAudioMode[] AllSpatialModes = [SpatialAudioMode.Off, SpatialAudioMode.Fixed, SpatialAudioMode.HeadTracking];
 
     private static HuaweiEqPreset Eq(byte id, string presetId, string name, string key) => new(id, presetId, name, "Huawei_Eq_" + key);
 
@@ -124,9 +137,9 @@ public static class HuaweiModels
         M("huawei-freebuds-6i", "HUAWEI FreeBuds 6i", anc: true, transparency: true, readback: true, levels: FullLevels, battery: true, wear: true, eq: StandardEq, lowLatency: true, dual: true, hasCase: true, transparencySub: 0x02, channel: 1)
             with { TransparencyLevels = VoiceBoostLevels },
         M("huawei-freebuds-7", "HUAWEI FreeBuds 7", anc: true, transparency: true, readback: true, levels: FreeBuds5Levels, battery: true, wear: true, eq: SceneEq, lowLatency: true, hasCase: true, transparencySub: 0x02)
-            with { SmartFeatures = HuaweiSmartFeatures.AdaptiveVolume | HuaweiSmartFeatures.HeadGestures },
+            with { SmartFeatures = HuaweiSmartFeatures.AdaptiveVolume | HuaweiSmartFeatures.HeadGestures, SpatialModes = AllSpatialModes },
         M("huawei-freebuds-7i", "HUAWEI FreeBuds 7i", anc: true, transparency: true, readback: true, levels: Pro3Levels, battery: true, wear: true, eq: StandardEq, lowLatency: true, dual: true, hasCase: true, channel: 1)
-            with { WearState = true, SmartFeatures = HuaweiSmartFeatures.HeadGestures },
+            with { WearState = true, SmartFeatures = HuaweiSmartFeatures.HeadGestures, SpatialModes = AllSpatialModes },
         M("huawei-freebuds-pro", "HUAWEI FreeBuds Pro", anc: true, transparency: true, readback: true, levels: FullLevels, battery: true, wear: true, dual: true, hasCase: true, channel: 1),
         M("huawei-freebuds-pro-2", "HUAWEI FreeBuds Pro 2", anc: true, transparency: true, readback: true, levels: NoDynamicLevels, battery: true, wear: true, eq: ThreeEq, dual: true, hasCase: true, channel: 1),
         M("huawei-freebuds-pro-3", "HUAWEI FreeBuds Pro 3", anc: true, transparency: true, readback: true, levels: Pro3Levels, battery: true, wear: true, eq: ProEq, lowLatency: true, dual: true, hasCase: true, channel: 1),
@@ -134,7 +147,7 @@ public static class HuaweiModels
         M("huawei-freebuds-pro-4", "HUAWEI FreeBuds Pro 4", anc: true, transparency: true, readback: true, battery: true, wear: true, eq: ProEq, lowLatency: true, dual: true, hasCase: true, channel: 1)
             with { WearState = true },
         M("huawei-freebuds-pro-5", "HUAWEI FreeBuds Pro 5", anc: true, transparency: true, readback: true, levels: FullLevels, battery: true, wear: true, eq: SceneEq, lowLatency: true, dual: true, hasCase: true, transparencySub: 0x02, channel: 1)
-            with { TransparencyLevels = VoiceBoostLevels, SmartFeatures = HuaweiSmartFeatures.AdaptiveVolume | HuaweiSmartFeatures.HeadGestures },
+            with { TransparencyLevels = VoiceBoostLevels, SmartFeatures = HuaweiSmartFeatures.AdaptiveVolume | HuaweiSmartFeatures.HeadGestures, SpatialModes = AllSpatialModes },
         M("huawei-freebuds-se", "HUAWEI FreeBuds SE", battery: true, hasCase: true),
         M("huawei-freebuds-se-2", "HUAWEI FreeBuds SE 2", battery: true, eq: StandardEq, lowLatency: true, hasCase: true, channel: 1),
         M("huawei-freebuds-se-4", "HUAWEI FreeBuds SE 4", anc: true, transparency: true, readback: true, levels: FullLevels, battery: true, eq: StandardEq, lowLatency: true, hasCase: true, channel: 1, extraAliases: ["HUAWEI FreeBuds SE 4 ANC"]),
@@ -142,7 +155,7 @@ public static class HuaweiModels
         // OpenFreebuds drives the FreeClip with its Pro 3 driver (device page: tested).
         M("huawei-freeclip", "HUAWEI FreeClip", battery: true, wear: true, eq: ProEq, lowLatency: true, dual: true, hasCase: true, channel: 1),
         M("huawei-freeclip-2", "HUAWEI FreeClip 2", battery: true, wear: true, eq: [.. StandardEq, Sport], lowLatency: true, dual: true, hasCase: true, channel: 1, extraAliases: ["HUAWEI FreeClip 2 典藏版"])
-            with { SmartFeatures = HuaweiSmartFeatures.AdaptiveVolume | HuaweiSmartFeatures.HeadGestures },
+            with { SmartFeatures = HuaweiSmartFeatures.AdaptiveVolume | HuaweiSmartFeatures.HeadGestures, SpatialModes = AllSpatialModes },
         M("huawei-freearc", "HUAWEI FreeArc", battery: true, eq: [.. StandardEq, Sport], hasCase: true),
         M("huawei-freelace-pro", "HUAWEI FreeLace Pro", anc: true, transparency: true, readback: true, levels: NoDynamicLevels, battery: true, hasCase: false),
         // FreeLace Pro 2 only has custom EQ (no built-in presets), which EncoDeck does not port.

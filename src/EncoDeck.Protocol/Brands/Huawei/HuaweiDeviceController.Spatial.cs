@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 using EncoDeck.Core.Commands;
 using EncoDeck.Core.State;
+using Microsoft.Extensions.Logging;
 
 namespace EncoDeck.Protocol.Brands.Huawei;
 
@@ -73,7 +74,15 @@ internal sealed partial class HuaweiDeviceController
         var actual = frame is { } response ? ParseSpatial(response.Payload) : null;
         var result = status != CommandStatus.Success ? new CommandResult(status)
             : actual == mode ? CommandResult.Ok : new CommandResult(CommandStatus.Rejected, "The device did not confirm the requested spatial mode.");
-        if (result.IsSuccess) ApplySpatial(frame!.Value.Payload, StateSource.CommandConfirmation);
+        // Whatever the earbuds read back is the current state (a mismatch rolls the buttons back).
+        if (actual is not null) ApplySpatial(frame!.Value.Payload, result.IsSuccess ? StateSource.CommandConfirmation : StateSource.QueryResponse);
+        if (result.Status == CommandStatus.Rejected)
+        {
+            // Not confirmed or refused: hide this mode for the rest of the connection; the others stay usable.
+            Logger.LogInformation("Spatial mode {Mode} was not confirmed; hiding it for this connection", mode);
+            Profile = Profile.WithFailedSpatial(mode);
+            Store.TryUpdate(DeviceId, s => s with { Profile = Profile });
+        }
         Store.TryUpdate(DeviceId, s => s with { LastError = result.IsSuccess ? null : new DeviceError(result.Detail ?? result.Status.ToString(), result.Status, Now) });
         return result;
     }, cancellationToken);

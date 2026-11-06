@@ -530,18 +530,14 @@ public sealed partial class SoundPage : Page
 
     private void SyncSpatial(FeaturesViewModel f, bool ready)
     {
-        // Xiaomi earbuds report off / on / head tracking in one confirmed setting (config 29).
-        bool xiaomi = f.IsXiaomi && f.Has(DeviceCapability.HeadTracking);
-        bool available = f.Has(DeviceCapability.SpatialAudio) && (f.Model is { SpatialTypes.Count: > 0 } || f.IsMoondrop || xiaomi) && f.State.Spatial is not null;
-        SpatialCard.Visibility = Show(available);
-        if (!available) return;
+        // Same check as the home page row, so the row never leads to a page without this card.
+        var options = f.SpatialOptions;
+        SpatialCard.Visibility = Show(options.IsAvailable);
+        if (!options.IsAvailable) return;
 
         // Official buttons: the model's spatial types; "fixed" reads "on" with spatial V1, which has no head tracking.
-        var model = f.Model;
-        bool v2 = xiaomi || f.IsMoondrop || model?.HasSpatialAudioV2 == true;
-        int[] types = xiaomi ? [0, 1, 2]
-            : f.IsMoondrop ? new[] { 0, 1 }.Concat(f.Has(DeviceCapability.HeadTracking) ? new[] { 2 } : Array.Empty<int>()).ToArray()
-            : model!.SpatialTypes.Where(t => t is 0 or 1 || (t == 2 && model.HasSpatialAudioV2)).Order().ToArray();
+        bool v2 = options.LabelsFixed;
+        int[] types = [.. options.Modes.Select(m => (int)m)];
         string signature = $"{string.Join(',', types)}/{v2}";
         if (signature != _spatialSignature)
         {
@@ -557,7 +553,8 @@ public sealed partial class SoundPage : Page
                 SpatialHost.Children.Add(button);
             }
         }
-        bool enabled = ready && !f.IsPending("spatial");
+        // Until the earbuds report the current mode nothing is selected and nothing can be written.
+        bool enabled = ready && f.State.Spatial is not null && !f.IsPending("spatial");
         foreach (var (mode, button) in _spatialButtons)
         {
             button.IsChecked = f.SpatialMode == mode;

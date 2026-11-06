@@ -45,6 +45,9 @@ internal sealed class FakeHuaweiDevice : IDuplexByteChannel
     public byte SpatialMode { get; set; }
     public bool IgnoreSpatialWrites { get; set; }
 
+    /// <summary>Spatial values this firmware refuses: the write is answered with an error code and the mode stays.</summary>
+    public HashSet<byte> RefusedSpatialValues { get; } = [];
+
     /// <summary>Feature-id switches (2BB4) the earbuds answer: id → field → value.</summary>
     public Dictionary<byte, Dictionary<byte, byte>> Features { get; } = [];
 
@@ -135,6 +138,7 @@ internal sealed class FakeHuaweiDevice : IDuplexByteChannel
             if (!SpatialAvailable) { Reply(frame.Command, NotSupported); return; }
             if (isWrite)
             {
+                if (RefusedSpatialValues.Contains(fields[2][0])) { Reply(frame.Command, NotSupported); return; }
                 if (!IgnoreSpatialWrites) SpatialMode = fields[2][0];
                 WriteAck(frame.Command);
             }
