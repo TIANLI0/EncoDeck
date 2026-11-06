@@ -90,9 +90,9 @@ public static class EarFunSettings
         DeviceOptionChoice C(int v, string key) => new(v, "EarFun_" + key);
         IReadOnlyList<DeviceOptionChoice> choices = setting switch
         {
-            EarFunSetting.Sub when model.Tw700 => [C(0,"EarAdaptive"), C(4,"Adaptive"), C(1,"Wind"), C(6,"Level1"), C(5,"Level2"), C(3,"Level3"), C(2,"Level4")],
+            EarFunSetting.Sub when model.Tw700 => [C(0,"EarAdaptive"), C(4,"Adaptive"), C(6,"Level1"), C(5,"Level2"), C(3,"Level3"), C(2,"Level4"), C(1,"Wind")],
             EarFunSetting.Sub when model.Variant == "tw600" => [C(2,"Strong"), C(3,"Balanced"), C(4,"Adaptive"), C(0,"EarAdaptive"), C(1,"Wind")],
-            EarFunSetting.Sub when model.Variant == "hp1000" => [C(6,"EarAdaptive"), C(0,"Adaptive"), C(1,"Wind"), C(5,"Level1"), C(4,"Level2"), C(3,"Level3"), C(2,"Level4")],
+            EarFunSetting.Sub when model.Variant == "hp1000" => [C(6,"EarAdaptive"), C(0,"Adaptive"), C(5,"Level1"), C(4,"Level2"), C(3,"Level3"), C(2,"Level4"), C(1,"Wind")],
             EarFunSetting.Sub when model.Variant == "tw230" => [C(1,"Strong"), C(2,"Balanced"), C(4,"Adaptive"), C(3,"Wind")],
             EarFunSetting.Sub => [C(0,"Strong"), C(1,"Wind")],
             EarFunSetting.Ambient => [C(model.Gaia ? 0 : 1,"Default"), C(model.Gaia ? 1 : 2,"Natural")],
@@ -102,6 +102,30 @@ public static class EarFunSettings
             _ => [],
         };
         return choices.Any(c => c.Value == value) ? new("earfun-" + setting.ToString().ToLowerInvariant(), "EarFun_" + setting, value, choices) : null;
+    }
+
+    /// <summary>Value of the "Manual" entry that <see cref="SubModeRow"/> puts in place of the manual levels; never sent.</summary>
+    public const int ManualSubMode = -1;
+
+    /// <summary>The manual noise-cancelling levels of an ANC sub-mode option (weakest first), or none.</summary>
+    public static IReadOnlyList<DeviceOptionChoice> ManualLevels(IReadOnlyList<DeviceOptionChoice> choices) =>
+        [.. choices.Where(c => c.LabelKey.StartsWith("EarFun_Level", StringComparison.Ordinal))];
+
+    /// <summary>
+    /// The sub-mode row as EarFun presents it: the manual levels fold into one "Manual" entry where the first
+    /// level sits (ear adaptive, adaptive, manual, wind reduction), and the levels are picked below it (issue 16).
+    /// </summary>
+    public static IReadOnlyList<DeviceOptionChoice> SubModeRow(IReadOnlyList<DeviceOptionChoice> choices)
+    {
+        var levels = ManualLevels(choices);
+        if (levels.Count < 2) return choices;
+        var row = new List<DeviceOptionChoice>(choices.Count - levels.Count + 1);
+        foreach (var choice in choices)
+        {
+            if (!levels.Contains(choice)) row.Add(choice);
+            else if (choice == levels[0]) row.Add(new(ManualSubMode, "EarFun_Manual"));
+        }
+        return row;
     }
 
     public static IReadOnlyList<(byte Wire, int Minutes)> AutoOff(EarFunModel model) => model.Variant == "hp1000"

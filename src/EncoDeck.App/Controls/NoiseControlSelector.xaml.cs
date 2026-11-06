@@ -26,10 +26,13 @@ public sealed partial class NoiseControlSelector : UserControl
     private ObservableCollection<NoiseLevelViewModel>? _shownLevels;
     private readonly List<(NoiseLevelViewModel Level, ToggleButton Button)> _subModeButtons = [];
     private bool _subModesStale = true;
+    private readonly List<(NoiseLevelViewModel Level, ToggleButton Button)> _manualLevelButtons = [];
+    private bool _manualLevelsStale = true;
 
     public NoiseControlSelector()
     {
         InitializeComponent();
+        ManualLevelsTitle.Text = Loc.Get("NoiseSelector_ManualLevel");
         foreach (var label in new[] { AncLabel, AdaptiveLabel, TransparencyLabel, OffLabel }) FitLabel.Attach(label);
         // Moving the control to another parent (HomePage on wide windows) can raise Unloaded after the
         // new Loaded; detaching then would leave the buttons deaf to the device state.
@@ -59,8 +62,10 @@ public sealed partial class NoiseControlSelector : UserControl
         vm.AdaptiveLevels.CollectionChanged += OnLevelsChanged;
         vm.TransparencyLevels.CollectionChanged += OnLevelsChanged;
         vm.NoiseSubModes.CollectionChanged += OnSubModesChanged;
+        vm.NoiseManualLevels.CollectionChanged += OnManualLevelsChanged;
         _shownLevels = null;
         _subModesStale = true;
+        _manualLevelsStale = true;
         Sync();
     }
 
@@ -72,12 +77,19 @@ public sealed partial class NoiseControlSelector : UserControl
         vm.AdaptiveLevels.CollectionChanged -= OnLevelsChanged;
         vm.TransparencyLevels.CollectionChanged -= OnLevelsChanged;
         vm.NoiseSubModes.CollectionChanged -= OnSubModesChanged;
-        foreach (var (level, _) in _levelButtons.Concat(_subModeButtons)) level.PropertyChanged -= OnLevelPropertyChanged;
+        vm.NoiseManualLevels.CollectionChanged -= OnManualLevelsChanged;
+        foreach (var (level, _) in _levelButtons.Concat(_subModeButtons).Concat(_manualLevelButtons)) level.PropertyChanged -= OnLevelPropertyChanged;
     }
 
     private void OnSubModesChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         _subModesStale = true;
+        Sync();
+    }
+
+    private void OnManualLevelsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        _manualLevelsStale = true;
         Sync();
     }
 
@@ -135,7 +147,26 @@ public sealed partial class NoiseControlSelector : UserControl
         if (_subModesStale) RebuildSubModes(vm);
         SubModesTitle.Text = vm.NoiseSubModesTitle;
         SubModesPanel.Visibility = vm.ShowNoiseSubModes ? Visibility.Visible : Visibility.Collapsed;
+        if (_manualLevelsStale) RebuildManualLevels(vm);
+        ManualLevelsPanel.Visibility = vm.ShowNoiseManualLevels ? Visibility.Visible : Visibility.Collapsed;
         SyncLevelButtons();
+    }
+
+    private void RebuildManualLevels(DeviceViewModel vm)
+    {
+        _manualLevelsStale = false;
+        foreach (var (level, _) in _manualLevelButtons) level.PropertyChanged -= OnLevelPropertyChanged;
+        _manualLevelButtons.Clear();
+        ManualLevelsHost.Children.Clear();
+        ManualLevelsHost.ColumnDefinitions.Clear();
+        foreach (var level in vm.NoiseManualLevels)
+        {
+            ManualLevelsHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            var button = CreateLevelButton(level, OnSubModeClick);
+            Grid.SetColumn(button, _manualLevelButtons.Count);
+            _manualLevelButtons.Add((level, button));
+            ManualLevelsHost.Children.Add(button);
+        }
     }
 
     private void RebuildSubModes(DeviceViewModel vm)
@@ -212,7 +243,7 @@ public sealed partial class NoiseControlSelector : UserControl
             button.IsChecked = level.IsSelected;
             button.IsEnabled = enabled;
         }
-        foreach (var (mode, button) in _subModeButtons)
+        foreach (var (mode, button) in _subModeButtons.Concat(_manualLevelButtons))
         {
             button.IsChecked = mode.IsSelected;
             button.IsEnabled = enabled && !vm.IsNoiseSubModePending;

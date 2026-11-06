@@ -442,6 +442,26 @@ public class EarFunTests
         Assert.Empty(EarFunGestures.Slots(EarFunProfiles.Models.Single(m => m.Id == "HP1000")));
     }
 
+    [Theory]
+    [InlineData("TW700", new[] { 0, 4, EarFunSettings.ManualSubMode, 1 }, new[] { 6, 5, 3, 2 })]
+    [InlineData("HP1000", new[] { 6, 0, EarFunSettings.ManualSubMode, 1 }, new[] { 5, 4, 3, 2 })]
+    public void ManualAncLevelsFoldIntoOneManualSubMode(string id, int[] row, int[] levels)
+    {
+        // Issue 16: ear adaptive, adaptive, manual, wind reduction; levels 1 (weakest) to 4 sit under manual.
+        var choices = EarFunSettings.Option(EarFunProfiles.Models.Single(m => m.Id == id), EarFunSetting.Sub, 2)!.Choices;
+        Assert.Equal(row, EarFunSettings.SubModeRow(choices).Select(c => c.Value));
+        Assert.Equal("EarFun_Manual", EarFunSettings.SubModeRow(choices)[2].LabelKey);
+        Assert.Equal(levels, EarFunSettings.ManualLevels(choices).Select(c => c.Value));
+    }
+
+    [Fact]
+    public void SubModesWithoutManualLevelsStayFlat()
+    {
+        var choices = EarFunSettings.Option(EarFunProfiles.Models.Single(m => m.Id == "TW600"), EarFunSetting.Sub, 2)!.Choices;
+        Assert.Same(choices, EarFunSettings.SubModeRow(choices));
+        Assert.Empty(EarFunSettings.ManualLevels(choices));
+    }
+
     [Fact]
     public async Task EarbudCodecReportsCannotOverrideWindowsCodec()
     {

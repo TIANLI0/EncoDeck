@@ -1136,10 +1136,12 @@ Afterwards Windows lists two entries with the same name (one is the other earbud
   <data name="EarFun_Anc1" xml:space="preserve"><value>ANC 1</value></data>
   <data name="EarFun_EarAdaptive" xml:space="preserve"><value>Ear adaptive</value></data>
   <data name="EarFun_Adaptive" xml:space="preserve"><value>Adaptive</value></data>
-  <data name="EarFun_Level1" xml:space="preserve"><value>Level 1</value></data>
+  <data name="EarFun_Level1" xml:space="preserve"><value>Level 1 (weakest)</value></data>
   <data name="EarFun_Level2" xml:space="preserve"><value>Level 2</value></data>
   <data name="EarFun_Level3" xml:space="preserve"><value>Level 3</value></data>
   <data name="EarFun_Level4" xml:space="preserve"><value>Level 4 (strongest)</value></data>
+  <data name="EarFun_Manual" xml:space="preserve"><value>Manual</value></data>
+  <data name="NoiseSelector_ManualLevel" xml:space="preserve"><value>Manual noise cancelling level</value></data>
   <data name="EarFun_Strong" xml:space="preserve"><value>Strong</value></data>
   <data name="EarFun_Balanced" xml:space="preserve"><value>Balanced</value></data>
   <data name="EarFun_Default" xml:space="preserve"><value>Default</value></data>

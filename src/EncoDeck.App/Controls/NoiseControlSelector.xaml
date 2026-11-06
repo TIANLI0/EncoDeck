@@ -43,5 +43,11 @@
             <TextBlock x:Name="SubModesTitle" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             <Grid x:Name="SubModesHost" ColumnSpacing="8" RowSpacing="8" />
         </StackPanel>
+
+        <!-- EarFun's manual levels, shown while the "Manual" sub-mode is selected. -->
+        <StackPanel x:Name="ManualLevelsPanel" Spacing="6" Visibility="Collapsed">
+            <TextBlock x:Name="ManualLevelsTitle" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            <Grid x:Name="ManualLevelsHost" ColumnSpacing="8" />
+        </StackPanel>
     </StackPanel>
 </UserControl>

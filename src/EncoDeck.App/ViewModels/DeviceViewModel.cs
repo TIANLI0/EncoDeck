@@ -11,6 +11,7 @@ using EncoDeck.Core.Resources;
 using EncoDeck.Core.State;
 using EncoDeck.Platform.Settings;
 using EncoDeck.Protocol.Brands;
+using EncoDeck.Protocol.Brands.EarFun;
 using EncoDeck.Protocol.Brands.Usb;
 using EncoDeck.Protocol.Oppo;
 using EncoDeck.Protocol.Oppo.Models;
@@ -94,6 +95,8 @@ public sealed partial class DeviceViewModel : ObservableObject
     /// sub-modes); the tray panel shows them under the mode buttons, the Controls page as that option's list.
     /// </summary>
     public ObservableCollection<NoiseLevelViewModel> NoiseSubModes { get; } = [];
+    /// <summary>EarFun's manual noise-cancelling levels, shown below the sub-modes while "Manual" is selected.</summary>
+    public ObservableCollection<NoiseLevelViewModel> NoiseManualLevels { get; } = [];
     public ObservableCollection<EqualizerPresetViewModel> EqualizerPresets { get; } = [];
     public ObservableCollection<DeviceToggleViewModel> Toggles { get; } = [];
 
@@ -194,6 +197,7 @@ public sealed partial class DeviceViewModel : ObservableObject
     [ObservableProperty] public partial bool ShowNoiseSubModes { get; set; }
     [ObservableProperty] public partial string NoiseSubModesTitle { get; set; } = string.Empty;
     [ObservableProperty] public partial bool IsNoiseSubModePending { get; set; }
+    [ObservableProperty] public partial bool ShowNoiseManualLevels { get; set; }
     [ObservableProperty] public partial string NoiseText { get; set; } = string.Empty;
 
     [ObservableProperty] public partial bool IsEqualizerAvailable { get; set; }
@@ -244,6 +248,12 @@ public sealed partial class DeviceViewModel : ObservableObject
     private async Task SetNoiseSubModeAsync(string value)
     {
         if (_noiseSubModeOption is not { } id || !int.TryParse(value, out int target) || IsNoiseSubModePending) return;
+        if (target == EarFunSettings.ManualSubMode)
+        {
+            // "Manual" itself is not a wire value: resume the last manual level seen, else the strongest.
+            if (_manualLevel is not { } level) return;
+            target = level;
+        }
         IsNoiseSubModePending = true;
         try { await RunAsync(() => App.Instance.Host.Devices.SetOptionAsync(id, target)); }
         finally { IsNoiseSubModePending = false; }
@@ -251,6 +261,7 @@ public sealed partial class DeviceViewModel : ObservableObject
 
     private string? _noiseSubModeOption;
     private string? _noiseSubModeSignature;
+    private int? _manualLevel;
 
     [RelayCommand]
     private async Task SetEqualizerAsync(string presetId)
@@ -709,18 +720,33 @@ public sealed partial class DeviceViewModel : ObservableObject
         var option = NoiseSubModeOption(profile, noise) is { } id && state.Options.TryGetValue(id, out var observed) ? observed.Value : null;
         _noiseSubModeOption = option?.Id;
         string? signature = option is null ? null : $"{option.Id}|{string.Join(',', option.Choices.Select(c => $"{c.Value}:{c.LabelKey}:{c.Argument}"))}";
+        IReadOnlyList<DeviceOptionChoice> choices = option?.Choices ?? [];
+        var levels = EarFunSettings.ManualLevels(choices);
         if (signature != _noiseSubModeSignature)
         {
             _noiseSubModeSignature = signature;
-            NoiseSubModes.Clear();
-            foreach (var choice in option?.Choices ?? [])
-                NoiseSubModes.Add(new NoiseLevelViewModel(choice.Value.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                    choice.Argument is null ? Loc.Get(choice.LabelKey) : Loc.Format(choice.LabelKey, choice.Argument)));
+            _manualLevel = levels.Count > 0 ? levels[^1].Value : null;
+            Fill(NoiseSubModes, EarFunSettings.SubModeRow(choices));
+            Fill(NoiseManualLevels, levels.Count > 1 ? levels : []);
         }
+        bool manual = option is not null && levels.Any(l => l.Value == option.Value);
+        if (manual) _manualLevel = option!.Value;
         NoiseSubModesTitle = option is null ? string.Empty : Loc.Get(option.LabelKey);
         ShowNoiseSubModes = IsNoiseAvailable && NoiseSubModes.Count > 1;
-        string? selected = option?.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        ShowNoiseManualLevels = ShowNoiseSubModes && manual && NoiseManualLevels.Count > 1;
+        string? selected = Id(manual ? EarFunSettings.ManualSubMode : option?.Value);
         foreach (var mode in NoiseSubModes) mode.IsSelected = mode.Id == selected;
+        string? level = Id(option?.Value);
+        foreach (var mode in NoiseManualLevels) mode.IsSelected = manual && mode.Id == level;
+
+        static string? Id(int? value) => value?.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        static void Fill(ObservableCollection<NoiseLevelViewModel> target, IEnumerable<DeviceOptionChoice> source)
+        {
+            target.Clear();
+            foreach (var choice in source)
+                target.Add(new NoiseLevelViewModel(Id(choice.Value)!,
+                    choice.Argument is null ? Loc.Get(choice.LabelKey) : Loc.Format(choice.LabelKey, choice.Argument)));
+        }
     }
 
     private string DescribeNoise(NoiseControlOption option)

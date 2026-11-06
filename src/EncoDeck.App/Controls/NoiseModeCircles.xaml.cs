@@ -37,10 +37,13 @@ public sealed partial class NoiseModeCircles : UserControl
     private const int SubModesPerRow = 4;
     private readonly List<(NoiseLevelViewModel Level, ToggleButton Button)> _subModeButtons = [];
     private bool _subModesStale = true;
+    private readonly List<(NoiseLevelViewModel Level, ToggleButton Button)> _manualLevelButtons = [];
+    private bool _manualLevelsStale = true;
 
     public NoiseModeCircles()
     {
         InitializeComponent();
+        ManualLevelsTitle.Text = Loc.Get("NoiseSelector_ManualLevel");
         foreach (var (mode, symbol, labelKey) in Modes)
         {
             string label = Loc.Get(labelKey);
@@ -85,8 +88,10 @@ public sealed partial class NoiseModeCircles : UserControl
         vm.NoiseLevels.CollectionChanged += OnLevelsChanged;
         vm.AdaptiveLevels.CollectionChanged += OnLevelsChanged;
         vm.NoiseSubModes.CollectionChanged += OnSubModesChanged;
+        vm.NoiseManualLevels.CollectionChanged += OnManualLevelsChanged;
         _shownLevels = null;
         _subModesStale = true;
+        _manualLevelsStale = true;
         Sync();
     }
 
@@ -97,12 +102,19 @@ public sealed partial class NoiseModeCircles : UserControl
         vm.NoiseLevels.CollectionChanged -= OnLevelsChanged;
         vm.AdaptiveLevels.CollectionChanged -= OnLevelsChanged;
         vm.NoiseSubModes.CollectionChanged -= OnSubModesChanged;
-        foreach (var (level, _) in _levelButtons.Concat(_subModeButtons)) level.PropertyChanged -= OnLevelPropertyChanged;
+        vm.NoiseManualLevels.CollectionChanged -= OnManualLevelsChanged;
+        foreach (var (level, _) in _levelButtons.Concat(_subModeButtons).Concat(_manualLevelButtons)) level.PropertyChanged -= OnLevelPropertyChanged;
     }
 
     private void OnSubModesChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         _subModesStale = true;
+        Sync();
+    }
+
+    private void OnManualLevelsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        _manualLevelsStale = true;
         Sync();
     }
 
@@ -153,7 +165,29 @@ public sealed partial class NoiseModeCircles : UserControl
         if (_subModesStale) RebuildSubModes(vm);
         SubModesTitle.Text = vm.NoiseSubModesTitle;
         SubModesPanel.Visibility = vm.ShowNoiseSubModes ? Visibility.Visible : Visibility.Collapsed;
+        if (_manualLevelsStale)
+        {
+            _manualLevelsStale = false;
+            RebuildRow(ManualLevelsHost, vm.NoiseManualLevels, _manualLevelButtons, OnSubModeClick);
+        }
+        ManualLevelsPanel.Visibility = vm.ShowNoiseManualLevels ? Visibility.Visible : Visibility.Collapsed;
         SyncLevels();
+    }
+
+    private void RebuildRow(Grid host, IEnumerable<NoiseLevelViewModel> levels, List<(NoiseLevelViewModel Level, ToggleButton Button)> buttons, RoutedEventHandler click)
+    {
+        foreach (var (level, _) in buttons) level.PropertyChanged -= OnLevelPropertyChanged;
+        buttons.Clear();
+        host.Children.Clear();
+        host.ColumnDefinitions.Clear();
+        foreach (var level in levels)
+        {
+            host.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            var button = CreateLevelButton(level, click);
+            Grid.SetColumn(button, buttons.Count);
+            buttons.Add((level, button));
+            host.Children.Add(button);
+        }
     }
 
     private void RebuildSubModes(DeviceViewModel vm)
@@ -227,7 +261,7 @@ public sealed partial class NoiseModeCircles : UserControl
             button.IsChecked = level.IsSelected;
             button.IsEnabled = enabled;
         }
-        foreach (var (mode, button) in _subModeButtons)
+        foreach (var (mode, button) in _subModeButtons.Concat(_manualLevelButtons))
         {
             button.IsChecked = mode.IsSelected;
             button.IsEnabled = enabled && !vm.IsNoiseSubModePending;
