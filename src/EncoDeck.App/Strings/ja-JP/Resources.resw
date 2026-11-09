@@ -518,6 +518,12 @@
   <data name="Edifier_Eq_Classical" xml:space="preserve"><value>クラシック音楽</value></data>
   <data name="Edifier_Eq_Rock" xml:space="preserve"><value>ロック</value></data>
   <data name="Edifier_ButtonCycle" xml:space="preserve"><value>ボタンで切り替えるモード</value></data>
+  <data name="Edifier_AncBroadband" xml:space="preserve"><value>広帯域</value></data>
+  <data name="Edifier_Scene" xml:space="preserve"><value>シーン</value></data>
+  <data name="Edifier_Scene_Description" xml:space="preserve"><value>シーンを切り替えると、ヘッドホンのサウンドエフェクトも変わります</value></data>
+  <data name="Edifier_Scene_Music" xml:space="preserve"><value>音楽</value></data>
+  <data name="Edifier_Scene_Game" xml:space="preserve"><value>ゲーム</value></data>
+  <data name="Edifier_Scene_Spatial" xml:space="preserve"><value>空間オーディオ</value></data>
   <data name="PowerOff_Minutes" xml:space="preserve"><value>{0} 分</value></data>
   <data name="PowerOff_Hours" xml:space="preserve"><value>{0} 時間</value></data>
   <data name="Huawei_NoiseLevel_Dynamic" xml:space="preserve"><value>ダイナミック</value></data>

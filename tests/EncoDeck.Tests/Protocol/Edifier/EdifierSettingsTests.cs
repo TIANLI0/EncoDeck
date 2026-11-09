@@ -132,6 +132,16 @@ public sealed class EdifierSettingsTests
     [InlineData((int)EdifierAnc.SlotX5, "17 03", NoiseControlMode.Off, null)]
     [InlineData((int)EdifierAnc.V1, "03 09", NoiseControlMode.Transparency, "ambient+3")]
     [InlineData((int)EdifierAnc.V1, "01 06", NoiseControlMode.Off, null)]
+    // W830NB, issue #18 recordings (comfort, broadband, deep; ambient 0 / +1 / +3 / −3; off; wind).
+    [InlineData((int)EdifierAnc.SlotW830, "1B 02", NoiseControlMode.NoiseCancellation, EdifierSettings.ComfortLevel)]
+    [InlineData((int)EdifierAnc.SlotW830, "1B 03", NoiseControlMode.NoiseCancellation, EdifierSettings.BroadbandLevel)]
+    [InlineData((int)EdifierAnc.SlotW830, "1B 01", NoiseControlMode.NoiseCancellation, EdifierSettings.DeepLevel)]
+    [InlineData((int)EdifierAnc.SlotW830, "1B 05 06", NoiseControlMode.Transparency, "ambient0")]
+    [InlineData((int)EdifierAnc.SlotW830, "1B 05 07", NoiseControlMode.Transparency, "ambient+1")]
+    [InlineData((int)EdifierAnc.SlotW830, "1B 05 09", NoiseControlMode.Transparency, "ambient+3")]
+    [InlineData((int)EdifierAnc.SlotW830, "1B 05 03", NoiseControlMode.Transparency, "ambient-3")]
+    [InlineData((int)EdifierAnc.SlotW830, "1B 06", NoiseControlMode.Off, null)]
+    [InlineData((int)EdifierAnc.SlotW830, "1B 04", NoiseControlMode.NoiseCancellation, EdifierSettings.WindLevel)]
     public void NoiseDialects_Decode(int anc, string payload, NoiseControlMode mode, string? level) =>
         Assert.Equal(new NoiseControlState(mode, level), EdifierSettings.DecodeNoise((EdifierAnc)anc, Hex(payload), ambientLevels: true));
 
@@ -142,8 +152,22 @@ public sealed class EdifierSettingsTests
     [InlineData((int)EdifierAnc.SlotW860, "10")]
     [InlineData((int)EdifierAnc.None, "01")]
     [InlineData((int)EdifierAnc.V1, "04")]
+    [InlineData((int)EdifierAnc.SlotW830, "1B 07")]
+    [InlineData((int)EdifierAnc.SlotW830, "1B 05 0A")] // ambient level outside −3…+3
+    [InlineData((int)EdifierAnc.SlotW830, "10 01")]
     public void NoiseDialects_DoNotGuessUnknownValues(int anc, string payload) =>
         Assert.Null(EdifierSettings.DecodeNoise((EdifierAnc)anc, Hex(payload), ambientLevels: true));
+
+    [Theory]
+    [InlineData(NoiseControlMode.NoiseCancellation, null, 0, "1B 01")]
+    [InlineData(NoiseControlMode.NoiseCancellation, EdifierSettings.ComfortLevel, 0, "1B 02")]
+    [InlineData(NoiseControlMode.NoiseCancellation, EdifierSettings.BroadbandLevel, 0, "1B 03")]
+    [InlineData(NoiseControlMode.NoiseCancellation, EdifierSettings.WindLevel, 0, "1B 04")]
+    [InlineData(NoiseControlMode.Off, null, 0, "1B 06")]
+    [InlineData(NoiseControlMode.Transparency, "ambient-2", 0, "1B 05 04")]
+    [InlineData(NoiseControlMode.Transparency, null, 2, "1B 05 08")] // plain ambient keeps the last reported level
+    public void W830nb_NoiseWritesMirrorTheRecordedReports(NoiseControlMode mode, string? level, int lastAmbient, string payload) =>
+        Assert.Equal(Hex(payload), EdifierSettings.EncodeNoise(EdifierAnc.SlotW830, new(mode, level), false, lastAmbient));
 
     // ---- model matching -------------------------------------------------------------------------
 
@@ -282,25 +306,80 @@ public sealed class EdifierSettingsTests
     }
 
     [Fact]
-    public async Task W830nb_ReadsBatteryOverXorFramingWithoutV1OrNoiseQueries()
+    public async Task W830nb_OffersTheRecordedNoiseModesAmbientLevelsAndSoundEffect()
     {
-        var device = new FakeEdifier(Hex("10 05"), version2: true, xor: true) { Battery = [55] };
-        await RunAsync("EDIFIER W830NB", device, true, async (controller, store) =>
+        var device = new FakeEdifier(Hex("1B 02"), version2: true, xor: true) { Battery = [65], Scene = Hex("00 06") };
+        await RunAsync("EDIFIER W830NB", device, false, async (controller, store) =>
         {
-            Assert.Equal(55, store.Current.Battery.Left?.Value.Level);
+            Assert.Equal(65, store.Current.Battery.Left?.Value.Level);
+            Assert.Equal(new NoiseControlState(NoiseControlMode.NoiseCancellation, EdifierSettings.ComfortLevel), store.Current.NoiseControl?.Value);
             var profile = Assert.IsType<EdifierProfile>(store.Current.Profile);
             Assert.Equal("edifier-w830nb", profile.ModelId);
-            Assert.Empty(profile.NoiseControlOptions);
-            Assert.Equal(CapabilitySupport.Unknown, profile.Capabilities.Get(DeviceCapability.NoiseCancellation).Support);
-            Assert.Null(store.Current.NoiseControl);
-            Assert.Equal(CommandStatus.Unsupported, (await controller.SetNoiseControlAsync(new(NoiseControlMode.NoiseCancellation), Ct)).Status);
+            Assert.Equal(EdifierFeatures.Noise | EdifierFeatures.SoundEffect | EdifierFeatures.SceneMode, profile.Confirmed);
+            // Off / noise cancelling / ambient, four noise sub-modes and seven ambient levels.
+            Assert.Equal(14, profile.NoiseControlOptions.Count);
+            Assert.Contains(profile.NoiseControlOptions, o => o.LevelId == EdifierSettings.BroadbandLevel && o.ResourceKey == "Edifier_AncBroadband");
+            Assert.Equal(CapabilitySupport.Supported, profile.Capabilities.Get(DeviceCapability.NoiseCancellationLevel).Support);
+            Assert.Equal(4, profile.EqualizerPresets.Count);
+            Assert.Equal("edifier-eq-0", store.Current.Equalizer?.Value.ActivePresetId);
+            // The scene write was never recorded: without experimental features it is neither shown nor sent.
+            Assert.False(store.Current.Options.ContainsKey(EdifierSettings.SceneOption));
+            Assert.Equal(CommandStatus.Unsupported, (await controller.SetOptionAsync(EdifierSettings.SceneOption, EdifierSettings.SceneGame, Ct)).Status);
+            Assert.DoesNotContain(device.Requests, r => r.Command == 0x09);
+
+            Assert.True((await controller.SetNoiseControlAsync(new(NoiseControlMode.NoiseCancellation, EdifierSettings.BroadbandLevel), Ct)).IsSuccess);
+            Assert.Equal(Hex("1B 03"), device.Last(0xC1));
+            Assert.True((await controller.SetNoiseControlAsync(new(NoiseControlMode.Transparency, "ambient+2"), Ct)).IsSuccess);
+            Assert.Contains(device.Written, w => w.SequenceEqual(EdifierFrameCodec.EncodeV2(0xC1, [0x1B, 0x05, 0x08], xor: true)));
+            Assert.Equal("ambient+2", store.Current.NoiseControl?.Value.LevelId);
+            Assert.True((await controller.SetNoiseControlAsync(new(NoiseControlMode.Off), Ct)).IsSuccess);
+            Assert.Equal(Hex("1B 06"), device.Last(0xC1));
+            // Plain ambient (tray, Home) keeps the level the headset last reported.
+            Assert.True((await controller.SetNoiseControlAsync(new(NoiseControlMode.Transparency), Ct)).IsSuccess);
+            Assert.Equal(Hex("1B 05 08"), device.Last(0xC1));
+
+            Assert.True((await controller.SetEqualizerPresetAsync("edifier-eq-2", Ct)).IsSuccess);
+            Assert.Equal(Hex("02"), device.Last(0xC4));
             Assert.Equal(CommandStatus.Success, (await controller.RefreshAsync(Ct)).Status);
             // The first frame is already v2 with an XOR payload: no v1 frame ever reaches the headset.
             Assert.Equal(Hex("AA EC D0 00 00 66"), device.Written[0]);
             Assert.All(device.Written, w => Assert.Equal(EdifierConstants.AppCode, w[1]));
-            Assert.All(device.Requests, r => Assert.Equal(0xD0, r.Command));
         });
     }
+
+    [Fact]
+    public async Task W830nb_FollowsButtonChangesAndOffersTheSceneWithExperimentalFeatures()
+    {
+        var device = new FakeEdifier(Hex("1B 05 06"), version2: true, xor: true) { Scene = Hex("02 06"), SoundEffect = 4 };
+        await RunAsync("EDIFIER W830NB", device, true, async (controller, store) =>
+        {
+            Assert.Equal(new NoiseControlState(NoiseControlMode.Transparency, "ambient0"), store.Current.NoiseControl?.Value);
+            Assert.Equal(EdifierSettings.SceneSpatial, Scene(store));
+            // The spatial scene reports sound effect 4, which is none of the four presets.
+            Assert.Null(store.Current.Equalizer?.Value.ActivePresetId);
+
+            Assert.True((await controller.SetOptionAsync(EdifierSettings.SceneOption, EdifierSettings.SceneGame, Ct)).IsSuccess);
+            Assert.Equal(Hex("01 06"), device.Last(0x09));
+            Assert.Equal(EdifierSettings.SceneGame, Scene(store));
+            Assert.Equal(CommandStatus.Unsupported, (await controller.SetOptionAsync(EdifierSettings.SceneOption, 3, Ct)).Status);
+
+            // Changes made with the headset's button arrive unsolicited (issue #18): wind, then the music scene.
+            device.Channel.Receive(EdifierFrameCodec.EncodeV2(0xCC, Xored(0x1B, 0x04), EdifierConstants.ResponseHeadBb));
+            device.Channel.Receive(EdifierFrameCodec.EncodeV2(0x08, Xored(0x00, 0x06), EdifierConstants.ResponseHeadBb));
+            await Task.Delay(100, Ct);
+            Assert.Equal(new NoiseControlState(NoiseControlMode.NoiseCancellation, EdifierSettings.WindLevel), store.Current.NoiseControl?.Value);
+            Assert.Equal(EdifierSettings.SceneMusic, Scene(store));
+        });
+
+        static byte[] Xored(params byte[] payload)
+        {
+            EdifierFrameCodec.Xor(payload);
+            return payload;
+        }
+    }
+
+    private static int? Scene(DeviceStateStore store) =>
+        store.Current.Options.TryGetValue(EdifierSettings.SceneOption, out var option) ? option.Value.Value : null;
 
     [Fact]
     public async Task EvoPro_ReadsTheCapturedStateAndOffersWindNoise()
@@ -439,7 +518,7 @@ public sealed class EdifierSettingsTests
     {
         // Issue #18: a noise change pushed in a command nobody recorded must be visible in the trace,
         // XOR removed, while an address-sized payload still shows only its length.
-        var device = new FakeEdifier(Hex("10 05"), version2: true, xor: true) { Battery = [55] };
+        var device = new FakeEdifier(Hex("1B 06"), version2: true, xor: true) { Battery = [55] };
         var trace = new RecordingTrace();
         var identity = Device("EDIFIER W830NB");
         var profile = (IControllableProfile)new DeviceProfileRegistry(EdifierProfiles.CreateBuiltIn()).Match(identity)!;
@@ -448,10 +527,12 @@ public sealed class EdifierSettingsTests
         var context = new ControllerContext(identity, store, () => false, NullLoggerFactory.Instance, TimeProvider.System, trace);
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(Ct);
         var emulator = Task.Run(() => device.RunAsync(stop.Token), Ct);
-        await using var controller = profile.CreateController(device.Channel, context);
+        await using var controller = (EdifierDeviceController)profile.CreateController(device.Channel, context);
         try
         {
             Assert.True(await controller.InitializeAsync(Ct));
+            await controller.DeferredSettingsRead.WaitAsync(Ct);
+            var noise = store.Current.NoiseControl;
             int written = device.Written.Count;
             device.Channel.Receive(EdifierFrameCodec.EncodeV2(0x3A, [0x02], EdifierConstants.ResponseHeadBb, xor: true));
             device.Channel.Receive(EdifierFrameCodec.EncodeV2(0xC8, [0x11, 0x22, 0x33, 0x44, 0x55, 0x66], EdifierConstants.ResponseHeadBb, xor: true));
@@ -461,7 +542,7 @@ public sealed class EdifierSettingsTests
             Assert.Contains("RX EDIFIER v2 3A 02 unsolicited", trace.Lines);
             Assert.Contains("RX EDIFIER v2 C8 <6 bytes> unsolicited", trace.Lines);
             Assert.DoesNotContain(trace.Lines, l => l.Contains("112233", StringComparison.Ordinal));
-            Assert.Null(store.Current.NoiseControl);
+            Assert.Equal(noise, store.Current.NoiseControl);
             Assert.Equal(written, device.Written.Count);
         }
         finally
@@ -594,6 +675,9 @@ public sealed class EdifierSettingsTests
 
         public byte SoundEffect { get; set; }
 
+        /// <summary>W830NB-style <c>0x08</c> report <c>[scene][extra]</c>; null answers a game Boolean.</summary>
+        public byte[]? Scene { get; set; }
+
         public IReadOnlyList<(byte Command, byte[] Payload)> Requests
         {
             get { lock (_requests) return [.. _requests]; }
@@ -653,9 +737,13 @@ public sealed class EdifierSettingsTests
                 case 0xC1:
                     if (!IgnoreWrites) _noise = version2 ? p : p.Length == 2 ? p : [p[0], _noise.Length > 1 ? _noise[1] : (byte)6];
                     return (bb, p);
-                case 0x08: return (bb, [_game]);
+                case 0x08: return (bb, Scene ?? [_game]);
                 case 0x09:
-                    if (!IgnoreWrites) _game = p[0];
+                    if (!IgnoreWrites)
+                    {
+                        if (Scene is not null) Scene = p;
+                        else _game = p[0];
+                    }
                     return (bb, p);
                 case 0xFB: return (bb, [_inEar]);
                 case 0xFC:

@@ -518,6 +518,12 @@
   <data name="Edifier_Eq_Classical" xml:space="preserve"><value>古典</value></data>
   <data name="Edifier_Eq_Rock" xml:space="preserve"><value>摇滚</value></data>
   <data name="Edifier_ButtonCycle" xml:space="preserve"><value>按键循环切换的模式</value></data>
+  <data name="Edifier_AncBroadband" xml:space="preserve"><value>宽频</value></data>
+  <data name="Edifier_Scene" xml:space="preserve"><value>场景模式</value></data>
+  <data name="Edifier_Scene_Description" xml:space="preserve"><value>切换场景时，耳机会同时调整音效</value></data>
+  <data name="Edifier_Scene_Music" xml:space="preserve"><value>音乐</value></data>
+  <data name="Edifier_Scene_Game" xml:space="preserve"><value>游戏</value></data>
+  <data name="Edifier_Scene_Spatial" xml:space="preserve"><value>空间音效</value></data>
   <data name="PowerOff_Minutes" xml:space="preserve"><value>{0} 分钟</value></data>
   <data name="PowerOff_Hours" xml:space="preserve"><value>{0} 小时</value></data>
   <data name="Huawei_NoiseLevel_Dynamic" xml:space="preserve"><value>动态</value></data>

@@ -518,6 +518,12 @@
   <data name="Edifier_Eq_Classical" xml:space="preserve"><value>Classical</value></data>
   <data name="Edifier_Eq_Rock" xml:space="preserve"><value>Rock</value></data>
   <data name="Edifier_ButtonCycle" xml:space="preserve"><value>Modes the button cycles through</value></data>
+  <data name="Edifier_AncBroadband" xml:space="preserve"><value>Broadband</value></data>
+  <data name="Edifier_Scene" xml:space="preserve"><value>Scene</value></data>
+  <data name="Edifier_Scene_Description" xml:space="preserve"><value>Switching the scene also changes the headphones' sound effect</value></data>
+  <data name="Edifier_Scene_Music" xml:space="preserve"><value>Music</value></data>
+  <data name="Edifier_Scene_Game" xml:space="preserve"><value>Game</value></data>
+  <data name="Edifier_Scene_Spatial" xml:space="preserve"><value>Spatial sound</value></data>
   <data name="PowerOff_Minutes" xml:space="preserve"><value>{0} min</value></data>
   <data name="PowerOff_Hours" xml:space="preserve"><value>{0} h</value></data>
   <data name="Huawei_NoiseLevel_Dynamic" xml:space="preserve"><value>Dynamic</value></data>

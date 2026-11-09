@@ -39,11 +39,14 @@ public static partial class EdifierProfiles
         new EdifierProfile("edifier-w860nb-pro", "EDIFIER W860NB PRO", "w860nbpro", isGeneric: false,
             spec: new EdifierSpec(EdifierFraming.V2Xor, StateBattery: false, EdifierAnc.SlotW860, EdifierFeatures.Noise,
                 Evidence: "W860NB PRO: HyperEars real-device verification (battery, noise slot 0x10)")),
-        // devicePEQ W830NB capture: BES v2 with XOR payloads; v1 frames go unanswered and the link
-        // drops (issue #18). Its noise slot is not recorded, so 0xCC is never sent and only battery is read.
+        // devicePEQ W830NB capture: BES v2 with XOR payloads, sound effect set 0xC4 / query 0xD5; v1
+        // frames go unanswered and the link drops. Issue #18 user recordings: noise slot 0x1B with an
+        // ambient level byte, and a three-way scene in 0x08. The scene write has no sample (experimental).
         new EdifierProfile("edifier-w830nb", "EDIFIER W830NB", "w830nb", isGeneric: false,
-            spec: new EdifierSpec(EdifierFraming.V2Xor, StateBattery: false, EdifierAnc.Probe, EdifierFeatures.None,
-                Evidence: "W830NB: devicePEQ capture (BES v2, XOR payloads); battery only, its noise slot is not recorded")),
+            spec: new EdifierSpec(EdifierFraming.V2Xor, StateBattery: false, EdifierAnc.SlotW830,
+                EdifierFeatures.Noise | EdifierFeatures.SoundEffect | EdifierFeatures.SceneMode,
+                Experimental: EdifierFeatures.SceneMode,
+                Evidence: "W830NB: devicePEQ capture (BES v2, XOR payloads, sound effect) and issue #18 recordings (noise slot 0x1B with ambient level, scene mode)")),
         .. CreateTwsProfiles(),
         new EdifierProfile("edifier", "EDIFIER headphones", "edifier", isGeneric: true),
     ];
@@ -95,6 +98,12 @@ internal enum EdifierAnc
     /// <summary><c>[1B][value]</c>: 1–3 noise cancelling, 4 wind, 5 ambient, 6 off (花再 Evo Pro, FitBuds Turbo).</summary>
     SlotEvo,
 
+    /// <summary>
+    /// <c>[1B][value]</c>: 1 deep, 2 comfort, 3 broadband, 4 wind, 6 off; ambient is <c>[1B][05][level]</c>
+    /// with level −3…+3 sent as 3–9 (W830NB).
+    /// </summary>
+    SlotW830,
+
     /// <summary><c>[17][value]</c>: 1 noise cancelling, 2 ambient, 3 off (X5 Pro).</summary>
     SlotX5,
 }
@@ -111,6 +120,9 @@ public enum EdifierFeatures
     PowerOffTimer = 16,
     InEarSwitch = 32,
     SoundEffect = 64,
+
+    /// <summary>Music / game / spatial scene in <c>0x08</c> as <c>[scene][extra]</c> (W830NB), instead of a game Boolean.</summary>
+    SceneMode = 128,
 }
 
 /// <summary>What a model is known to speak, and with what evidence.</summary>
@@ -296,7 +308,7 @@ public sealed class EdifierProfile : IControllableProfile, IBrandGestureProfile
             _ when Spec.StaticNoise && !IsTws => CapabilitySupport.Supported,
             _ => NoiseConfirmed ? CapabilitySupport.Supported : CapabilitySupport.Unknown,
         }, evidence);
-        bool levels = NoiseConfirmed && (Confirmed.HasFlag(EdifierFeatures.AmbientLevel) || Spec.Anc is EdifierAnc.SlotW860 or EdifierAnc.SlotEvo);
+        bool levels = NoiseConfirmed && (Confirmed.HasFlag(EdifierFeatures.AmbientLevel) || Spec.Anc is EdifierAnc.SlotW860 or EdifierAnc.SlotEvo or EdifierAnc.SlotW830);
         b.Set(DeviceCapability.NoiseCancellationLevel, levels ? CapabilitySupport.Supported : CapabilitySupport.Unsupported,
             levels ? evidence : "No level read back.");
         Feature(DeviceCapability.GamingMode, EdifierFeatures.GameMode);
@@ -349,6 +361,17 @@ public sealed class EdifierProfile : IControllableProfile, IBrandGestureProfile
                 break;
             case EdifierAnc.SlotEvo:
                 options.Add(Option(NoiseControlMode.NoiseCancellation, EdifierSettings.WindLevel, "Anti-wind", "NoiseLevel_AntiWind"));
+                break;
+            case EdifierAnc.SlotW830:
+                options.Add(Option(NoiseControlMode.NoiseCancellation, EdifierSettings.DeepLevel, "Deep", "NoiseLevel_Deep"));
+                options.Add(Option(NoiseControlMode.NoiseCancellation, EdifierSettings.ComfortLevel, "Comfort", "Edifier_AncComfort"));
+                options.Add(Option(NoiseControlMode.NoiseCancellation, EdifierSettings.BroadbandLevel, "Broadband", "Edifier_AncBroadband"));
+                options.Add(Option(NoiseControlMode.NoiseCancellation, EdifierSettings.WindLevel, "Anti-wind", "NoiseLevel_AntiWind"));
+                // Every ambient report carries its level, so the levels come with the dialect.
+                for (int level = EdifierConstants.AmbientLevelMin; level <= EdifierConstants.AmbientLevelMax; level++)
+                {
+                    options.Add(Option(NoiseControlMode.Transparency, EdifierSettings.AmbientLevelId(level), level.ToString("+0;-0;0", System.Globalization.CultureInfo.InvariantCulture), ""));
+                }
                 break;
         }
         return options;

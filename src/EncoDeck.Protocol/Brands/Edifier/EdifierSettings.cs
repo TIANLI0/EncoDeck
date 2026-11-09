@@ -2,7 +2,8 @@
 // Wire values from mEDIFIER doc/KnownCommands/W820NB_Double_Gold.txt (https://github.com/wh201906/mEDIFIER,
 // 10056b5, MIT, Copyright (c) 2023 Self Not Found; MIT notice in THIRD_PARTY_NOTICES.md), HyperEars
 // docs/edifier-bes-protocol.md (https://github.com/silverpoetry/HyperEars, 361d279, GPL-3.0-only) and
-// BudsLink edifierBudsConfig.js (https://github.com/maniacx/BudsLink, ba3160d, GPL-3.0).
+// BudsLink edifierBudsConfig.js (https://github.com/maniacx/BudsLink, ba3160d, GPL-3.0). W830NB noise
+// values, ambient levels and scenes from the user recordings in issue #18.
 using System.Globalization;
 using EncoDeck.Core.Capabilities;
 using EncoDeck.Core.Profiles;
@@ -16,6 +17,7 @@ internal static class EdifierSettings
     public const string DeepLevel = "deep";
     public const string ComfortLevel = "comfort";
     public const string WindLevel = "anti-wind";
+    public const string BroadbandLevel = "broadband";
 
     private const string AmbientPrefix = "ambient";
 
@@ -65,10 +67,13 @@ internal static class EdifierSettings
     public static byte? Slot(EdifierAnc anc) => anc switch
     {
         EdifierAnc.SlotW860 => EdifierConstants.AncSlotW860,
-        EdifierAnc.SlotEvo => EdifierConstants.AncSlotEvo,
+        EdifierAnc.SlotEvo or EdifierAnc.SlotW830 => EdifierConstants.AncSlotEvo,
         EdifierAnc.SlotX5 => EdifierConstants.AncSlotX5,
         _ => null,
     };
+
+    /// <summary>W830NB value of the ambient mode; its level follows as a third byte.</summary>
+    private const byte W830Ambient = 5;
 
     /// <summary>
     /// Decodes a (decrypted) <c>0xCC</c> answer. A payload for another slot, or a value outside the
@@ -79,6 +84,12 @@ internal static class EdifierSettings
         if (Slot(anc) is { } slot)
         {
             if (p.Length < 2 || p[0] != slot) return null;
+            if (anc == EdifierAnc.SlotW830 && p[1] == W830Ambient)
+            {
+                // A level outside −3…+3 is not guessed at; a report without one is plain ambient.
+                if (p.Length < 3) return new(NoiseControlMode.Transparency);
+                return AmbientLevel(p[2]) is { } ambient ? new(NoiseControlMode.Transparency, AmbientLevelId(ambient)) : null;
+            }
             return (anc, p[1]) switch
             {
                 (EdifierAnc.SlotW860, 1) => new(NoiseControlMode.NoiseCancellation, DeepLevel),
@@ -90,6 +101,11 @@ internal static class EdifierSettings
                 (EdifierAnc.SlotEvo, 4) => new(NoiseControlMode.NoiseCancellation, WindLevel),
                 (EdifierAnc.SlotEvo, 5) => new(NoiseControlMode.Transparency),
                 (EdifierAnc.SlotEvo, 6) => new(NoiseControlMode.Off),
+                (EdifierAnc.SlotW830, 1) => new(NoiseControlMode.NoiseCancellation, DeepLevel),
+                (EdifierAnc.SlotW830, 2) => new(NoiseControlMode.NoiseCancellation, ComfortLevel),
+                (EdifierAnc.SlotW830, 3) => new(NoiseControlMode.NoiseCancellation, BroadbandLevel),
+                (EdifierAnc.SlotW830, 4) => new(NoiseControlMode.NoiseCancellation, WindLevel),
+                (EdifierAnc.SlotW830, 6) => new(NoiseControlMode.Off),
                 (EdifierAnc.SlotX5, 1) => new(NoiseControlMode.NoiseCancellation),
                 (EdifierAnc.SlotX5, 2) => new(NoiseControlMode.Transparency),
                 (EdifierAnc.SlotX5, 3) => new(NoiseControlMode.Off),
@@ -112,10 +128,21 @@ internal static class EdifierSettings
     public static int? AmbientLevel(byte value) =>
         value - EdifierConstants.AmbientLevelOffset is var level and >= EdifierConstants.AmbientLevelMin and <= EdifierConstants.AmbientLevelMax ? level : null;
 
-    /// <summary>Plaintext <c>0xC1</c> payload for a target, or null when the dialect cannot express it.</summary>
-    public static byte[]? EncodeNoise(EdifierAnc anc, NoiseControlState target, bool ambientLevels)
+    /// <summary>
+    /// Plaintext <c>0xC1</c> payload for a target, or null when the dialect cannot express it. The
+    /// W830NB ambient payload mirrors its report <c>[1B][05][level]</c>; plain ambient keeps
+    /// <paramref name="ambientFallback"/> (the last level the headset reported) rather than resetting it.
+    /// </summary>
+    public static byte[]? EncodeNoise(EdifierAnc anc, NoiseControlState target, bool ambientLevels, int ambientFallback = 0)
     {
         string? level = target.LevelId;
+        if (anc == EdifierAnc.SlotW830 && target.Mode == NoiseControlMode.Transparency)
+        {
+            int ambient = ambientFallback;
+            if (level is not null && !TryParseAmbientLevelId(level, out ambient)) return null;
+            if (ambient is < EdifierConstants.AmbientLevelMin or > EdifierConstants.AmbientLevelMax) ambient = 0;
+            return [EdifierConstants.AncSlotEvo, W830Ambient, (byte)(ambient + EdifierConstants.AmbientLevelOffset)];
+        }
         if (Slot(anc) is { } slot)
         {
             byte? value = (anc, target.Mode, level) switch
@@ -129,6 +156,11 @@ internal static class EdifierSettings
                 (EdifierAnc.SlotEvo, NoiseControlMode.NoiseCancellation, null) => 1,
                 (EdifierAnc.SlotEvo, NoiseControlMode.NoiseCancellation, WindLevel) => 4,
                 (EdifierAnc.SlotEvo, NoiseControlMode.Transparency, null) => 5,
+                (EdifierAnc.SlotW830, NoiseControlMode.Off, null) => 6,
+                (EdifierAnc.SlotW830, NoiseControlMode.NoiseCancellation, null or DeepLevel) => 1,
+                (EdifierAnc.SlotW830, NoiseControlMode.NoiseCancellation, ComfortLevel) => 2,
+                (EdifierAnc.SlotW830, NoiseControlMode.NoiseCancellation, BroadbandLevel) => 3,
+                (EdifierAnc.SlotW830, NoiseControlMode.NoiseCancellation, WindLevel) => 4,
                 (EdifierAnc.SlotX5, NoiseControlMode.Off, null) => 3,
                 (EdifierAnc.SlotX5, NoiseControlMode.NoiseCancellation, null) => 1,
                 (EdifierAnc.SlotX5, NoiseControlMode.Transparency, null) => 2,
@@ -147,6 +179,21 @@ internal static class EdifierSettings
             _ => null,
         };
     }
+
+    /// <summary>W830NB scenes in <c>0x08</c> / <c>0x09</c> byte 0 (issue #18 recordings).</summary>
+    public const int SceneMusic = 0;
+    public const int SceneGame = 1;
+    public const int SceneSpatial = 2;
+
+    /// <summary>Id of the W830NB scene in <see cref="DeviceState.Options"/>.</summary>
+    public const string SceneOption = "edifier-scene-mode";
+
+    public static DeviceOption SceneModeOption(int scene) => new(SceneOption, "Edifier_Scene", scene,
+    [
+        new DeviceOptionChoice(SceneMusic, "Edifier_Scene_Music"),
+        new DeviceOptionChoice(SceneGame, "Edifier_Scene_Game"),
+        new DeviceOptionChoice(SceneSpatial, "Edifier_Scene_Spatial"),
+    ], 5) { DescriptionKey = "Edifier_Scene_Description" };
 
     /// <summary>A read-back satisfies a write: same mode, and the same level unless none was asked for.</summary>
     public static bool Satisfies(NoiseControlState actual, NoiseControlState requested) =>
