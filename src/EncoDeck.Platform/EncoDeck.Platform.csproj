@@ -22,7 +22,7 @@
   <ItemGroup>
     <!-- The component pins (size and SHA-256 of each component release package). -->
     <EmbeddedResource Include="Components\components.json" LogicalName="EncoDeck.Platform.Components.components.json" />
-    <!-- A2DP Windows Bridge's message texts (app/lang of the pinned release, Apache-2.0 OR MIT). -->
+    <!-- BlueCaster's message texts (app/lang of the pinned release, Apache-2.0 OR MIT). -->
     <EmbeddedResource Include="A2dpBridge\Lang\en.json" LogicalName="EncoDeck.Platform.A2dpBridge.Lang.en.json" />
     <EmbeddedResource Include="A2dpBridge\Lang\zh-CN.json" LogicalName="EncoDeck.Platform.A2dpBridge.Lang.zh-CN.json" />
   </ItemGroup>

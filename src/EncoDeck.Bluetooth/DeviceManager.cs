@@ -179,13 +179,13 @@ public sealed class DeviceManager : IDeviceManager
     public event EventHandler? KnownDevicesChanged;
 
     /// <summary>
-    /// Opens control channels through A2DP Windows Bridge, for earbuds only the bridge is linked to; null without
+    /// Opens control channels through BlueCaster, for earbuds only the bridge is linked to; null without
     /// one. Read when a device is selected.
     /// </summary>
     public IChannelConnector? BridgeConnector { get; set; }
 
     /// <summary>
-    /// Earbuds A2DP Windows Bridge has connection profiles for, connected while it streams to them. Those Windows has
+    /// Earbuds BlueCaster has connection profiles for, connected while it streams to them. Those Windows has
     /// not paired (paired with the bridge's own adapter alone) are listed as devices of their own, with ids that are
     /// not Windows': nothing opens them through Windows.
     /// </summary>
@@ -373,7 +373,7 @@ public sealed class DeviceManager : IDeviceManager
 
             ILinkStateSource? link;
             bool bridgeable = BridgeConnector is not null && IsBridgeable(profile);
-            // Paired with A2DP Windows Bridge alone: Windows does not know the device.
+            // Paired with BlueCaster alone: Windows does not know the device.
             bool bridgeOnly = _bridgeDevices.Any(d => d.Identity.DeviceId == choice.Identity.DeviceId);
             try
             {
@@ -387,7 +387,7 @@ public sealed class DeviceManager : IDeviceManager
             // Bridge took the only adapter over (WinUSB). The bridge's own link is then the only way to the earbuds.
             catch (COMException ex) when (bridgeable)
             {
-                _logger.LogWarning("Windows cannot open {Device} (0x{HResult:X8}): control only through A2DP Windows Bridge", choice.Identity, ex.HResult);
+                _logger.LogWarning("Windows cannot open {Device} (0x{HResult:X8}): control only through BlueCaster", choice.Identity, ex.HResult);
                 link = null;
             }
             bool windowsUnavailable = link is null && bridgeable;
@@ -405,7 +405,7 @@ public sealed class DeviceManager : IDeviceManager
                 return;
             }
 
-            // While A2DP Windows Bridge alone streams to the earbuds, their control channel runs through it.
+            // While BlueCaster alone streams to the earbuds, their control channel runs through it.
             ILinkStateSource supervised = link;
             var connector = _connector;
             if (BridgeConnector is { } bridge && controllable.ControlServiceUuids.Any(RfcommChannelConnector.IsRfcommService))
@@ -757,7 +757,7 @@ public sealed class DeviceManager : IDeviceManager
     }
 
     /// <param name="WindowsUnavailable">Windows could not open the device (no radio): only the bridge can link it.</param>
-    /// <param name="BridgeOnly">Paired with A2DP Windows Bridge alone: Windows does not know it, opening it again changes nothing.</param>
+    /// <param name="BridgeOnly">Paired with BlueCaster alone: Windows does not know it, opening it again changes nothing.</param>
     /// <param name="Supervisor">Null while the device is disconnected in EncoDeck.</param>
     private sealed record ActiveDevice(DeviceIdentity Identity, ILinkStateSource Link, ControlChannelSupervisor? Supervisor, bool WindowsUnavailable = false, bool BridgeOnly = false) : IAsyncDisposable
     {

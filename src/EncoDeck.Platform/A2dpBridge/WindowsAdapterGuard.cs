@@ -5,7 +5,7 @@ namespace EncoDeck.Platform.A2dpBridge;
 
 /// <summary>
 /// Keeps EncoDeck from handing Windows' own Bluetooth adapter to WinUSB: everything paired with this PC (and
-/// EncoDeck's control of the earbuds) runs on it. A second, idle adapter is what A2DPWB is meant for.
+/// EncoDeck's control of the earbuds) runs on it. A second, idle adapter is what BlueCaster is meant for.
 /// </summary>
 public static class WindowsAdapterGuard
 {

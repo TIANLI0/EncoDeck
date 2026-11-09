@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace EncoDeck.Platform.A2dpBridge;
 
 /// <summary>
-/// Opens the control channel through A2DP Windows Bridge: an RFCOMM channel from the bridge's own adapter to the
+/// Opens the control channel through BlueCaster: an RFCOMM channel from the bridge's own adapter to the
 /// earbuds it streams to, for when Windows has no link to them. The services are tried in order; the core finds
 /// each one with its own SDP query.
 /// </summary>
@@ -20,7 +20,7 @@ public sealed class A2dpBridgeChannelConnector(Func<A2dpBridgeMonitor> monitor, 
         var bridge = monitor();
         // Only to the device being streamed to: the caller matched it to deviceId by address.
         if (bridge.Status is not { IsConnected: true, Rfcomm: true, Snapshot.ActiveStreamProfile: { } profile })
-            return ChannelOpenResult.Failed(ChannelOpenStatus.DeviceUnreachable, "A2DPWB is not streaming to the earbuds.");
+            return ChannelOpenResult.Failed(ChannelOpenStatus.DeviceUnreachable, "BlueCaster is not streaming to the earbuds.");
 
         ChannelOpenResult? failure = null;
         foreach (var uuid in serviceUuids)
@@ -28,30 +28,30 @@ public sealed class A2dpBridgeChannelConnector(Func<A2dpBridgeMonitor> monitor, 
             try
             {
                 var channel = await bridge.OpenRfcommAsync(profile.DeviceAddress, uuid, cancellationToken).ConfigureAwait(false);
-                _logger.LogInformation("RFCOMM through A2DPWB opened: {Service}, channel {Channel}, MTU {Mtu}", uuid, channel.Id, channel.Mtu);
+                _logger.LogInformation("RFCOMM through BlueCaster opened: {Service}, channel {Channel}, MTU {Mtu}", uuid, channel.Id, channel.Mtu);
                 return new ChannelOpenResult(ChannelOpenStatus.Opened, channel, uuid, null);
             }
             catch (BridgeRequestException ex) when (ex.Code == "rfcomm.service_not_found")
             {
-                _logger.LogInformation("RFCOMM through A2DPWB: no {Service} in the earbuds' SDP records", uuid);
-                failure ??= ChannelOpenResult.Failed(ChannelOpenStatus.ServiceNotFound, "A2DPWB found no control service.");
+                _logger.LogInformation("RFCOMM through BlueCaster: no {Service} in the earbuds' SDP records", uuid);
+                failure ??= ChannelOpenResult.Failed(ChannelOpenStatus.ServiceNotFound, "BlueCaster found no control service.");
             }
             catch (BridgeRequestException ex) when (ex.Code == "rfcomm.not_connected")
             {
                 // The A2DP connection is not complete yet, or just ended: the stream state follows.
-                return ChannelOpenResult.Failed(ChannelOpenStatus.DeviceUnreachable, "A2DPWB is not connected to the earbuds.");
+                return ChannelOpenResult.Failed(ChannelOpenStatus.DeviceUnreachable, "BlueCaster is not connected to the earbuds.");
             }
             catch (BridgeRequestException ex)
             {
                 // rfcomm.open_failed (refused, or out of time), rfcomm.busy (too many channels or opens).
-                string detail = $"A2DPWB {ex.Code} {string.Join(' ', ex.BridgeMessage.Args)}".TrimEnd();
-                _logger.LogInformation("RFCOMM through A2DPWB to {Service} failed: {Detail}", uuid, detail);
+                string detail = $"BlueCaster {ex.Code} {string.Join(' ', ex.BridgeMessage.Args)}".TrimEnd();
+                _logger.LogInformation("RFCOMM through BlueCaster to {Service} failed: {Detail}", uuid, detail);
                 failure = ChannelOpenResult.Failed(ChannelOpenStatus.ConnectFailed, detail);
             }
             catch (Exception ex) when (ex is IOException or TimeoutException or InvalidOperationException or NotSupportedException)
             {
                 // The core went away, did not answer, or is too old for RFCOMM.
-                _logger.LogInformation("RFCOMM through A2DPWB unavailable: {Error}", ex.Message);
+                _logger.LogInformation("RFCOMM through BlueCaster unavailable: {Error}", ex.Message);
                 return ChannelOpenResult.Failed(ChannelOpenStatus.DeviceUnreachable, ex.Message);
             }
         }

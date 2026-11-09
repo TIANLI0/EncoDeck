@@ -6,7 +6,7 @@ using EncoDeck.Platform.A2dpBridge;
 namespace EncoDeck.Probe;
 
 /// <summary>
-/// Connects to the A2DP Windows Bridge core over its pipe, prints its state and the changes for a while. Read-only
+/// Connects to the BlueCaster core (A2DP Windows Bridge up to 2.0.x) over its pipe, prints its state and the changes for a while. Read-only
 /// unless asked: --start launches a core (optionally a side-by-side test instance), --quit ends it afterwards.
 /// </summary>
 internal static class BridgeCommand
@@ -19,18 +19,17 @@ internal static class BridgeCommand
         {
             if (!A2dpBridgeComponent.IsBridgeFolder(folder))
             {
-                Console.Error.WriteLine($"No {A2dpBridgeComponent.CoreExe} in {folder}.");
+                Console.Error.WriteLine($"No {A2dpBridgeComponent.Current.Core} (or {A2dpBridgeComponent.Legacy.Core}) in {folder}.");
                 return 2;
             }
-            var environment = new Dictionary<string, string>();
-            if (instance is not null) environment["A2DPWB_INSTANCE"] = instance;
-            if (options.Get("config-dir") is { } config) environment["A2DPWB_CONFIG_DIR"] = Path.GetFullPath(config);
-            A2dpBridgeComponent.StartCore(new BridgeInstallation(Path.GetFullPath(folder), BridgeOrigin.Running, null), environment);
-            Console.WriteLine($"Started {A2dpBridgeComponent.CoreExe} --background{(instance is null ? "" : $" (instance {instance})")}.");
+            var environment = A2dpBridgeComponent.TestEnvironment(instance, options.Get("config-dir") is { } config ? Path.GetFullPath(config) : null);
+            var copy = new BridgeInstallation(Path.GetFullPath(folder), BridgeOrigin.Running, null);
+            A2dpBridgeComponent.StartCore(copy, environment);
+            Console.WriteLine($"Started {copy.Names.Core} --background{(instance is null ? "" : $" (instance {instance})")}.");
         }
 
-        Console.WriteLine($"Core running: {A2dpBridgeMonitor.IsCoreRunning(instance)} (mutex {A2dpBridgeMonitor.MutexName(instance)})");
-        if (A2dpBridgeComponent.FindInstalled() is { } installed) Console.WriteLine($"A2DPWB installation: {installed.Directory} ({installed.Version ?? "unknown version"})");
+        Console.WriteLine($"Core running: {A2dpBridgeMonitor.IsCoreRunning(instance)} (mutex {A2dpBridgeMonitor.MutexName(instance)} or {A2dpBridgeMonitor.LegacyMutexName(instance)})");
+        if (A2dpBridgeComponent.FindInstalled() is { } installed) Console.WriteLine($"BlueCaster installation: {installed.Directory} ({installed.Version ?? "unknown version"})");
         await using var monitor = new A2dpBridgeMonitor(instance: instance) { IdleInterval = TimeSpan.FromSeconds(1) };
         monitor.Start();
         if (!await monitor.WaitForConnectionAsync(TimeSpan.FromSeconds(options.GetInt("connect-seconds", 15)), ct).ConfigureAwait(false))

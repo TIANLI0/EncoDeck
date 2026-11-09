@@ -3,7 +3,7 @@ using System.Text.Json.Nodes;
 
 namespace EncoDeck.Platform.A2dpBridge;
 
-/// <summary>A message of A2DPWB's language files: a key and printf-style arguments (see <see cref="A2dpBridgeText"/>).</summary>
+/// <summary>A message of BlueCaster's language files: a key and printf-style arguments (see <see cref="A2dpBridgeText"/>).</summary>
 public sealed record BridgeMessage(string Key, IReadOnlyList<string> Args)
 {
     public static BridgeMessage Empty { get; } = new("", []);
@@ -13,13 +13,13 @@ public sealed record BridgeMessage(string Key, IReadOnlyList<string> Args)
 
 public enum BridgeAdapterStatus { Stopped, Initializing, Ready, Error }
 
-/// <summary>The driver of a USB Bluetooth adapter: only a WinUSB one is usable by A2DPWB; a Bluetooth one belongs to Windows.</summary>
+/// <summary>The driver of a USB Bluetooth adapter: only a WinUSB one is usable by BlueCaster; a Bluetooth one belongs to Windows.</summary>
 public enum BridgeDriver { WinUsb, Bluetooth, Other, None }
 
 public sealed record BridgeAdapter(string InstanceId, int Vid, int Pid, string DisplayName, string DeviceName, string Vendor,
     BridgeDriver Driver, string DriverService, bool? FirmwarePresent, IReadOnlyList<string> FirmwareFiles, string? FirmwareInvalid, BridgeMessage? VendorNote);
 
-/// <summary>A device A2DPWB knows from its own pairing list or a scan (its own adapter, not Windows').</summary>
+/// <summary>A device BlueCaster knows from its own pairing list or a scan (its own adapter, not Windows').</summary>
 public sealed record BridgeDevice(string Address, string Name, bool Saved, bool Audio, int? Rssi, IReadOnlyList<string> Codecs, bool LeAudio);
 
 public enum BridgeStreamState { Idle, Connecting, Streaming, Reconnecting, Error }
@@ -66,7 +66,7 @@ public sealed record BridgeSnapshot
     /// <summary>A2DPWB v1 is running and may hold the adapter.</summary>
     public bool V1Running { get; init; }
 
-    /// <summary>A newer A2DPWB release the core found, if any.</summary>
+    /// <summary>A newer BlueCaster release the core found, if any.</summary>
     public string? UpdateVersion { get; init; }
 
     /// <summary>The profile being streamed or connected, while the stream is active.</summary>

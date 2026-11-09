@@ -4,6 +4,18 @@
 
 This file records the user-visible changes of every EncoDeck version (Keep a Changelog, Semantic Versioning). Since 1.15.0 each version lists the Chinese notes first and the English ones below the divider.
 
+## [Unreleased]
+
+### 改进
+
+- 实验室的 A2DP Bridge 组件适配 [BlueCaster](https://github.com/SeiyaFunaokaJP/BlueCaster)（A2DP Windows Bridge 3.0 起更名）：内置版本更新为 3.0.0-beta.3，组件更新不再限定 2.x，会取官方最新版本（含测试版，不含只推送给主动开启用户的 alpha 版本）。EncoDeck 同时识别 BlueCaster 与仍在使用的 A2DPWB 2.0.x：新旧程序、安装位置、开机启动项、后台管道与互斥体、驱动记录文件夹都能找到，已有的组件可直接在实验室更新，配对和设置由 BlueCaster 首次启动时自动迁移。
+
+---
+
+### Improved
+
+- The Labs page's A2DP Bridge component supports [BlueCaster](https://github.com/SeiyaFunaokaJP/BlueCaster), the new name of A2DP Windows Bridge from 3.0: the built-in version is now 3.0.0-beta.3, and component updates are no longer limited to 2.x but take the newest official build (betas included, not the alphas upstream offers only on request). EncoDeck recognizes both BlueCaster and an A2DPWB 2.0.x still in use: old and new programs, install locations, startup entries, background pipe and mutex, and driver record folders are all found; an existing component updates from the Labs page, and BlueCaster moves its pairings and settings over at its first start.
+
 ## [1.15.0-beta.2] - 2026-11-06 · 华为空间音频与 EarFun 降噪档位 / HUAWEI spatial audio and EarFun noise cancelling levels
 
 ### 改进

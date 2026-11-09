@@ -23,35 +23,35 @@
     },
     {
       "id": "a2dpwb",
-      "version": "2.0.2-beta.11-r1",
-      "tag": "a2dpwb-v2.0.2-beta.11-r1",
+      "version": "3.0.0-beta.3-r0",
+      "tag": "a2dpwb-v3.0.0-beta.3-r0",
       "interface": 1,
       "minApp": "1.11.0",
       "upstreamDownloads": true,
       "source": {
-        "repository": "https://github.com/SeiyaFunaokaJP/A2DP-Windows-Bridge",
-        "commit": "c5be02894be99467f9aca5badef9616cdcc84033",
-        "release": "v2.0.2-beta.11"
+        "repository": "https://github.com/SeiyaFunaokaJP/BlueCaster",
+        "commit": "e4d254d4a867b84071b91c9478846087d58c9428",
+        "release": "v3.0.0-beta.3"
       },
       "packages": [
         {
           "architecture": "x64",
-          "file": "A2DPWB-2.0.2-beta.11-win64-portable.zip",
-          "size": 11735076,
-          "sha256": "11ae538df8777eeec4981bd74d2bff865c14ae6bf49757395ec6febd9a847168",
-          "root": "A2DPWB-2.0.2-beta.11",
+          "file": "BlueCaster-3.0.0-beta.3-win64-portable.zip",
+          "size": 12715042,
+          "sha256": "64147574f1d441255c137f45b273a537218fa9098529deff69afb4fde02fe40b",
+          "root": "BlueCaster-3.0.0-beta.3",
           "mirrors": [
-            "https://github.com/SeiyaFunaokaJP/A2DP-Windows-Bridge/releases/download/v2.0.2-beta.11/A2DPWB-2.0.2-beta.11-win64-portable.zip"
+            "https://github.com/SeiyaFunaokaJP/BlueCaster/releases/download/v3.0.0-beta.3/BlueCaster-3.0.0-beta.3-win64-portable.zip"
           ]
         },
         {
           "architecture": "arm64",
-          "file": "A2DPWB-2.0.2-beta.11-arm64-portable.zip",
-          "size": 10995193,
-          "sha256": "b3e0d9deab5cd211ca3b92eb58eea04556d2eb30bfa3b9ecd6907e713a59e629",
-          "root": "A2DPWB-2.0.2-beta.11",
+          "file": "BlueCaster-3.0.0-beta.3-arm64-portable.zip",
+          "size": 11941799,
+          "sha256": "2c2c2a1ed82ec3c6e2caf998cb80c215c6e29b66e93255bd6839ed73100309ca",
+          "root": "BlueCaster-3.0.0-beta.3",
           "mirrors": [
-            "https://github.com/SeiyaFunaokaJP/A2DP-Windows-Bridge/releases/download/v2.0.2-beta.11/A2DPWB-2.0.2-beta.11-arm64-portable.zip"
+            "https://github.com/SeiyaFunaokaJP/BlueCaster/releases/download/v3.0.0-beta.3/BlueCaster-3.0.0-beta.3-arm64-portable.zip"
           ]
         }
       ]

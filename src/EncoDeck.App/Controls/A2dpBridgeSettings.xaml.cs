@@ -11,9 +11,9 @@ using Microsoft.UI.Xaml.Controls;
 namespace EncoDeck.App.Controls;
 
 /// <summary>
-/// Experimental: A2DP Windows Bridge on a dedicated USB adapter (LDAC, LHDC V5, aptX HD… without test signing).
+/// Experimental: BlueCaster on a dedicated USB adapter (LDAC, LHDC V5, aptX HD… without test signing).
 /// EncoDeck downloads the pinned component, starts and quits the core, shows its adapter and stream and hands
-/// adapters to it; earbuds, connection profiles and volume stay in A2DPWB's own window. See docs/A2DP_BRIDGE.md.
+/// adapters to it; earbuds, connection profiles and volume stay in BlueCaster's own window. See docs/A2DP_BRIDGE.md.
 /// </summary>
 public sealed partial class A2dpBridgeSettings : UserControl
 {
@@ -100,7 +100,7 @@ public sealed partial class A2dpBridgeSettings : UserControl
 
         bool downloading = _download is not null;
         StandaloneLink.Visibility = Show(!manage && installation is null);
-        // A2DPWB's own installation updates itself; EncoDeck's copy is only offered without one.
+        // BlueCaster's own installation updates itself; EncoDeck's copy is only offered without one.
         Download.Visibility = Show(manage && target is not null && (installation is null || managedUpdate) && !downloading);
         Download.Content = managedUpdate ? Loc.Format("Bridge_Update", megabytes) : Loc.Format("Bridge_Download", megabytes);
         Download.IsEnabled = !_busy;
@@ -334,7 +334,7 @@ public sealed partial class A2dpBridgeSettings : UserControl
         bool own = Bridge.Installation is { Origin: BridgeOrigin.Installed } || A2dpBridgeComponent.FindInstalled(Bridge.Component.Root) is not null;
         var panel = new StackPanel { Spacing = 10 };
         panel.Children.Add(new TextBlock { Text = Loc.Get("Bridge_UninstallBody"), TextWrapping = TextWrapping.Wrap });
-        // Adapters still on WinUSB stay unusable for Windows unless given back; A2DPWB's own installation may still use them.
+        // Adapters still on WinUSB stay unusable for Windows unless given back; BlueCaster's own installation may still use them.
         var restore = new CheckBox { Content = Loc.Format("Bridge_UninstallRestore", assigned), IsChecked = !own };
         if (assigned > 0) panel.Children.Add(restore);
         var dialog = new ContentDialog

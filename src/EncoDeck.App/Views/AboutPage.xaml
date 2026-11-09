@@ -287,7 +287,7 @@
                     <StackPanel Spacing="2">
                         <TextBlock x:Uid="About_ThanksBridge" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" Text="A2DP Bridge component" />
                         <controls:WrapPanel Style="{StaticResource LinkRowStyle}">
-                            <HyperlinkButton Content="A2DP Windows Bridge" NavigateUri="https://github.com/SeiyaFunaokaJP/A2DP-Windows-Bridge" />
+                            <HyperlinkButton Content="BlueCaster" NavigateUri="https://github.com/SeiyaFunaokaJP/BlueCaster" />
                             <HyperlinkButton Content="BTstack" NavigateUri="https://github.com/bluekitchen/btstack" />
                         </controls:WrapPanel>
                     </StackPanel>

@@ -133,14 +133,14 @@ public sealed partial class DeviceViewModel : ObservableObject
     [ObservableProperty] public partial bool CanSwitchAudioTransport { get; set; }
     [ObservableProperty] public partial bool IsSwitchingAudioTransport { get; set; }
     /// <summary>
-    /// A2DP Windows Bridge streams to these earbuds but neither it nor Windows carries their control channel. The
+    /// BlueCaster streams to these earbuds but neither it nor Windows carries their control channel. The
     /// "A2DP Bridge" tag already names the bridge in every other case, so only this one takes room above the page.
     /// </summary>
     [ObservableProperty] public partial bool HasBridgeNotice { get; set; }
     /// <summary>Connected only through the bridge: Windows does not see the earbuds, so their controls are unavailable.</summary>
     [ObservableProperty] public partial bool IsBridgeOnly { get; set; }
     [ObservableProperty] public partial string BridgeMessage { get; set; } = string.Empty;
-    /// <summary>A2DP Windows Bridge streams to these earbuds: an "A2DP Bridge" tag next to the status.</summary>
+    /// <summary>BlueCaster streams to these earbuds: an "A2DP Bridge" tag next to the status.</summary>
     [ObservableProperty] public partial bool HasBridgeBadge { get; set; }
     [ObservableProperty] public partial string BridgeBadgeDescription { get; set; } = string.Empty;
     /// <summary>Audio codec or link evidence, with its source visible in the label.</summary>
@@ -448,7 +448,7 @@ public sealed partial class DeviceViewModel : ObservableObject
         IsControlUnavailable = state.Connection == DeviceConnectionState.ControlUnavailable;
         IsLinkDown = state.Connection is DeviceConnectionState.PairedNotConnected or DeviceConnectionState.Disconnected or DeviceConnectionState.DisconnectedByUser;
         IsLeAudio = state.IsLeAudio && !IsLinkDown;
-        // A2DP Windows Bridge streams to these earbuds over its own adapter: Windows (and so the control
+        // BlueCaster streams to these earbuds over its own adapter: Windows (and so the control
         // channel) may not see them at all, but they are connected, and the codec is the bridge's.
         IsBridgeOnly = state.Bridge is not null && !state.Connection.IsLinkUp();
         HasBridgeNotice = IsBridgeOnly && state.Bridge is { IsStreaming: true };

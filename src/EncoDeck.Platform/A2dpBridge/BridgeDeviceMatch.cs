@@ -6,7 +6,7 @@ using EncoDeck.Core.State;
 
 namespace EncoDeck.Platform.A2dpBridge;
 
-/// <summary>Earbuds A2DPWB has a connection profile for (see <see cref="BridgeDeviceMatch.Devices"/>).</summary>
+/// <summary>Earbuds BlueCaster has a connection profile for (see <see cref="BridgeDeviceMatch.Devices"/>).</summary>
 public sealed record BridgeKnownDevice(DeviceIdentity Identity, bool IsStreaming);
 
 /// <summary>Which of EncoDeck's devices the bridge is streaming to: the active profile's address against the Windows pairing's.</summary>
@@ -27,7 +27,7 @@ public static class BridgeDeviceMatch
     public const string DeviceIdPrefix = "A2DPWB#";
 
     /// <summary>
-    /// The earbuds A2DPWB has connection profiles for, one per address, as devices of their own: earbuds paired only
+    /// The earbuds BlueCaster has connection profiles for, one per address, as devices of their own: earbuds paired only
     /// with the bridge's adapter are unknown to Windows. Streaming while the bridge streams to them.
     /// </summary>
     public static IReadOnlyList<BridgeKnownDevice> Devices(BridgeStatus status)

@@ -19,7 +19,7 @@ public sealed class BridgeRequestException(string code, BridgeMessage message) :
 }
 
 /// <summary>
-/// One session on the core's per-user pipe (<c>\\.\pipe\a2dpwb-&lt;SID&gt;</c>): length-prefixed JSON frames,
+/// One session on the core's per-user pipe (<c>\\.\pipe\bluecaster-&lt;SID&gt;</c>, <c>a2dpwb-&lt;SID&gt;</c> up to 2.0.x): length-prefixed JSON frames,
 /// hello → welcome + snapshot, then events with consecutive revisions and request/response pairs. EncoDeck
 /// subscribes to nothing high-rate, so the core sends only state changes (and the data of its RFCOMM channels).
 /// </summary>
@@ -61,7 +61,7 @@ internal sealed class A2dpBridgeConnection : IAsyncDisposable
         _revision = revision;
     }
 
-    /// <summary>"a2dpwb-core/2.0.1".</summary>
+    /// <summary>"bluecaster-core/3.0.0" ("a2dpwb-core/2.0.1" up to 2.0.x).</summary>
     public string Server { get; }
 
     /// <summary>The welcome's additions within protocol 1 ("rfcomm"); empty for cores before 2.0.2.</summary>
@@ -97,16 +97,16 @@ internal sealed class A2dpBridgeConnection : IAsyncDisposable
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(HandshakeTimeout);
         await WriteFrameAsync(pipe, new JsonObject { ["type"] = "hello", ["protocol"] = ProtocolVersion, ["client"] = client }, timeout.Token).ConfigureAwait(false);
-        var welcome = await ReadFrameAsync(pipe, timeout.Token).ConfigureAwait(false) ?? throw new IOException("A2DPWB closed the connection.");
+        var welcome = await ReadFrameAsync(pipe, timeout.Token).ConfigureAwait(false) ?? throw new IOException("BlueCaster closed the connection.");
         switch (BridgeJson.Str(welcome["type"]))
         {
             case "welcome": break;
             case "reject": throw new BridgeRejectedException(BridgeJson.Str(welcome["reason"]) ?? "rejected");
-            default: throw new InvalidDataException("A2DPWB did not answer hello.");
+            default: throw new InvalidDataException("BlueCaster did not answer hello.");
         }
-        string server = BridgeJson.Str(welcome["server"]) ?? "a2dpwb-core";
-        var first = await ReadFrameAsync(pipe, timeout.Token).ConfigureAwait(false) ?? throw new IOException("A2DPWB closed the connection.");
-        if (BridgeJson.Str(first["type"]) != "snapshot" || first["state"] is not JsonObject state) throw new InvalidDataException("A2DPWB sent no snapshot.");
+        string server = BridgeJson.Str(welcome["server"]) ?? "bluecaster-core";
+        var first = await ReadFrameAsync(pipe, timeout.Token).ConfigureAwait(false) ?? throw new IOException("BlueCaster closed the connection.");
+        if (BridgeJson.Str(first["type"]) != "snapshot" || first["state"] is not JsonObject state) throw new InvalidDataException("BlueCaster sent no snapshot.");
         var features = (welcome["features"] as JsonArray ?? []).Select(BridgeJson.Str).OfType<string>().ToArray();
         var connection = new A2dpBridgeConnection(pipe, server, features, BridgeJson.Snapshot(state), BridgeJson.Long(first["rev"]) ?? 0);
         connection._reader = Task.Run(connection.ReadLoopAsync);
@@ -121,7 +121,7 @@ internal sealed class A2dpBridgeConnection : IAsyncDisposable
         _pending[id] = answer;
         try
         {
-            if (_closed) throw new IOException("A2DPWB closed the connection.");
+            if (_closed) throw new IOException("BlueCaster closed the connection.");
             var request = new JsonObject { ["type"] = "request", ["id"] = id, ["method"] = method };
             if (parameters is not null) request["params"] = parameters;
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, _stop.Token);
@@ -132,8 +132,8 @@ internal sealed class A2dpBridgeConnection : IAsyncDisposable
             try { return await answer.Task.WaitAsync(linked.Token).ConfigureAwait(false); }
             catch (OperationCanceledException) when (!ct.IsCancellationRequested)
             {
-                if (_stop.IsCancellationRequested || _closed) throw new IOException("A2DPWB closed the connection.");
-                throw new TimeoutException($"A2DPWB did not answer {method}.");
+                if (_stop.IsCancellationRequested || _closed) throw new IOException("BlueCaster closed the connection.");
+                throw new TimeoutException($"BlueCaster did not answer {method}.");
             }
         }
         finally { _pending.TryRemove(id, out _); }
@@ -152,7 +152,7 @@ internal sealed class A2dpBridgeConnection : IAsyncDisposable
         bool answered = false;
         try
         {
-            if (_closed) throw new IOException("A2DPWB closed the connection.");
+            if (_closed) throw new IOException("BlueCaster closed the connection.");
             var request = new JsonObject
             {
                 ["type"] = "request", ["id"] = id, ["method"] = "rfcomm.open",
@@ -171,8 +171,8 @@ internal sealed class A2dpBridgeConnection : IAsyncDisposable
             }
             catch (OperationCanceledException) when (!ct.IsCancellationRequested)
             {
-                if (_stop.IsCancellationRequested || _closed) throw new IOException("A2DPWB closed the connection.");
-                throw new TimeoutException("A2DPWB did not answer rfcomm.open.");
+                if (_stop.IsCancellationRequested || _closed) throw new IOException("BlueCaster closed the connection.");
+                throw new TimeoutException("BlueCaster did not answer rfcomm.open.");
             }
         }
         catch (BridgeRequestException)
@@ -217,7 +217,7 @@ internal sealed class A2dpBridgeConnection : IAsyncDisposable
                 _channels[channelId] = channel;
                 open.TrySetResult(channel);
             }
-            else open.TrySetException(new InvalidDataException("A2DPWB answered rfcomm.open without a channel."));
+            else open.TrySetException(new InvalidDataException("BlueCaster answered rfcomm.open without a channel."));
         }
         else if (_abandonedOpens.TryRemove(id, out _) && RfcommChannelId(frame["result"]) is { } orphan)
         {
@@ -315,7 +315,7 @@ internal sealed class A2dpBridgeConnection : IAsyncDisposable
         finally
         {
             _closed = true;
-            var closed = failure ?? new IOException("A2DPWB closed the connection.");
+            var closed = failure ?? new IOException("BlueCaster closed the connection.");
             foreach (var pending in _pending.Values) pending.TrySetException(closed);
             foreach (var open in _opens.Values) open.TrySetException(closed);
             // The core closes a session's channels with it.
@@ -324,7 +324,7 @@ internal sealed class A2dpBridgeConnection : IAsyncDisposable
         }
     }
 
-    /// <summary>A lost event: ask for the whole state and replay the events that arrive meanwhile on top of it, as A2DPWB's window does.</summary>
+    /// <summary>A lost event: ask for the whole state and replay the events that arrive meanwhile on top of it, as BlueCaster's window does.</summary>
     private void StartResync()
     {
         _resync = [];
@@ -380,15 +380,15 @@ internal sealed class A2dpBridgeConnection : IAsyncDisposable
             if (n == 0)
             {
                 if (got == 0) return null;
-                throw new IOException("A2DPWB frame was cut off.");
+                throw new IOException("BlueCaster frame was cut off.");
             }
             got += n;
         }
         uint length = BinaryPrimitives.ReadUInt32LittleEndian(header);
-        if (length > MaxFrame) throw new InvalidDataException("A2DPWB frame is too large.");
+        if (length > MaxFrame) throw new InvalidDataException("BlueCaster frame is too large.");
         byte[] body = new byte[length];
         await stream.ReadExactlyAsync(body, ct).ConfigureAwait(false);
-        return JsonNode.Parse(body) as JsonObject ?? throw new InvalidDataException("A2DPWB frame is not an object.");
+        return JsonNode.Parse(body) as JsonObject ?? throw new InvalidDataException("BlueCaster frame is not an object.");
     }
 
     public async ValueTask DisposeAsync()

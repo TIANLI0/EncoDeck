@@ -15,7 +15,7 @@ if ($env:GITHUB_TOKEN) { $headers['Authorization'] = "Bearer $env:GITHUB_TOKEN" 
 $failures = @()
 foreach ($component in $manifest.components) {
     if ($component.upstreamDownloads) {
-        # Downloaded from the upstream release only (A2DP Windows Bridge): the pin must match its assets there.
+        # Downloaded from the upstream release only (BlueCaster): the pin must match its assets there.
         $upstream = ([Uri]$component.source.repository).AbsolutePath.Trim('/')
         try { $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$upstream/releases/tags/$($component.source.release)" -Headers $headers }
         catch { $failures += "$($component.id): upstream release $upstream $($component.source.release) not found"; continue }

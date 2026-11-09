@@ -143,20 +143,20 @@ internal static class ProbeApp
                       [--set-anc a,b --confirm-write]  Also run commands (off|anc|transparency|adaptive|smart|deep|medium|light|less|standard|more).
                       [--disconnect-cycle --confirm-write [--dwell 15]]  Once control is ready, Disconnect then Connect the device as the app does.
 
-            A2DP Windows Bridge:
-              bridge [--seconds N]        Connect to the A2DPWB core's pipe, print its state and changes.
-                     [--diag]             Also print A2DPWB's diagnostic text (addresses masked).
+            BlueCaster (A2DP Bridge; A2DP Windows Bridge up to 2.0.x):
+              bridge [--seconds N]        Connect to the BlueCaster core's pipe, print its state and changes.
+                     [--diag]             Also print BlueCaster's diagnostic text (addresses masked).
                      [--rfcomm <uuid>]    Open that RFCOMM service through the core to the device it streams to
-                                          (A2DPWB 2.0.2+) and print what the device sends for --seconds.
-                     [--instance <name>]  A side-by-side test core (A2DPWB_INSTANCE).
+                                          (2.0.2+) and print what the device sends for --seconds.
+                     [--instance <name>]  A side-by-side test core (BLUECASTER_INSTANCE).
                      [--start <folder> [--config-dir <dir>]]  Start that core first (--background).
                      [--quit]             Ask the core to exit afterwards.
 
             Components:
               components                  List the component pins of this build (LHDC, A2DP Bridge).
                          [--install lhdc|a2dpwb --root <folder> [--upstream]]  Download and unpack one as the app does
-                                     (--upstream: the newest official A2DPWB 2.x build instead of the pin).
-                         [--check [--floor <x.y.z-rN>]]  Look for updates online as the Labs page does (A2DPWB: its official releases).
+                                     (--upstream: the newest official BlueCaster build instead of the pin).
+                         [--check [--floor <x.y.z-rN>]]  Look for updates online as the Labs page does (BlueCaster: its official releases).
 
             Diagnostics:
               render-model --file <x.vfxms> --out <dir>  Render a HeyMelody 3D model off screen to PNG

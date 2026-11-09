@@ -6,7 +6,7 @@ using EncoDeck.Protocol.Transport;
 namespace EncoDeck.Bluetooth.Control;
 
 /// <summary>
-/// Windows' link to the device, or A2DP Windows Bridge's while the bridge streams to it and can carry the control
+/// Windows' link to the device, or BlueCaster's while the bridge streams to it and can carry the control
 /// channel (<see cref="BridgeAudioLink.CanCarryControl"/>): the earbuds count as connected either way. Windows' link
 /// is preferred while it is up; a change of the route alone raises nothing (the open channel keeps working).
 /// </summary>
@@ -92,7 +92,7 @@ internal sealed class BridgedLinkState : ILinkStateSource
 }
 
 /// <summary>
-/// Windows' link while Windows cannot open the device at all (no Bluetooth radio: A2DP Windows Bridge took the only
+/// Windows' link while Windows cannot open the device at all (no Bluetooth radio: BlueCaster took the only
 /// adapter over): never connected, so <see cref="BridgedLinkState"/> follows the bridge alone.
 /// </summary>
 internal sealed class NoWindowsLink : ILinkStateSource
@@ -104,7 +104,7 @@ internal sealed class NoWindowsLink : ILinkStateSource
     public void Dispose() { }
 }
 
-/// <summary>Opens the control channel over Windows Bluetooth, or through A2DP Windows Bridge while only the bridge is linked.</summary>
+/// <summary>Opens the control channel over Windows Bluetooth, or through BlueCaster while only the bridge is linked.</summary>
 internal sealed class BridgeRoutingConnector(IChannelConnector windows, IChannelConnector bridge, ILinkStateSource link) : IChannelConnector
 {
     public Task<ChannelOpenResult> OpenAsync(string deviceId, IReadOnlyList<Guid> serviceUuids, CancellationToken cancellationToken) =>

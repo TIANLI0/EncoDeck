@@ -208,19 +208,20 @@ The complete upstream LICENSE, NOTICE.md and licenses directory are retained und
 release.json identifies the upstream source commit. EncoDeck provides its own WinUI controls; the upstream WPF panel is not included. Dependencies include the Apache-2.0
 LHDC V5 encoder, MS-PL Windows driver samples, and the bundled .NET and PowerShell runtimes.
 
-## 8. Optional A2DP Windows Bridge component
+## 8. Optional BlueCaster component
 
-[A2DP Windows Bridge](https://github.com/SeiyaFunaokaJP/A2DP-Windows-Bridge) (A2DPWB), Copyright (c) 2026 Seiya Funaoka,
-Apache-2.0 OR MIT. It is not included in any installer. On request, the app downloads the unmodified official portable
-build, which EncoDeck mirrors byte for byte in its `a2dpwb-v<version>` component release (the upstream release is the
-fallback source; both are checked against the SHA-256 pinned in `components.json`). The archive keeps upstream's LICENSE,
-THIRD_PARTY_LICENSES.md, licenses directory and SOURCE.txt, which names the source repository and commit for the complete
-corresponding source, including the LGPL-2.1-or-later libopenaptx. The distributed `a2dpwb-core.exe` statically links
-[BTstack](https://github.com/bluekitchen/btstack), whose license permits use and redistribution only for personal,
-non-commercial purposes. EncoDeck talks to the separate A2DPWB process over its local named pipe and links none of its code.
+[BlueCaster](https://github.com/SeiyaFunaokaJP/BlueCaster) (called A2DP Windows Bridge, A2DPWB, up to 2.0.x), Copyright (c)
+2026 Seiya Funaoka, Apache-2.0 OR MIT. It is not included in any installer. On request, the app downloads the unmodified
+official portable build from the upstream project's own GitHub release, checked against the SHA-256 pinned in
+`components.json` (or, for a later release, against the digest GitHub reports for it). The archive keeps upstream's
+`licenses` directory: `licenses/README.txt` (SOURCE.txt up to 2.0.x) names the source repository and commit for the
+complete corresponding source, including the LGPL-2.1-or-later libopenaptx. The distributed `bluecaster-core.exe`
+statically links [BTstack](https://github.com/bluekitchen/btstack), whose license permits use and redistribution only for
+personal, non-commercial purposes. EncoDeck talks to the separate BlueCaster process over its local named pipe and links
+none of its code.
 
-`src/EncoDeck.Platform/A2dpBridge/Lang/en.json` and `zh-CN.json` are A2DPWB's `app/lang` message files from the pinned
-release (Apache-2.0 OR MIT), embedded so that the core's status and error keys read as A2DPWB words them.
+`src/EncoDeck.Platform/A2dpBridge/Lang/en.json` and `zh-CN.json` are BlueCaster's `app/lang` message files from the pinned
+release (Apache-2.0 OR MIT), embedded so that the core's status and error keys read as BlueCaster words them.
 
 
 ## EarKit (EarFun protocol adapter)

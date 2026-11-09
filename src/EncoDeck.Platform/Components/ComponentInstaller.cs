@@ -26,7 +26,11 @@ public sealed class ComponentLayout
     /// </summary>
     public Action<string, string, string?>? Validate { get; init; }
 
-    public bool HasRequiredFiles(string directory) => RequiredFiles.All(p => File.Exists(Path.Combine(directory, p)));
+    /// <summary>A check of the files for a component whose file names depend on its version (BlueCaster, A2DPWB 2.0.x before it).</summary>
+    public Func<string, bool>? HasFiles { get; init; }
+
+    public bool HasRequiredFiles(string directory) =>
+        RequiredFiles.All(p => File.Exists(Path.Combine(directory, p))) && (HasFiles?.Invoke(directory) ?? true);
 }
 
 /// <summary>

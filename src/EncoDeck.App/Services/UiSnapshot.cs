@@ -112,7 +112,7 @@ internal static class UiSnapshot
         }
         if (bridgeInstance is not null)
         {
-            // A real A2DPWB core started as a side-by-side test instance: the Labs card while connected, and
+            // A real BlueCaster core started as a side-by-side test instance: the Labs card while connected, and
             // the home page of earbuds that the bridge streams to (only through it, and also over Windows).
             await host.Bridge.DisposeAsync();
             host.Bridge = new A2dpBridgeCompanion(Path.Combine(outDir, "state", "Components"), host.Store, host.Settings,

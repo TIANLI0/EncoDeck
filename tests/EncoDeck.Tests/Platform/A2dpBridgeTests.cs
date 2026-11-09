@@ -146,7 +146,7 @@ public sealed class A2dpBridgeTests
         var hello = await accept;
         Assert.Equal(1, hello["protocol"]?.GetValue<int>());
         Assert.Equal("encodeck/test", hello["client"]?.GetValue<string>());
-        Assert.Equal("a2dpwb-core/2.0.1", connection.Server);
+        Assert.Equal("bluecaster-core/3.0.0-beta.3", connection.Server);
         Assert.Equal("X4", connection.Snapshot.ActiveProfile);
     }
 
@@ -243,13 +243,29 @@ public sealed class A2dpBridgeTests
         Assert.True(A2dpBridgeMonitor.IsCoreRunning(instance));
         Assert.True(await monitor.WaitForConnectionAsync(TimeSpan.FromSeconds(10), ct));
         await accept;
-        Assert.Equal("2.0.1", monitor.Status.ServerVersion);
+        Assert.Equal("3.0.0-beta.3", monitor.Status.ServerVersion);
         // Checking for the core never holds its mutex: once the core is gone, it is gone.
         await core.DisposeAsync();
         for (int i = 0; i < 50 && monitor.Status.Link != BridgeLink.NotRunning; i++) await Task.Delay(100, ct);
         Assert.Equal(BridgeLink.NotRunning, monitor.Status.Link);
         Assert.False(A2dpBridgeMonitor.IsCoreRunning(instance));
         await Assert.ThrowsAsync<BridgeUnavailableException>(() => monitor.RequestAsync("stream.stop", ct: ct));
+    }
+
+    [Fact]
+    public async Task MonitorStillFindsAnA2dpwbCoreFromBeforeTheRename()
+    {
+        // A 2.0.x core holds only its own mutex and serves only the old pipe name.
+        var ct = TestContext.Current.CancellationToken;
+        string instance = "encodeck-test-" + Guid.NewGuid().ToString("N")[..8];
+        await using var monitor = new A2dpBridgeMonitor(instance: instance) { IdleInterval = TimeSpan.FromMilliseconds(100) };
+        monitor.Start();
+        await using var core = new FakeCore(instance, legacy: true);
+        var accept = core.AcceptAsync(State(), rev: 1);
+        Assert.True(A2dpBridgeMonitor.IsCoreRunning(instance));
+        Assert.True(await monitor.WaitForConnectionAsync(TimeSpan.FromSeconds(10), ct));
+        await accept;
+        Assert.Equal("a2dpwb-core/2.0.1", monitor.Status.Server);
     }
 
     [Fact]
@@ -451,18 +467,23 @@ public sealed class A2dpBridgeTests
         ["event"] = Event("stream", State(volume: volume)["stream"]!.DeepClone()),
     };
 
-    /// <summary>A stand-in for a2dpwb-core: its mutex and its pipe (named for a test instance), speaking protocol 1.</summary>
+    /// <summary>
+    /// A stand-in for bluecaster-core (or a 2.0.x a2dpwb-core with <paramref name="legacy"/>): its mutex and its pipe
+    /// (named for a test instance), speaking protocol 1.
+    /// </summary>
     private sealed class FakeCore : IAsyncDisposable
     {
         private readonly Mutex _mutex;
         private readonly NamedPipeServerStream _pipe;
+        private readonly string _server;
 
-        public FakeCore(string? instance = null)
+        public FakeCore(string? instance = null, bool legacy = false)
         {
             instance ??= "encodeck-test-" + Guid.NewGuid().ToString("N")[..8];
-            PipeName = A2dpBridgeMonitor.PipeName(instance);
-            _mutex = new Mutex(false, A2dpBridgeMonitor.MutexName(instance));
+            PipeName = legacy ? A2dpBridgeMonitor.LegacyPipeName(instance) : A2dpBridgeMonitor.PipeName(instance);
+            _mutex = new Mutex(false, legacy ? A2dpBridgeMonitor.LegacyMutexName(instance) : A2dpBridgeMonitor.MutexName(instance));
             _pipe = new NamedPipeServerStream(PipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+            _server = legacy ? "a2dpwb-core/2.0.1" : "bluecaster-core/3.0.0-beta.3";
         }
 
         public string PipeName { get; }
@@ -477,7 +498,7 @@ public sealed class A2dpBridgeTests
                 await SendAsync(new JsonObject { ["type"] = "reject", ["reason"] = reject });
                 return hello;
             }
-            var welcome = new JsonObject { ["type"] = "welcome", ["protocol"] = 1, ["server"] = "a2dpwb-core/2.0.1" };
+            var welcome = new JsonObject { ["type"] = "welcome", ["protocol"] = 1, ["server"] = _server };
             // Cores before 2.0.2 send no features at all.
             if (features is not null) welcome["features"] = new JsonArray(features.Select(f => (JsonNode?)f).ToArray());
             await SendAsync(welcome);

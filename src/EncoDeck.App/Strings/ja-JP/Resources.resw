@@ -597,19 +597,19 @@
   <data name="Connection_BridgeConnecting" xml:space="preserve"><value>A2DP Bridge で接続中…</value></data>
   <data name="Home_Bridge.Title" xml:space="preserve"><value>A2DP Bridge 経由で接続済み</value></data>
   <data name="Home_Bridge_Open.Content" xml:space="preserve"><value>Labs を開く</value></data>
-  <data name="Home_Bridge_Only" xml:space="preserve"><value>イヤホンは A2DP Bridge 経由で再生中です（{0}）が、制御チャネルを使用できません。バッテリーの読み取りと設定の変更には A2DP Bridge 2.0.2 以降とクラシック接続が必要です。</value></data>
+  <data name="Home_Bridge_Only" xml:space="preserve"><value>イヤホンは A2DP Bridge 経由で再生中です（{0}）が、制御チャネルを使用できません。バッテリーの読み取りと設定の変更には BlueCaster（または A2DPWB 2.0.2 以降）とクラシック接続が必要です。</value></data>
   <data name="Badge_Bridge_AudioOnly" xml:space="preserve"><value>音声は A2DP Bridge 専用の USB アダプター（{0}）経由で再生されています。Windows からはこの接続が見えません。</value></data>
   <data name="Badge_Bridge_Windows" xml:space="preserve"><value>音声は A2DP Bridge 専用の USB アダプター（{0}）経由で再生されています。イヤホンの設定は引き続き Windows の Bluetooth 経由で操作します。</value></data>
   <data name="Badge_Bridge_Control" xml:space="preserve"><value>音声は A2DP Bridge 専用の USB アダプター（{0}）経由で再生されています。バッテリーの読み取りやイヤホン設定の変更も A2DP Bridge 経由で行います。</value></data>
   <data name="Bridge_Title.Text" xml:space="preserve"><value>A2DP Bridge（専用 USB Bluetooth アダプター、試験的）</value></data>
-  <data name="Bridge_Summary.Text" xml:space="preserve"><value>A2DP Windows Bridge は専用の USB Bluetooth アダプターを占有し、独自の Bluetooth スタックで LDAC、LHDC V5、aptX HD などを使ってイヤホンに音声を送信します。テスト署名ドライバーは不要です。EncoDeck がダウンロードと起動を担い、これを経由して接続したイヤホンをホームページで認識して操作します。</value></data>
-  <data name="Bridge_Running" xml:space="preserve"><value>バックグラウンドで実行中: A2DPWB {0}（{1}）</value></data>
-  <data name="Bridge_Incompatible" xml:space="preserve"><value>実行中の A2DPWB は、この EncoDeck バージョンとは異なるプロトコルを使用しています（{0}）。EncoDeck または A2DPWB を更新してください。</value></data>
-  <data name="Bridge_Connecting" xml:space="preserve"><value>A2DPWB のバックグラウンドプロセスに接続しています…</value></data>
-  <data name="Bridge_Stopped" xml:space="preserve"><value>A2DPWB {0} はインストール済みです（{1}）が、バックグラウンドプロセスは実行されていません。</value></data>
-  <data name="Bridge_StoreMissing" xml:space="preserve"><value>Store 版では他のプログラムのダウンロードや起動は行いません。A2DP Windows Bridge をご自身でインストールしている場合は、起動すると EncoDeck が接続して状態を表示します。</value></data>
-  <data name="Bridge_StoreStart" xml:space="preserve"><value>スタートメニューから A2DP Windows Bridge を起動してください。</value></data>
-  <data name="Bridge_Missing" xml:space="preserve"><value>未インストールです。コンポーネント（約 {0:F1} MB）は A2DPWB 公式のポータブル版ビルドで、A2DPWB 公式リリースから無改変でダウンロードし、SHA-256 で検証します。更新では最新の公式 2.x ビルド（ベータ版を含む）を取得します。ダウンロードによってドライバーが変更されることはありません。</value></data>
+  <data name="Bridge_Summary.Text" xml:space="preserve"><value>BlueCaster（旧 A2DP Windows Bridge）は専用の USB Bluetooth アダプターを占有し、独自の Bluetooth スタックで LDAC、LHDC V5、aptX HD などを使ってイヤホンに音声を送信します。テスト署名ドライバーは不要です。EncoDeck がダウンロードと起動を担い、これを経由して接続したイヤホンをホームページで認識して操作します。</value></data>
+  <data name="Bridge_Running" xml:space="preserve"><value>バックグラウンドで実行中: BlueCaster {0}（{1}）</value></data>
+  <data name="Bridge_Incompatible" xml:space="preserve"><value>実行中の BlueCaster は、この EncoDeck バージョンとは異なるプロトコルを使用しています（{0}）。EncoDeck または BlueCaster を更新してください。</value></data>
+  <data name="Bridge_Connecting" xml:space="preserve"><value>BlueCaster のバックグラウンドプロセスに接続しています…</value></data>
+  <data name="Bridge_Stopped" xml:space="preserve"><value>BlueCaster {0} はインストール済みです（{1}）が、バックグラウンドプロセスは実行されていません。</value></data>
+  <data name="Bridge_StoreMissing" xml:space="preserve"><value>Store 版では他のプログラムのダウンロードや起動は行いません。BlueCaster をご自身でインストールしている場合は、起動すると EncoDeck が接続して状態を表示します。</value></data>
+  <data name="Bridge_StoreStart" xml:space="preserve"><value>スタートメニューから BlueCaster を起動してください。</value></data>
+  <data name="Bridge_Missing" xml:space="preserve"><value>未インストールです。コンポーネント（約 {0:F1} MB）は BlueCaster 公式のポータブル版ビルドで、BlueCaster 公式リリースから無改変でダウンロードし、SHA-256 で検証します。更新では最新の公式ビルド（ベータ版を含む）を取得します。ダウンロードによってドライバーが変更されることはありません。</value></data>
   <data name="Bridge_Unpublished" xml:space="preserve"><value>この EncoDeck バージョン用の A2DP Bridge コンポーネントはまだ公開されていません。</value></data>
   <data name="Bridge_UpdateAvailable" xml:space="preserve"><value>コンポーネント {0} に更新できます。</value></data>
   <data name="Bridge_StandaloneLink.Content" xml:space="preserve"><value>Store 版以外をダウンロード</value></data>
@@ -617,25 +617,25 @@
   <data name="Bridge_Update" xml:space="preserve"><value>コンポーネントを更新（{0:F1} MB）</value></data>
   <data name="Bridge_Start" xml:space="preserve"><value>起動</value></data>
   <data name="Bridge_Quit" xml:space="preserve"><value>終了</value></data>
-  <data name="Bridge_OpenWindow" xml:space="preserve"><value>A2DPWB を開く</value></data>
+  <data name="Bridge_OpenWindow" xml:space="preserve"><value>BlueCaster を開く</value></data>
   <data name="Bridge_RefreshAdapters" xml:space="preserve"><value>更新</value></data>
   <data name="Bridge_OpenSettingsFolder" xml:space="preserve"><value>設定フォルダーを開く</value></data>
-  <data name="Bridge_ManageInWindow.Text" xml:space="preserve"><value>イヤホンのペアリング、接続プロファイル、コーデック、音量は A2DPWB のウィンドウで管理します（「A2DPWB を開く」）。</value></data>
-  <data name="Bridge_AutoStart.Header" xml:space="preserve"><value>EncoDeck と同時に A2DPWB のバックグラウンドプロセスを起動</value></data>
+  <data name="Bridge_ManageInWindow.Text" xml:space="preserve"><value>イヤホンのペアリング、接続プロファイル、コーデック、音量は BlueCaster のウィンドウで管理します（「BlueCaster を開く」）。</value></data>
+  <data name="Bridge_AutoStart.Header" xml:space="preserve"><value>EncoDeck と同時に BlueCaster のバックグラウンドプロセスを起動</value></data>
   <data name="Bridge_Adapters.Header" xml:space="preserve"><value>アダプター</value></data>
-  <data name="Bridge_AdaptersNote.Text" xml:space="preserve"><value>A2DPWB は WinUSB ドライバーを割り当てた専用 USB アダプターのみを使用します。割り当て後、そのアダプターは Windows で使用されなくなります。Windows の Bluetooth が使用中のアダプターを EncoDeck が割り当てることはありません。Realtek アダプターにはファームウェアファイルも必要です。設定フォルダーに配置して「更新」をクリックしてください。</value></data>
+  <data name="Bridge_AdaptersNote.Text" xml:space="preserve"><value>BlueCaster は WinUSB ドライバーを割り当てた専用 USB アダプターのみを使用します。割り当て後、そのアダプターは Windows で使用されなくなります。Windows の Bluetooth が使用中のアダプターを EncoDeck が割り当てることはありません。Realtek アダプターにはファームウェアファイルも必要です。設定フォルダーに配置して「更新」をクリックしてください。</value></data>
   <data name="Bridge_FirmwareLink.Content" xml:space="preserve"><value>Realtek ファームウェアのダウンロード</value></data>
-  <data name="Bridge_Disclaimer.Text" xml:space="preserve"><value>免責事項: A2DP Windows Bridge は Seiya Funaoka 氏によるサードパーティのオープンソースプロジェクト（Apache-2.0 / MIT）であり、このコンポーネントはその公式ビルドの無改変コピーです。静的リンクされている BTstack ライブラリのライセンスは、個人的な非商用利用に限られます。イヤホンの互換性、無線品質、アダプターのファームウェアは EncoDeck の管理外です。ご自身の責任でご使用ください。</value></data>
+  <data name="Bridge_Disclaimer.Text" xml:space="preserve"><value>免責事項: BlueCaster（旧 A2DP Windows Bridge）は Seiya Funaoka 氏によるサードパーティのオープンソースプロジェクト（Apache-2.0 / MIT）であり、このコンポーネントはその公式ビルドの無改変コピーです。静的リンクされている BTstack ライブラリのライセンスは、個人的な非商用利用に限られます。イヤホンの互換性、無線品質、アダプターのファームウェアは EncoDeck の管理外です。ご自身の責任でご使用ください。</value></data>
   <data name="Bridge_Help.Header" xml:space="preserve"><value>A2DP Bridge の使い方</value></data>
   <data name="Bridge_HelpRequirements.Text" xml:space="preserve"><value>PC 内蔵の Bluetooth とは別の専用 USB Bluetooth アダプター（アップストリームで TP-Link UB500 / Realtek RTL8761BU を検証済み）と、Windows 10 22H2 または Windows 11 が必要です。内蔵の Bluetooth には絶対に WinUSB を割り当てないでください。</value></data>
-  <data name="Bridge_HelpSetup.Text" xml:space="preserve"><value>1. ダウンロードしてバックグラウンドプロセスを起動したら、「アダプター」で専用アダプターに WinUSB を割り当てます（管理者権限が必要）。Realtek アダプターにはファームウェアファイルも必要です。次に「A2DPWB を開く」をクリックし、そのウィンドウでイヤホンを追加し、コーデックを選んで接続します。</value></data>
-  <data name="Bridge_HelpDaily.Text" xml:space="preserve"><value>2. 以降は A2DPWB のウィンドウでイヤホンの接続と切断、プロファイルの切り替え、音量の調整を行います。既定では、A2DPWB は Windows で再生中の音声を送信します。EncoDeck を閉じても音声は止まりません。A2DPWB のバックグラウンドプロセスを EncoDeck から起動させることもできます。</value></data>
-  <data name="Bridge_HelpControls.Text" xml:space="preserve"><value>3. 専用アダプター経由では Windows からイヤホンが見えません。A2DPWB 2.0.2 以降は EncoDeck のために制御チャネルを開くため、ホームページには A2DP Bridge バッジ付きで通常どおりバッテリーとイヤホンの設定が表示されます。A2DPWB でのみペアリングしたイヤホンも EncoDeck に表示されます。2 台同時接続に対応したイヤホンは内蔵の Bluetooth にも接続できます。その場合は、2 つの音声がイヤホンに届かないよう、Windows の既定の出力を別のデバイスに設定してください。</value></data>
+  <data name="Bridge_HelpSetup.Text" xml:space="preserve"><value>1. ダウンロードしてバックグラウンドプロセスを起動したら、「アダプター」で専用アダプターに WinUSB を割り当てます（管理者権限が必要）。Realtek アダプターにはファームウェアファイルも必要です。次に「BlueCaster を開く」をクリックし、そのウィンドウでイヤホンを追加し、コーデックを選んで接続します。</value></data>
+  <data name="Bridge_HelpDaily.Text" xml:space="preserve"><value>2. 以降は BlueCaster のウィンドウでイヤホンの接続と切断、プロファイルの切り替え、音量の調整を行います。既定では、BlueCaster は Windows で再生中の音声を送信します。EncoDeck を閉じても音声は止まりません。BlueCaster のバックグラウンドプロセスを EncoDeck から起動させることもできます。</value></data>
+  <data name="Bridge_HelpControls.Text" xml:space="preserve"><value>3. 専用アダプター経由では Windows からイヤホンが見えません。BlueCaster（および A2DPWB 2.0.2 以降）は EncoDeck のために制御チャネルを開くため、ホームページには A2DP Bridge バッジ付きで通常どおりバッテリーとイヤホンの設定が表示されます。BlueCaster でのみペアリングしたイヤホンも EncoDeck に表示されます。2 台同時接続に対応したイヤホンは内蔵の Bluetooth にも接続できます。その場合は、2 つの音声がイヤホンに届かないよう、Windows の既定の出力を別のデバイスに設定してください。</value></data>
   <data name="Bridge_HelpRestore.Text" xml:space="preserve"><value>4. 使用をやめるときは、「アダプター」で「ドライバーを復元」をクリックしてアダプターを Windows に戻し、バックグラウンドプロセスを終了します。EncoDeck をアンインストールしてもドライバーは復元されません。</value></data>
   <data name="Bridge_Guide.Content" xml:space="preserve"><value>詳しいガイドを読む</value></data>
-  <data name="Bridge_Upstream.Content" xml:space="preserve"><value>A2DP Windows Bridge プロジェクトページ</value></data>
+  <data name="Bridge_Upstream.Content" xml:space="preserve"><value>BlueCaster プロジェクトページ</value></data>
   <data name="Bridge_V1Running" xml:space="preserve"><value>A2DPWB v1 が実行中で、アダプターを使用している可能性があります。先に v1 を終了してください。</value></data>
-  <data name="Bridge_NoAdapter" xml:space="preserve"><value>A2DPWB に割り当てられたアダプターはまだありません。専用の USB Bluetooth アダプターを接続して「アダプター」で WinUSB を割り当てるか、A2DPWB のウィンドウで初回セットアップを完了してください。</value></data>
+  <data name="Bridge_NoAdapter" xml:space="preserve"><value>BlueCaster に割り当てられたアダプターはまだありません。専用の USB Bluetooth アダプターを接続して「アダプター」で WinUSB を割り当てるか、BlueCaster のウィンドウで初回セットアップを完了してください。</value></data>
   <data name="Bridge_AdapterLine" xml:space="preserve"><value>アダプター: {0}（WinUSB）· {1}</value></data>
   <data name="Bridge_AdapterStatus_Stopped" xml:space="preserve"><value>待機中（接続時に起動）</value></data>
   <data name="Bridge_AdapterStatus_Initializing" xml:space="preserve"><value>初期化中</value></data>
@@ -658,7 +658,7 @@
   <data name="Bridge_SourceTone" xml:space="preserve"><value>テストトーン</value></data>
   <data name="Bridge_CodecFallback" xml:space="preserve"><value>イヤホンがプロファイルの {0} に対応していないため、別のコーデックを使用しています。</value></data>
   <data name="Bridge_NoUsbAdapters" xml:space="preserve"><value>USB Bluetooth アダプターが見つかりません。</value></data>
-  <data name="Bridge_DriverWinUsb" xml:space="preserve"><value>WinUSB · A2DPWB が使用中</value></data>
+  <data name="Bridge_DriverWinUsb" xml:space="preserve"><value>WinUSB · BlueCaster が使用中</value></data>
   <data name="Bridge_DriverWindowsInUse" xml:space="preserve"><value>Windows の Bluetooth が使用中</value></data>
   <data name="Bridge_DriverBluetooth" xml:space="preserve"><value>Windows Bluetooth ドライバー</value></data>
   <data name="Bridge_DriverNone" xml:space="preserve"><value>ドライバーなし</value></data>
@@ -666,19 +666,19 @@
   <data name="Bridge_RestoreDriver" xml:space="preserve"><value>ドライバーを復元</value></data>
   <data name="Bridge_AssignWinUsb" xml:space="preserve"><value>WinUSB を割り当て</value></data>
   <data name="Bridge_WindowsAdapterTip" xml:space="preserve"><value>これは Windows の Bluetooth が使用中のアダプターです。割り当てると、この PC のすべての Bluetooth デバイスと EncoDeck のイヤホン操作が切断されるため、EncoDeck ではこの操作を提供していません。</value></data>
-  <data name="Bridge_AssignTitle" xml:space="preserve"><value>{0} を A2DPWB に割り当てますか?</value></data>
+  <data name="Bridge_AssignTitle" xml:space="preserve"><value>{0} を BlueCaster に割り当てますか?</value></data>
   <data name="Bridge_AssignBody" xml:space="preserve"><value>WinUSB を割り当てると、Windows はこのアダプターを使用しなくなり、接続中の Bluetooth デバイスはすべて切断されます。管理者権限が必要です。「ドライバーを復元」でいつでも Windows に戻せます。</value></data>
   <data name="Bridge_RestoreTitle" xml:space="preserve"><value>{0} を Windows に戻しますか?</value></data>
-  <data name="Bridge_RestoreBody" xml:space="preserve"><value>A2DPWB はこのアダプターを使用できなくなり、再生中の音声は停止します。管理者権限が必要です。</value></data>
+  <data name="Bridge_RestoreBody" xml:space="preserve"><value>BlueCaster はこのアダプターを使用できなくなり、再生中の音声は停止します。管理者権限が必要です。</value></data>
   <data name="Bridge_DriverChanging" xml:space="preserve"><value>ドライバーを変更しています。Windows の管理者確認が表示されたら許可してください…</value></data>
-  <data name="Bridge_NotConnected" xml:space="preserve"><value>A2DPWB のバックグラウンドプロセスは実行されていません。</value></data>
-  <data name="Bridge_Starting" xml:space="preserve"><value>A2DPWB のバックグラウンドプロセスを起動しています…</value></data>
-  <data name="Bridge_StartTimeout" xml:space="preserve"><value>A2DPWB のバックグラウンドプロセスが 15 秒以内に応答しませんでした。「A2DPWB を開く」をクリックして原因を確認してください。</value></data>
+  <data name="Bridge_NotConnected" xml:space="preserve"><value>BlueCaster のバックグラウンドプロセスは実行されていません。</value></data>
+  <data name="Bridge_Starting" xml:space="preserve"><value>BlueCaster のバックグラウンドプロセスを起動しています…</value></data>
+  <data name="Bridge_StartTimeout" xml:space="preserve"><value>BlueCaster のバックグラウンドプロセスが 15 秒以内に応答しませんでした。「BlueCaster を開く」をクリックして原因を確認してください。</value></data>
   <data name="Bridge_Downloading" xml:space="preserve"><value>ダウンロード元に接続しています…</value></data>
   <data name="Bridge_DownloadProgress" xml:space="preserve"><value>A2DP Bridge をダウンロードしています: {0:F1} / {1:F1} MB。完了後に検証と展開を行います。</value></data>
   <data name="Bridge_Cancelled" xml:space="preserve"><value>ダウンロードをキャンセルしました。再度ダウンロードすると中断した位置から再開します。</value></data>
   <data name="Bridge_OriginManaged" xml:space="preserve"><value>EncoDeck で管理</value></data>
-  <data name="Bridge_OriginInstalled" xml:space="preserve"><value>A2DPWB 単体のインストール</value></data>
+  <data name="Bridge_OriginInstalled" xml:space="preserve"><value>BlueCaster 単体のインストール</value></data>
   <data name="Bridge_OriginRunning" xml:space="preserve"><value>実行中のコピー</value></data>
   <data name="Codec_Experimental.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>アップストリームで試験的: エンコーダーのテストと仮想レシーバーでの確認は済んでいますが、実際のヘッドホンではまだ確認されていません</value></data>
   <data name="Codec_Experimental.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.HelpText" xml:space="preserve"><value>試験的なコーデック</value></data>
@@ -701,17 +701,17 @@
   <data name="Lhdc_Uninstalled" xml:space="preserve"><value>LHDC コンポーネントをアンインストールしました。</value></data>
   <data name="Bridge_ManagedVersion" xml:space="preserve"><value>EncoDeck が管理するコンポーネント: {0}</value></data>
   <data name="Bridge_UninstallTitle" xml:space="preserve"><value>A2DP Bridge コンポーネントをアンインストールしますか?</value></data>
-  <data name="Bridge_UninstallBody" xml:space="preserve"><value>EncoDeck が管理する A2DPWB のバックグラウンドプロセスを終了し、そのファイル（約 25 MB）を削除して、それを指すスタートアップ項目を削除します。A2DPWB の設定フォルダー（ペアリング、ファームウェア、ログ）は保持されます。ご自身でインストールした A2DP Windows Bridge には影響しません。</value></data>
-  <data name="Bridge_UninstallRestore" xml:space="preserve"><value>A2DPWB が使用していた {0} 個のアダプターも Windows に戻す（推奨。管理者確認が 1 回表示されます）</value></data>
+  <data name="Bridge_UninstallBody" xml:space="preserve"><value>EncoDeck が管理する BlueCaster のバックグラウンドプロセスを終了し、そのファイル（約 25 MB）を削除して、それを指すスタートアップ項目を削除します。BlueCaster の設定フォルダー（ペアリング、ファームウェア、ログ）は保持されます。ご自身でインストールした BlueCaster には影響しません。</value></data>
+  <data name="Bridge_UninstallRestore" xml:space="preserve"><value>BlueCaster が使用していた {0} 個のアダプターも Windows に戻す（推奨。管理者確認が 1 回表示されます）</value></data>
   <data name="Bridge_Uninstalling" xml:space="preserve"><value>アンインストールしています…</value></data>
   <data name="Bridge_UninstallingRestore" xml:space="preserve"><value>アダプターのドライバーを復元してアンインストールしています。Windows の管理者確認が表示されたら許可してください…</value></data>
   <data name="Bridge_Uninstalled" xml:space="preserve"><value>A2DP Bridge コンポーネントをアンインストールしました。</value></data>
-  <data name="Bridge_UninstallCoreRunning" xml:space="preserve"><value>A2DPWB のバックグラウンドプロセスが終了しませんでした。通知領域のアイコンから終了して、もう一度お試しください。</value></data>
+  <data name="Bridge_UninstallCoreRunning" xml:space="preserve"><value>BlueCaster のバックグラウンドプロセスが終了しませんでした。通知領域のアイコンから終了して、もう一度お試しください。</value></data>
   <data name="Bridge_UninstallRestoreFailed" xml:space="preserve"><value>一部のアダプターのドライバーを復元できませんでした（コード {0}）。コンポーネントはアンインストールされていません。「アダプター」で 1 つずつ復元してから、もう一度お試しください。</value></data>
-  <data name="Bridge_UninstallBusy" xml:space="preserve"><value>コンポーネントのファイルが使用中です（A2DPWB がまだ実行中の可能性があります）。終了してからもう一度お試しください。</value></data>
+  <data name="Bridge_UninstallBusy" xml:space="preserve"><value>コンポーネントのファイルが使用中です（BlueCaster がまだ実行中の可能性があります）。終了してからもう一度お試しください。</value></data>
   <data name="Bridge_UninstallUacDeclined" xml:space="preserve"><value>管理者確認が拒否されたため、コンポーネントはアンインストールされていません。</value></data>
   <data name="Bridge_UpdateAfterRestart" xml:space="preserve"><value>コンポーネントを更新しました。バックグラウンドプロセスが再生中のため、新しいバージョンは次回の起動時に反映されます。</value></data>
-  <data name="Bridge_OwnInstallNote.Text" xml:space="preserve"><value>ご自身でインストールした A2DP Windows Bridge を使用しています。更新の確認はそのアプリ自体が行い、アンインストールは Windows の設定の「インストールされているアプリ」から行います。</value></data>
+  <data name="Bridge_OwnInstallNote.Text" xml:space="preserve"><value>ご自身でインストールした BlueCaster を使用しています。更新の確認はそのアプリ自体が行い、アンインストールは Windows の設定の「インストールされているアプリ」から行います。</value></data>
   <data name="Bridge_OpenAppsSettings.Content" xml:space="preserve"><value>「インストールされているアプリ」を開く</value></data>
   <data name="Xiaomi_Level_0" xml:space="preserve"><value>レベル 1</value></data>
   <data name="Xiaomi_Level_1" xml:space="preserve"><value>レベル 2</value></data>

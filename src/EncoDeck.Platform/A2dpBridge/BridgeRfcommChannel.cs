@@ -5,7 +5,7 @@ using EncoDeck.Protocol.Transport;
 namespace EncoDeck.Platform.A2dpBridge;
 
 /// <summary>
-/// An RFCOMM channel the A2DPWB core opened from its own adapter (rfcomm.open), as EncoDeck's byte channel: what
+/// An RFCOMM channel the BlueCaster core opened from its own adapter (rfcomm.open), as EncoDeck's byte channel: what
 /// the earbuds send arrives as rfcomm_data events, writes are rfcomm.send requests. Windows sees nothing of it.
 /// </summary>
 public sealed class BridgeRfcommChannel : IDuplexByteChannel
@@ -36,7 +36,7 @@ public sealed class BridgeRfcommChannel : IDuplexByteChannel
     /// <summary>Why the core closed the channel ("remote", "disconnected", "stopped", "overflow"); null while it is open.</summary>
     public string? CloseReason { get; private set; }
 
-    public string Description => $"A2DPWB RFCOMM channel {Id}";
+    public string Description => $"BlueCaster RFCOMM channel {Id}";
 
     internal void OnData(byte[] data) => _received.Writer.TryWrite(data);
 

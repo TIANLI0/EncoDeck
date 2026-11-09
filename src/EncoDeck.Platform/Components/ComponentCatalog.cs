@@ -20,7 +20,7 @@ public sealed record ComponentPackage
     /// <summary>Lower-case hex; empty while the component release is not published yet.</summary>
     public string Sha256 { get; init; } = "";
 
-    /// <summary>Folder inside the archive that holds the component (e.g. "A2DPWB-2.0.1"); empty for the archive root.</summary>
+    /// <summary>Folder inside the archive that holds the component (e.g. "BlueCaster-3.0.0-beta.3"); empty for the archive root.</summary>
     public string Root { get; init; } = "";
 
     /// <summary>Other sources of the same bytes, tried after the EncoDeck component release; verified against the same digest.</summary>
@@ -84,7 +84,7 @@ public sealed record ComponentRelease
 
     public required ComponentSource Source { get; init; }
 
-    /// <summary>The contract between app and component (LHDC backend commands, A2DPWB pipe protocol); an app takes only its own.</summary>
+    /// <summary>The contract between app and component (LHDC backend commands, BlueCaster pipe protocol); an app takes only its own.</summary>
     public int Interface { get; init; } = 1;
 
     /// <summary>The oldest app version the component works with (component releases found online are checked against it).</summary>
@@ -94,7 +94,7 @@ public sealed record ComponentRelease
 
     /// <summary>
     /// The packages are downloaded from the upstream project's own release (their mirrors) only, never from an EncoDeck
-    /// component release: A2DP Windows Bridge, whose newer official 2.x builds are taken as they are published.
+    /// component release: BlueCaster (A2DP Windows Bridge up to 2.0.x), whose newer official builds are taken as they are published.
     /// </summary>
     public bool UpstreamDownloads { get; init; }
 

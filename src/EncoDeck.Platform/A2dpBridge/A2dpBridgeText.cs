@@ -7,8 +7,8 @@ using System.Text.RegularExpressions;
 namespace EncoDeck.Platform.A2dpBridge;
 
 /// <summary>
-/// The core's status texts and errors arrive as keys of A2DPWB's language files (app/lang, Apache-2.0 OR MIT,
-/// embedded from the pinned release). Formats them as A2DPWB's own window does; English, then the key, when a
+/// The core's status texts and errors arrive as keys of BlueCaster's language files (app/lang, Apache-2.0 OR MIT,
+/// embedded from the pinned release). Formats them as BlueCaster's own window does; English, then the key, when a
 /// text is missing.
 /// </summary>
 public static partial class A2dpBridgeText
@@ -34,7 +34,7 @@ public static partial class A2dpBridgeText
     [GeneratedRegex(@"%(%|([-+#0]*)(\d+)?(?:\.(\d+))?(?:hh|h|ll|l|z|j|t)?([diuxXfFeEgGcsp]))", RegexOptions.CultureInvariant)]
     private static partial Regex Spec();
 
-    /// <summary>printf as A2DPWB's printf.ts: the core's arguments are strings, inserted as they are (numbers keep the requested precision).</summary>
+    /// <summary>printf as BlueCaster's printf.ts: the core's arguments are strings, inserted as they are (numbers keep the requested precision).</summary>
     internal static string Printf(string template, IReadOnlyList<string> args)
     {
         int next = 0;
@@ -72,7 +72,7 @@ public static partial class A2dpBridgeText
         catch (JsonException) { return FrozenDictionary<string, string>.Empty; }
     }
 
-    /// <summary>A codec key of a profile or stream ("ldac", "lhdcv5") as A2DPWB names it ("LDAC", "LHDC V5").</summary>
+    /// <summary>A codec key of a profile or stream ("ldac", "lhdcv5") as BlueCaster names it ("LDAC", "LHDC V5").</summary>
     public static string Codec(string key, CultureInfo? culture = null) => key.ToLowerInvariant() switch
     {
         "auto" => Get("codec.auto", culture) ?? "Auto",

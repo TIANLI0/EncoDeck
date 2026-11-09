@@ -54,10 +54,12 @@ public sealed class ComponentUpdateClient(HttpClient http, SemanticVersion app, 
     }
 
     /// <summary>
-    /// Finds the newest official release of <paramref name="pinned"/>'s upstream project (pre-releases included) with the
-    /// pin's major version, later than <paramref name="newerThan"/>, and describes it as a component release downloaded
-    /// from upstream only. Every package of the pin must be an asset there (same file name with the new version) that
-    /// GitHub reports a SHA-256 digest for; the installer holds the download to it and to the tag's commit.
+    /// Finds the newest official release of <paramref name="pinned"/>'s upstream project (betas included, alphas not:
+    /// upstream offers those only to who opts in) later than <paramref name="newerThan"/>, whatever its major version,
+    /// and describes it as a component release downloaded from upstream only. Every package of the pin must have its
+    /// counterpart there (the same architecture and kind, with the new version, under the project's current name) that
+    /// GitHub reports a SHA-256 digest for; the installer holds the download to it and to the tag's commit. A later
+    /// major version whose pipe protocol differs is refused by the core's handshake and shown as incompatible.
     /// </summary>
     public async Task<ComponentUpdateResult> CheckUpstreamAsync(ComponentRelease pinned, string? newerThan, CancellationToken ct = default)
     {
@@ -70,7 +72,7 @@ public sealed class ComponentUpdateClient(HttpClient http, SemanticVersion app, 
             .Select(r => (Release: r, Tag: Str(r["tag_name"])))
             .Where(x => x.Tag is { Length: > 1 } tag && tag[0] == 'v' && !Bool(x.Release["draft"]))
             .Select(x => (x.Release, x.Tag, Version: ComponentVersion.TryParse(x.Tag![1..] + "-r0", out var v) ? v : null))
-            .Where(x => x.Version is not null && x.Version.Upstream.Major == current.Upstream.Major && ComponentVersion.IsNewer(x.Version.ToString(), newerThan))
+            .Where(x => x.Version is not null && !IsAlpha(x.Version) && ComponentVersion.IsNewer(x.Version.ToString(), newerThan))
             .OrderByDescending(x => x.Version)
             .Take(3);
         foreach (var (release, tag, version) in candidates)
@@ -88,7 +90,20 @@ public sealed class ComponentUpdateClient(HttpClient http, SemanticVersion app, 
         Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps && uri.Host == "github.com"
         && uri.AbsolutePath.Trim('/').Split('/') is [var owner, var name] && owner.Length > 0 && name.Length > 0 ? $"{owner}/{name}" : null;
 
-    /// <summary>The pin's packages as assets of <paramref name="release"/>, or null when one is missing or has no SHA-256 digest.</summary>
+    /// <summary>An upstream alpha ("3.0.0-beta.3.alpha.1"): tested less than a beta, and offered upstream only on request.</summary>
+    private static bool IsAlpha(ComponentVersion version) =>
+        version.Upstream.Prerelease.Any(p => p.StartsWith("alpha", StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>A product name in an asset's file name ("BlueCaster", "A2DPWB"): ASCII letters and digits, starting with a letter.</summary>
+    private static bool IsProductName(string name) =>
+        name.Length is > 0 and <= 64 && char.IsAsciiLetter(name[0]) && name.All(char.IsAsciiLetterOrDigit);
+
+    /// <summary>
+    /// The pin's packages as assets of <paramref name="release"/>, or null when one is missing or has no SHA-256 digest.
+    /// A package "&lt;Name&gt;-&lt;version&gt;&lt;kind&gt;" ("A2DPWB-2.0.2-beta.11-win64-portable.zip") is matched by the
+    /// asset "&lt;AnyName&gt;-&lt;new version&gt;&lt;kind&gt;" ("BlueCaster-3.0.0-beta.3-win64-portable.zip"): the project may
+    /// have been renamed since the pin; its archive's folder follows the asset's name.
+    /// </summary>
     internal static ComponentRelease? DescribeUpstream(ComponentRelease pinned, ComponentVersion current, ComponentVersion version, string tag, JsonObject release)
     {
         string from = current.Upstream.ToString(), to = version.Upstream.ToString();
@@ -96,9 +111,14 @@ public sealed class ComponentUpdateClient(HttpClient http, SemanticVersion app, 
         var packages = new List<ComponentPackage>();
         foreach (var package in pinned.Packages)
         {
-            if (!package.File.Contains(from, StringComparison.Ordinal)) return null;
-            string file = package.File.Replace(from, to, StringComparison.Ordinal);
-            if (assets.FirstOrDefault(a => Str(a["name"]) == file) is not { } asset) return null;
+            int at = package.File.IndexOf("-" + from, StringComparison.Ordinal);
+            if (at <= 0) return null;
+            string kind = package.File[(at + 1 + from.Length)..];
+            string ending = "-" + to + kind;
+            var matches = assets.Where(a => Str(a["name"]) is { } n && n.EndsWith(ending, StringComparison.Ordinal) && IsProductName(n[..^ending.Length])).ToList();
+            if (matches is not [var asset]) return null;
+            string file = Str(asset["name"])!;
+            string root = package.Root == package.File[..^kind.Length] ? file[..^kind.Length] : package.Root.Replace(from, to, StringComparison.Ordinal);
             long size = asset["size"] is JsonValue s && s.TryGetValue(out long reported) ? reported : 0;
             string sha = Str(asset["digest"]) is { } digest && digest.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase) ? digest[7..] : "";
             if (size is <= 0 or > 2L * 1024 * 1024 * 1024 || sha.Length != 64 || !sha.All(Uri.IsHexDigit)
@@ -108,7 +128,7 @@ public sealed class ComponentUpdateClient(HttpClient http, SemanticVersion app, 
                 File = file,
                 Size = size,
                 Sha256 = sha.ToLowerInvariant(),
-                Root = package.Root.Replace(from, to, StringComparison.Ordinal),
+                Root = root,
                 Mirrors = [url],
             });
         }
@@ -124,7 +144,7 @@ public sealed class ComponentUpdateClient(HttpClient http, SemanticVersion app, 
         };
     }
 
-    /// <summary>The commit a tag points at (the installer checks the package's SOURCE.txt names it).</summary>
+    /// <summary>The commit a tag points at (the installer checks the package's source note names it).</summary>
     private async Task<string?> TagCommitAsync(string repository, string tag, CancellationToken ct)
     {
         try

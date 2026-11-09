@@ -13,9 +13,9 @@ using Microsoft.Extensions.Logging;
 namespace EncoDeck.App.Services;
 
 /// <summary>
-/// EncoDeck's side of A2DP Windows Bridge: installs the pinned component, finds the user's own copy, starts and
+/// EncoDeck's side of BlueCaster (A2DP Windows Bridge up to 2.0.x): installs the pinned component, finds the user's own copy, starts and
 /// quits the core, follows it over its pipe and marks the active device as connected through the bridge (Windows
-/// cannot see that link). Costs nothing while no A2DPWB exists beyond one mutex check per interval.
+/// cannot see that link). Costs nothing while no BlueCaster exists beyond a mutex check per interval.
 /// </summary>
 public sealed class A2dpBridgeCompanion : IAsyncDisposable
 {
@@ -31,7 +31,7 @@ public sealed class A2dpBridgeCompanion : IAsyncDisposable
     private bool _started;
     private DateTimeOffset _lastUpdateCheck = DateTimeOffset.MinValue;
 
-    /// <param name="instance">A side-by-side A2DPWB test core (A2DPWB_INSTANCE); null for the user's own.</param>
+    /// <param name="instance">A side-by-side test core (BLUECASTER_INSTANCE); null for the user's own.</param>
     public A2dpBridgeCompanion(string componentsRoot, IDeviceStateStore store, ISettingsStore settings, ILogger logger, string? instance = null)
     {
         _instance = instance;
@@ -47,7 +47,7 @@ public sealed class A2dpBridgeCompanion : IAsyncDisposable
     /// <summary>The installed EncoDeck-managed copy, as of the last <see cref="RefreshInstallations"/>.</summary>
     public InstalledComponent? Managed => _managed;
 
-    /// <summary>A later A2DPWB component release found online (null until checked, or when there is none).</summary>
+    /// <summary>A later BlueCaster release found online (null until checked, or when there is none).</summary>
     public ComponentRelease? OnlineRelease { get; private set; }
 
     /// <summary>What an update of the managed copy installs: this app's pin or a later release found online.</summary>
@@ -73,7 +73,7 @@ public sealed class A2dpBridgeCompanion : IAsyncDisposable
     public static bool CanManage => !PackageIdentity.IsPackaged;
 
     /// <summary>
-    /// The copy to start: a running core's folder, then A2DPWB's own installation (it updates itself), then the
+    /// The copy to start: a running core's folder, then BlueCaster's own installation (it updates itself), then the
     /// EncoDeck-managed copy.
     /// </summary>
     public BridgeInstallation? Installation
@@ -85,7 +85,7 @@ public sealed class A2dpBridgeCompanion : IAsyncDisposable
                 var managed = _managed;
                 var origin = managed is not null && SamePath(running, managed.Directory) ? BridgeOrigin.Managed
                     : _installed is not null && SamePath(running, _installed.Directory) ? BridgeOrigin.Installed : BridgeOrigin.Running;
-                return new BridgeInstallation(running, origin, A2dpBridgeComponent.FileVersion(Path.Combine(running, A2dpBridgeComponent.CoreExe)));
+                return new BridgeInstallation(running, origin, A2dpBridgeComponent.FileVersion(Path.Combine(running, (A2dpBridgeComponent.NamesIn(running) ?? A2dpBridgeComponent.Current).Core)));
             }
             if (_installed is { } own && A2dpBridgeComponent.IsBridgeFolder(own.Directory)) return own;
             return _managed is { } m && A2dpBridgeComponent.IsBridgeFolder(m.Directory)
@@ -112,7 +112,7 @@ public sealed class A2dpBridgeCompanion : IAsyncDisposable
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>Upstream version of a component version ("2.0.1-r1" → "2.0.1").</summary>
+    /// <summary>Upstream version of a component version ("3.0.0-beta.3-r0" → "3.0.0-beta.3").</summary>
     private static string ManagedVersion(string version) => version.Split("-r", 2)[0];
 
     public void Start()
@@ -129,24 +129,24 @@ public sealed class A2dpBridgeCompanion : IAsyncDisposable
             {
                 try
                 {
-                    _logger.LogInformation("Starting A2DPWB ({Origin})", installation.Origin);
+                    _logger.LogInformation("Starting BlueCaster ({Origin})", installation.Origin);
                     A2dpBridgeComponent.StartCore(installation);
                     await Monitor.WaitForConnectionAsync(TimeSpan.FromSeconds(15)).ConfigureAwait(false);
                 }
                 catch (Exception ex) when (ex is IOException or System.ComponentModel.Win32Exception or InvalidOperationException)
                 {
-                    _logger.LogWarning("Could not start A2DPWB: {Error}", ex.Message);
+                    _logger.LogWarning("Could not start BlueCaster: {Error}", ex.Message);
                 }
             }
         });
     }
 
-    /// <summary>Looks again for A2DPWB's own installation (after installing it, or when the Labs page opens).</summary>
+    /// <summary>Looks again for BlueCaster's own installation (after installing it, or when the Labs page opens).</summary>
     public void RefreshInstallations()
     {
         _installed = A2dpBridgeComponent.FindInstalled(Component.Root);
         _managed = Component.Installed;
-        // A user without any A2DPWB pays for one mutex check every half minute; with one, a new core is found sooner.
+        // A user without any BlueCaster pays for a mutex check every half minute; with one, a new core is found sooner.
         Monitor.IdleInterval = _installed is not null || _managed is not null ? TimeSpan.FromSeconds(10) : TimeSpan.FromSeconds(30);
         Changed?.Invoke(this, EventArgs.Empty);
     }
@@ -176,9 +176,9 @@ public sealed class A2dpBridgeCompanion : IAsyncDisposable
     }
 
     /// <summary>
-    /// Looks for the newest official A2DPWB build of the same major version as the pin (2.x, betas included) on the
-    /// A2DPWB project's own releases, at most once a day unless <paramref name="force"/>; it is downloaded from there
-    /// too. Only the managed copy uses it: A2DPWB's own installation updates itself.
+    /// Looks for the newest official BlueCaster build (betas included, any major version) on the project's own
+    /// releases, at most once a day unless <paramref name="force"/>; it is downloaded from there too. Only the managed
+    /// copy uses it: BlueCaster's own installation updates itself.
     /// </summary>
     public async Task<ComponentUpdateOutcome?> CheckForUpdateAsync(bool force, CancellationToken ct = default)
     {
@@ -196,13 +196,13 @@ public sealed class A2dpBridgeCompanion : IAsyncDisposable
         return result.Outcome;
     }
 
-    /// <summary>Adapters A2DPWB took from Windows and has not given back, from its records.</summary>
+    /// <summary>Adapters BlueCaster took from Windows and has not given back, from its records.</summary>
     public int AssignedAdapterCount => A2dpBridgeComponent.DriverRecordCount(A2dpBridgeComponent.DriverRecordsDirectory(Status.Snapshot?.ConfigDirectory));
 
     /// <summary>
-    /// Removes the EncoDeck-managed copy: quits its core if it runs, optionally gives every adapter A2DPWB took back
-    /// to Windows (one administrator prompt, A2DPWB's own helper), drops the autostart entries that name this copy,
-    /// then deletes its files. A2DPWB's settings folder (pairings, firmware) is left alone; so is A2DPWB's own installation.
+    /// Removes the EncoDeck-managed copy: quits its core if it runs, optionally gives every adapter BlueCaster took back
+    /// to Windows (one administrator prompt, BlueCaster's own helper), drops the autostart entries that name this copy,
+    /// then deletes its files. BlueCaster's settings folder (pairings, firmware) is left alone; so is its own installation.
     /// </summary>
     public async Task UninstallAsync(bool restoreDrivers, CancellationToken ct = default)
     {
@@ -235,7 +235,7 @@ public sealed class A2dpBridgeCompanion : IAsyncDisposable
         if (Status.IsConnected) return true;
         if (!A2dpBridgeMonitor.IsCoreRunning(_instance))
         {
-            var installation = Installation ?? throw new InvalidOperationException("A2DPWB is not installed.");
+            var installation = Installation ?? throw new InvalidOperationException("BlueCaster is not installed.");
             A2dpBridgeComponent.StartCore(installation);
         }
         return await Monitor.WaitForConnectionAsync(TimeSpan.FromSeconds(15), ct).ConfigureAwait(false);
@@ -260,7 +260,7 @@ public sealed class A2dpBridgeCompanion : IAsyncDisposable
 
     public Task RefreshAdaptersAsync() => Monitor.RequestAsync("adapter.list", timeout: TimeSpan.FromSeconds(20));
 
-    /// <summary>A2DPWB's diagnostic text with Bluetooth addresses masked, for EncoDeck's diagnostics package.</summary>
+    /// <summary>BlueCaster's diagnostic text with Bluetooth addresses masked, for EncoDeck's diagnostics package.</summary>
     public async Task<string?> DiagnosticsAsync()
     {
         if (!Status.IsConnected) return null;

@@ -597,19 +597,19 @@
   <data name="Connection_BridgeConnecting" xml:space="preserve"><value>A2DP Bridge is connecting…</value></data>
   <data name="Home_Bridge.Title" xml:space="preserve"><value>Connected through A2DP Bridge</value></data>
   <data name="Home_Bridge_Open.Content" xml:space="preserve"><value>Open Labs</value></data>
-  <data name="Home_Bridge_Only" xml:space="preserve"><value>The earbuds play through A2DP Bridge ({0}), but their controls are unreachable: the battery and earbud settings need A2DP Bridge 2.0.2 or later on a Classic connection.</value></data>
+  <data name="Home_Bridge_Only" xml:space="preserve"><value>The earbuds play through A2DP Bridge ({0}), but their controls are unreachable: the battery and earbud settings need BlueCaster (or A2DPWB 2.0.2 and later) on a Classic connection.</value></data>
   <data name="Badge_Bridge_AudioOnly" xml:space="preserve"><value>Audio plays through A2DP Bridge's dedicated USB adapter ({0}). Windows cannot see that link.</value></data>
   <data name="Badge_Bridge_Windows" xml:space="preserve"><value>Audio plays through A2DP Bridge's dedicated USB adapter ({0}); the earbud settings are still controlled over Windows Bluetooth.</value></data>
   <data name="Badge_Bridge_Control" xml:space="preserve"><value>Audio plays through A2DP Bridge's dedicated USB adapter ({0}); EncoDeck reads the battery and changes earbud settings through A2DP Bridge too.</value></data>
   <data name="Bridge_Title.Text" xml:space="preserve"><value>A2DP Bridge (dedicated USB Bluetooth adapter, experimental)</value></data>
-  <data name="Bridge_Summary.Text" xml:space="preserve"><value>A2DP Windows Bridge takes over a dedicated USB Bluetooth adapter and sends audio to your earbuds with its own Bluetooth stack in LDAC, LHDC V5, aptX HD and more, without test-signed drivers. EncoDeck downloads and starts it, and recognizes and controls earbuds connected through it on the home page.</value></data>
-  <data name="Bridge_Running" xml:space="preserve"><value>Running in the background: A2DPWB {0} ({1})</value></data>
-  <data name="Bridge_Incompatible" xml:space="preserve"><value>The running A2DPWB speaks a different protocol than this EncoDeck version ({0}). Update EncoDeck or A2DPWB.</value></data>
-  <data name="Bridge_Connecting" xml:space="preserve"><value>Connecting to the A2DPWB background process…</value></data>
-  <data name="Bridge_Stopped" xml:space="preserve"><value>A2DPWB {0} is installed ({1}); its background process is not running.</value></data>
-  <data name="Bridge_StoreMissing" xml:space="preserve"><value>The Store version does not download or start other programs. If you installed A2DP Windows Bridge yourself, EncoDeck connects to it and shows its state once it runs.</value></data>
-  <data name="Bridge_StoreStart" xml:space="preserve"><value>Start A2DP Windows Bridge from the Start menu.</value></data>
-  <data name="Bridge_Missing" xml:space="preserve"><value>Not installed. The component (about {0:F1} MB) is A2DPWB's official portable build, downloaded unmodified from the A2DPWB project's own releases and verified against its SHA-256. Updates bring the newest official 2.x build, betas included. Downloading changes no drivers.</value></data>
+  <data name="Bridge_Summary.Text" xml:space="preserve"><value>BlueCaster (formerly A2DP Windows Bridge) takes over a dedicated USB Bluetooth adapter and sends audio to your earbuds with its own Bluetooth stack in LDAC, LHDC V5, aptX HD and more, without test-signed drivers. EncoDeck downloads and starts it, and recognizes and controls earbuds connected through it on the home page.</value></data>
+  <data name="Bridge_Running" xml:space="preserve"><value>Running in the background: BlueCaster {0} ({1})</value></data>
+  <data name="Bridge_Incompatible" xml:space="preserve"><value>The running BlueCaster speaks a different protocol than this EncoDeck version ({0}). Update EncoDeck or BlueCaster.</value></data>
+  <data name="Bridge_Connecting" xml:space="preserve"><value>Connecting to the BlueCaster background process…</value></data>
+  <data name="Bridge_Stopped" xml:space="preserve"><value>BlueCaster {0} is installed ({1}); its background process is not running.</value></data>
+  <data name="Bridge_StoreMissing" xml:space="preserve"><value>The Store version does not download or start other programs. If you installed BlueCaster yourself, EncoDeck connects to it and shows its state once it runs.</value></data>
+  <data name="Bridge_StoreStart" xml:space="preserve"><value>Start BlueCaster from the Start menu.</value></data>
+  <data name="Bridge_Missing" xml:space="preserve"><value>Not installed. The component (about {0:F1} MB) is BlueCaster's official portable build, downloaded unmodified from the BlueCaster project's own releases and verified against its SHA-256. Updates bring the newest official build, betas included. Downloading changes no drivers.</value></data>
   <data name="Bridge_Unpublished" xml:space="preserve"><value>The A2DP Bridge component for this EncoDeck version is not published yet.</value></data>
   <data name="Bridge_UpdateAvailable" xml:space="preserve"><value>Component {0} is available to update to.</value></data>
   <data name="Bridge_StandaloneLink.Content" xml:space="preserve"><value>Download the non-Store version</value></data>
@@ -617,25 +617,25 @@
   <data name="Bridge_Update" xml:space="preserve"><value>Update component ({0:F1} MB)</value></data>
   <data name="Bridge_Start" xml:space="preserve"><value>Start</value></data>
   <data name="Bridge_Quit" xml:space="preserve"><value>Quit</value></data>
-  <data name="Bridge_OpenWindow" xml:space="preserve"><value>Open A2DPWB</value></data>
+  <data name="Bridge_OpenWindow" xml:space="preserve"><value>Open BlueCaster</value></data>
   <data name="Bridge_RefreshAdapters" xml:space="preserve"><value>Refresh</value></data>
   <data name="Bridge_OpenSettingsFolder" xml:space="preserve"><value>Open settings folder</value></data>
-  <data name="Bridge_ManageInWindow.Text" xml:space="preserve"><value>Pair earbuds and manage profiles, codecs and volume in the A2DPWB window ("Open A2DPWB").</value></data>
-  <data name="Bridge_AutoStart.Header" xml:space="preserve"><value>Start the A2DPWB background process with EncoDeck</value></data>
+  <data name="Bridge_ManageInWindow.Text" xml:space="preserve"><value>Pair earbuds and manage profiles, codecs and volume in the BlueCaster window ("Open BlueCaster").</value></data>
+  <data name="Bridge_AutoStart.Header" xml:space="preserve"><value>Start the BlueCaster background process with EncoDeck</value></data>
   <data name="Bridge_Adapters.Header" xml:space="preserve"><value>Adapters</value></data>
-  <data name="Bridge_AdaptersNote.Text" xml:space="preserve"><value>A2DPWB uses only a dedicated USB adapter with the WinUSB driver; Windows no longer uses it once assigned. EncoDeck never assigns the adapter Windows' Bluetooth is using. Realtek adapters also need firmware files: put them in the settings folder and click Refresh.</value></data>
+  <data name="Bridge_AdaptersNote.Text" xml:space="preserve"><value>BlueCaster uses only a dedicated USB adapter with the WinUSB driver; Windows no longer uses it once assigned. EncoDeck never assigns the adapter Windows' Bluetooth is using. Realtek adapters also need firmware files: put them in the settings folder and click Refresh.</value></data>
   <data name="Bridge_FirmwareLink.Content" xml:space="preserve"><value>Realtek firmware downloads</value></data>
-  <data name="Bridge_Disclaimer.Text" xml:space="preserve"><value>Disclaimer: A2DP Windows Bridge is a third-party open-source project by Seiya Funaoka (Apache-2.0 / MIT); this component is an unmodified copy of its official build. The BTstack library it links statically is licensed for personal, non-commercial use only. Earbud compatibility, radio quality and adapter firmware are outside EncoDeck's control; use it at your own risk.</value></data>
+  <data name="Bridge_Disclaimer.Text" xml:space="preserve"><value>Disclaimer: BlueCaster (formerly A2DP Windows Bridge) is a third-party open-source project by Seiya Funaoka (Apache-2.0 / MIT); this component is an unmodified copy of its official build. The BTstack library it links statically is licensed for personal, non-commercial use only. Earbud compatibility, radio quality and adapter firmware are outside EncoDeck's control; use it at your own risk.</value></data>
   <data name="Bridge_Help.Header" xml:space="preserve"><value>How to use A2DP Bridge</value></data>
   <data name="Bridge_HelpRequirements.Text" xml:space="preserve"><value>You need a dedicated USB Bluetooth adapter, separate from the PC's built-in Bluetooth (upstream verified the TP-Link UB500 / Realtek RTL8761BU), and Windows 10 22H2 or Windows 11. Never assign WinUSB to the built-in Bluetooth.</value></data>
-  <data name="Bridge_HelpSetup.Text" xml:space="preserve"><value>1. After downloading and starting the background process, assign WinUSB to the dedicated adapter under Adapters (administrator rights); Realtek adapters also need their firmware files. Then click "Open A2DPWB" to add your earbuds, choose a codec and connect in its window.</value></data>
-  <data name="Bridge_HelpDaily.Text" xml:space="preserve"><value>2. From then on, connect and disconnect the earbuds, switch profiles and change the volume in the A2DPWB window. By default A2DPWB sends what Windows plays; closing EncoDeck does not stop the audio. You can let EncoDeck start the A2DPWB background process.</value></data>
-  <data name="Bridge_HelpControls.Text" xml:space="preserve"><value>3. Over the dedicated adapter Windows cannot see the earbuds. A2DPWB 2.0.2 and later opens the control channel for EncoDeck: the home page shows battery and earbud settings as usual, with an A2DP Bridge badge, and earbuds paired only in A2DPWB appear in EncoDeck too. Earbuds with dual-device connection can also connect to the built-in Bluetooth; then set Windows' default output to another device so that two streams do not reach the earbuds.</value></data>
+  <data name="Bridge_HelpSetup.Text" xml:space="preserve"><value>1. After downloading and starting the background process, assign WinUSB to the dedicated adapter under Adapters (administrator rights); Realtek adapters also need their firmware files. Then click "Open BlueCaster" to add your earbuds, choose a codec and connect in its window.</value></data>
+  <data name="Bridge_HelpDaily.Text" xml:space="preserve"><value>2. From then on, connect and disconnect the earbuds, switch profiles and change the volume in the BlueCaster window. By default BlueCaster sends what Windows plays; closing EncoDeck does not stop the audio. You can let EncoDeck start the BlueCaster background process.</value></data>
+  <data name="Bridge_HelpControls.Text" xml:space="preserve"><value>3. Over the dedicated adapter Windows cannot see the earbuds. BlueCaster (and A2DPWB 2.0.2 and later) opens the control channel for EncoDeck: the home page shows battery and earbud settings as usual, with an A2DP Bridge badge, and earbuds paired only in BlueCaster appear in EncoDeck too. Earbuds with dual-device connection can also connect to the built-in Bluetooth; then set Windows' default output to another device so that two streams do not reach the earbuds.</value></data>
   <data name="Bridge_HelpRestore.Text" xml:space="preserve"><value>4. When you stop using it, click "Restore driver" under Adapters to give the adapter back to Windows, then quit the background process. Uninstalling EncoDeck does not restore the driver.</value></data>
   <data name="Bridge_Guide.Content" xml:space="preserve"><value>Read the full guide</value></data>
-  <data name="Bridge_Upstream.Content" xml:space="preserve"><value>A2DP Windows Bridge project page</value></data>
+  <data name="Bridge_Upstream.Content" xml:space="preserve"><value>BlueCaster project page</value></data>
   <data name="Bridge_V1Running" xml:space="preserve"><value>A2DPWB v1 is running and may hold the adapter; exit v1 first.</value></data>
-  <data name="Bridge_NoAdapter" xml:space="preserve"><value>No adapter is assigned to A2DPWB yet: plug in a dedicated USB Bluetooth adapter and assign WinUSB under Adapters, or finish the first-run setup in the A2DPWB window.</value></data>
+  <data name="Bridge_NoAdapter" xml:space="preserve"><value>No adapter is assigned to BlueCaster yet: plug in a dedicated USB Bluetooth adapter and assign WinUSB under Adapters, or finish the first-run setup in the BlueCaster window.</value></data>
   <data name="Bridge_AdapterLine" xml:space="preserve"><value>Adapter: {0} (WinUSB) · {1}</value></data>
   <data name="Bridge_AdapterStatus_Stopped" xml:space="preserve"><value>standby (starts on connect)</value></data>
   <data name="Bridge_AdapterStatus_Initializing" xml:space="preserve"><value>initializing</value></data>
@@ -658,7 +658,7 @@
   <data name="Bridge_SourceTone" xml:space="preserve"><value>test tone</value></data>
   <data name="Bridge_CodecFallback" xml:space="preserve"><value>The earbuds do not offer the profile's {0}; another codec is used.</value></data>
   <data name="Bridge_NoUsbAdapters" xml:space="preserve"><value>No USB Bluetooth adapter found.</value></data>
-  <data name="Bridge_DriverWinUsb" xml:space="preserve"><value>WinUSB · used by A2DPWB</value></data>
+  <data name="Bridge_DriverWinUsb" xml:space="preserve"><value>WinUSB · used by BlueCaster</value></data>
   <data name="Bridge_DriverWindowsInUse" xml:space="preserve"><value>in use by Windows Bluetooth</value></data>
   <data name="Bridge_DriverBluetooth" xml:space="preserve"><value>Windows Bluetooth driver</value></data>
   <data name="Bridge_DriverNone" xml:space="preserve"><value>no driver</value></data>
@@ -666,19 +666,19 @@
   <data name="Bridge_RestoreDriver" xml:space="preserve"><value>Restore driver</value></data>
   <data name="Bridge_AssignWinUsb" xml:space="preserve"><value>Assign WinUSB</value></data>
   <data name="Bridge_WindowsAdapterTip" xml:space="preserve"><value>This is the adapter Windows' Bluetooth is using. Assigning it would disconnect every Bluetooth device on this PC and EncoDeck's earbud controls, so EncoDeck does not offer it.</value></data>
-  <data name="Bridge_AssignTitle" xml:space="preserve"><value>Give {0} to A2DPWB?</value></data>
+  <data name="Bridge_AssignTitle" xml:space="preserve"><value>Give {0} to BlueCaster?</value></data>
   <data name="Bridge_AssignBody" xml:space="preserve"><value>With WinUSB assigned, Windows no longer uses this adapter and any Bluetooth device on it disconnects. Administrator rights are needed; "Restore driver" gives it back to Windows at any time.</value></data>
   <data name="Bridge_RestoreTitle" xml:space="preserve"><value>Give {0} back to Windows?</value></data>
-  <data name="Bridge_RestoreBody" xml:space="preserve"><value>A2DPWB can then no longer use this adapter and any audio it is playing stops. Administrator rights are needed.</value></data>
+  <data name="Bridge_RestoreBody" xml:space="preserve"><value>BlueCaster can then no longer use this adapter and any audio it is playing stops. Administrator rights are needed.</value></data>
   <data name="Bridge_DriverChanging" xml:space="preserve"><value>Changing the driver; allow the administrator prompt when Windows asks…</value></data>
-  <data name="Bridge_NotConnected" xml:space="preserve"><value>The A2DPWB background process is not running.</value></data>
-  <data name="Bridge_Starting" xml:space="preserve"><value>Starting the A2DPWB background process…</value></data>
-  <data name="Bridge_StartTimeout" xml:space="preserve"><value>The A2DPWB background process did not answer within 15 seconds. Click "Open A2DPWB" to see why.</value></data>
+  <data name="Bridge_NotConnected" xml:space="preserve"><value>The BlueCaster background process is not running.</value></data>
+  <data name="Bridge_Starting" xml:space="preserve"><value>Starting the BlueCaster background process…</value></data>
+  <data name="Bridge_StartTimeout" xml:space="preserve"><value>The BlueCaster background process did not answer within 15 seconds. Click "Open BlueCaster" to see why.</value></data>
   <data name="Bridge_Downloading" xml:space="preserve"><value>Connecting to the download source…</value></data>
   <data name="Bridge_DownloadProgress" xml:space="preserve"><value>Downloading A2DP Bridge: {0:F1} / {1:F1} MB; it is verified and unpacked afterwards.</value></data>
   <data name="Bridge_Cancelled" xml:space="preserve"><value>Download cancelled. Downloading again resumes where it stopped.</value></data>
   <data name="Bridge_OriginManaged" xml:space="preserve"><value>managed by EncoDeck</value></data>
-  <data name="Bridge_OriginInstalled" xml:space="preserve"><value>A2DPWB's own installation</value></data>
+  <data name="Bridge_OriginInstalled" xml:space="preserve"><value>BlueCaster's own installation</value></data>
   <data name="Bridge_OriginRunning" xml:space="preserve"><value>running copy</value></data>
   <data name="Codec_Experimental.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>Experimental upstream: passes the encoder tests and a virtual receiver, not yet confirmed with real headphones</value></data>
   <data name="Codec_Experimental.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.HelpText" xml:space="preserve"><value>Experimental codec</value></data>
@@ -701,17 +701,17 @@
   <data name="Lhdc_Uninstalled" xml:space="preserve"><value>The LHDC component was uninstalled.</value></data>
   <data name="Bridge_ManagedVersion" xml:space="preserve"><value>Component managed by EncoDeck: {0}</value></data>
   <data name="Bridge_UninstallTitle" xml:space="preserve"><value>Uninstall the A2DP Bridge component?</value></data>
-  <data name="Bridge_UninstallBody" xml:space="preserve"><value>This quits the A2DPWB background process EncoDeck manages, deletes its files (about 25 MB) and removes startup entries that point to it. A2DPWB's settings folder (pairings, firmware, logs) is kept; an A2DP Windows Bridge you installed yourself is not affected.</value></data>
-  <data name="Bridge_UninstallRestore" xml:space="preserve"><value>Also give the {0} adapter(s) A2DPWB took back to Windows (recommended; one administrator prompt)</value></data>
+  <data name="Bridge_UninstallBody" xml:space="preserve"><value>This quits the BlueCaster background process EncoDeck manages, deletes its files (about 25 MB) and removes startup entries that point to it. BlueCaster's settings folder (pairings, firmware, logs) is kept; an BlueCaster you installed yourself is not affected.</value></data>
+  <data name="Bridge_UninstallRestore" xml:space="preserve"><value>Also give the {0} adapter(s) BlueCaster took back to Windows (recommended; one administrator prompt)</value></data>
   <data name="Bridge_Uninstalling" xml:space="preserve"><value>Uninstalling…</value></data>
   <data name="Bridge_UninstallingRestore" xml:space="preserve"><value>Restoring the adapter drivers and uninstalling; allow the administrator prompt when Windows asks…</value></data>
   <data name="Bridge_Uninstalled" xml:space="preserve"><value>The A2DP Bridge component was uninstalled.</value></data>
-  <data name="Bridge_UninstallCoreRunning" xml:space="preserve"><value>The A2DPWB background process did not exit; quit it from its tray icon and try again.</value></data>
+  <data name="Bridge_UninstallCoreRunning" xml:space="preserve"><value>The BlueCaster background process did not exit; quit it from its tray icon and try again.</value></data>
   <data name="Bridge_UninstallRestoreFailed" xml:space="preserve"><value>Not every adapter driver was restored (code {0}); the component was not uninstalled. Restore them one by one under Adapters and try again.</value></data>
-  <data name="Bridge_UninstallBusy" xml:space="preserve"><value>The component files are in use (A2DPWB may still be running); quit it and try again.</value></data>
+  <data name="Bridge_UninstallBusy" xml:space="preserve"><value>The component files are in use (BlueCaster may still be running); quit it and try again.</value></data>
   <data name="Bridge_UninstallUacDeclined" xml:space="preserve"><value>The administrator prompt was declined; the component was not uninstalled.</value></data>
   <data name="Bridge_UpdateAfterRestart" xml:space="preserve"><value>The component was updated. The background process is streaming, so the new version takes over at its next start.</value></data>
-  <data name="Bridge_OwnInstallNote.Text" xml:space="preserve"><value>You are using an A2DP Windows Bridge you installed yourself: it checks for its own updates, and it is uninstalled from Installed apps in Windows Settings.</value></data>
+  <data name="Bridge_OwnInstallNote.Text" xml:space="preserve"><value>You are using an BlueCaster you installed yourself: it checks for its own updates, and it is uninstalled from Installed apps in Windows Settings.</value></data>
   <data name="Bridge_OpenAppsSettings.Content" xml:space="preserve"><value>Open Installed apps</value></data>
   <data name="Xiaomi_Level_0" xml:space="preserve"><value>Level 1</value></data>
   <data name="Xiaomi_Level_1" xml:space="preserve"><value>Level 2</value></data>

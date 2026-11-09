@@ -146,9 +146,9 @@ This is not a regular earbud control feature: it involves test-signed drivers, a
 
 ### A2DP Bridge (optional / experimental)
 
-The non-Store build can download and manage [A2DP Windows Bridge](https://github.com/SeiyaFunaokaJP/A2DP-Windows-Bridge) from the Labs page: it takes over a **dedicated USB Bluetooth adapter** and sends audio in LDAC, LHDC V5, aptX HD and more, without test-signed drivers. EncoDeck downloads it (an unmodified copy of the official build), starts its background process, connects and disconnects, sets the volume, manages the adapter's driver, and recognizes earbuds connected through it on the home page.
+The non-Store build can download and manage [BlueCaster](https://github.com/SeiyaFunaokaJP/BlueCaster) (formerly A2DP Windows Bridge) from the Labs page: it takes over a **dedicated USB Bluetooth adapter** and sends audio in LDAC, LHDC V5, aptX HD and more, without test-signed drivers. EncoDeck downloads it (an unmodified copy of the official build), starts its background process, connects and disconnects, sets the volume, manages the adapter's driver, and recognizes earbuds connected through it on the home page.
 
-It needs a second USB Bluetooth adapter; while the earbuds are connected only through the bridge, Windows cannot see them, so battery and earbud settings are unavailable (earbuds with dual-device connection can also connect to the PC's Bluetooth). The Store version only connects to an A2DP Windows Bridge you installed and started yourself. See the [A2DP Bridge guide](docs/A2DP_BRIDGE.md).
+It needs a second USB Bluetooth adapter; while the earbuds are connected only through the bridge, Windows cannot see them, so battery and earbud settings are unavailable (earbuds with dual-device connection can also connect to the PC's Bluetooth). The Store version only connects to an BlueCaster you installed and started yourself. See the [A2DP Bridge guide](docs/A2DP_BRIDGE.md).
 
 The LHDC and A2DP Bridge components have their own releases, so updating EncoDeck does not download them again; each can be checked for updates, updated and uninstalled from the Labs page, and every download is verified by size and SHA-256.
 

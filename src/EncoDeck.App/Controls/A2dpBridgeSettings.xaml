@@ -22,7 +22,7 @@
    <TextBlock x:Uid="Bridge_Summary" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" />
    <TextBlock x:Name="Status" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
    <InfoBar x:Name="Notice" IsOpen="False" Visibility="Collapsed" />
-   <!-- A2DPWB's own installation updates and uninstalls itself. -->
+   <!-- BlueCaster's own installation updates and uninstalls itself. -->
    <StackPanel x:Name="OwnInstallNote" Spacing="2" Visibility="Collapsed">
     <TextBlock x:Uid="Bridge_OwnInstallNote" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" />
     <HyperlinkButton x:Uid="Bridge_OpenAppsSettings" NavigateUri="ms-settings:appsfeatures" Padding="0" />
@@ -40,7 +40,7 @@
    </local:WrapPanel>
 
    <!-- While EncoDeck is connected to the core: adapter and stream. Earbuds, connection profiles and volume are
-        A2DPWB's own (its window), so the two never disagree about them. -->
+        BlueCaster's own (its window), so the two never disagree about them. -->
    <StackPanel x:Name="Live" Spacing="10" Visibility="Collapsed">
     <TextBlock x:Name="AdapterText" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" />
     <TextBlock x:Name="StreamText" TextWrapping="Wrap" />
@@ -70,7 +70,7 @@
      <TextBlock x:Uid="Bridge_HelpControls" TextWrapping="Wrap" />
      <TextBlock x:Uid="Bridge_HelpRestore" TextWrapping="Wrap" />
      <HyperlinkButton x:Uid="Bridge_Guide" NavigateUri="https://github.com/TIANLI0/EncoDeck/blob/main/docs/A2DP_BRIDGE.md" Padding="0" />
-     <HyperlinkButton x:Uid="Bridge_Upstream" NavigateUri="https://github.com/SeiyaFunaokaJP/A2DP-Windows-Bridge" Padding="0" />
+     <HyperlinkButton x:Uid="Bridge_Upstream" NavigateUri="https://github.com/SeiyaFunaokaJP/BlueCaster" Padding="0" />
     </StackPanel>
    </Expander>
   </StackPanel>

@@ -29,7 +29,7 @@ internal static class ComponentsCommand
             var results = new[]
             {
                 (ComponentCatalog.LhdcId, await updates.CheckAsync(ComponentCatalog.LhdcId, LhdcComponent.Interface, floor, options.Has("prerelease"), ct).ConfigureAwait(false)),
-                // The official A2DPWB releases, as the Labs page does: the newest 2.x build, betas included.
+                // The official BlueCaster releases, as the Labs page does: the newest build, betas included.
                 (ComponentCatalog.A2dpBridgeId, await updates.CheckUpstreamAsync(ComponentCatalog.A2dpBridge, floor, ct).ConfigureAwait(false)),
             };
             foreach (var (name, result) in results)
@@ -46,7 +46,7 @@ internal static class ComponentsCommand
             return 2;
         }
         using var http = new HttpClient();
-        // --upstream: the newest official A2DPWB 2.x build instead of the pin, as the Labs page's update installs it.
+        // --upstream: the newest official BlueCaster build instead of the pin, as the Labs page's update installs it.
         ComponentRelease? bridge = null;
         if (id == ComponentCatalog.A2dpBridgeId && options.Has("upstream"))
         {
@@ -54,7 +54,7 @@ internal static class ComponentsCommand
                 .CheckUpstreamAsync(ComponentCatalog.A2dpBridge, "0.0.0-r0", ct).ConfigureAwait(false);
             if (found.Release is null)
             {
-                Console.Error.WriteLine($"No official A2DPWB build found: {found.Outcome}.");
+                Console.Error.WriteLine($"No official BlueCaster build found: {found.Outcome}.");
                 return 3;
             }
             bridge = found.Release;

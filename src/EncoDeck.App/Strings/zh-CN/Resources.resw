@@ -597,19 +597,19 @@
   <data name="Connection_BridgeConnecting" xml:space="preserve"><value>A2DP Bridge 正在连接…</value></data>
   <data name="Home_Bridge.Title" xml:space="preserve"><value>通过 A2DP Bridge 连接</value></data>
   <data name="Home_Bridge_Open.Content" xml:space="preserve"><value>打开实验室</value></data>
-  <data name="Home_Bridge_Only" xml:space="preserve"><value>耳机经 A2DP Bridge 播放（{0}），但控制通道不可用：读取电量和更改耳机设置需要 A2DP Bridge 2.0.2 及以上，并使用经典蓝牙连接。</value></data>
+  <data name="Home_Bridge_Only" xml:space="preserve"><value>耳机经 A2DP Bridge 播放（{0}），但控制通道不可用：读取电量和更改耳机设置需要 BlueCaster（或 A2DPWB 2.0.2 及以上），并使用经典蓝牙连接。</value></data>
   <data name="Badge_Bridge_AudioOnly" xml:space="preserve"><value>声音经 A2DP Bridge 的独立 USB 适配器播放（{0}）。Windows 看不到这条连接。</value></data>
   <data name="Badge_Bridge_Windows" xml:space="preserve"><value>声音经 A2DP Bridge 的独立 USB 适配器播放（{0}），耳机设置仍通过 Windows 蓝牙控制。</value></data>
   <data name="Badge_Bridge_Control" xml:space="preserve"><value>声音经 A2DP Bridge 的独立 USB 适配器播放（{0}），电量读取和耳机设置也经 A2DP Bridge 进行。</value></data>
   <data name="Bridge_Title.Text" xml:space="preserve"><value>A2DP Bridge（独立 USB 蓝牙适配器，实验性）</value></data>
-  <data name="Bridge_Summary.Text" xml:space="preserve"><value>A2DP Windows Bridge 接管一个独立的 USB 蓝牙适配器，用自己的蓝牙协议栈以 LDAC、LHDC V5、aptX HD 等编码向耳机发送声音，不需要测试签名驱动。EncoDeck 负责下载和启动它，并在首页识别、控制通过它连接的耳机。</value></data>
-  <data name="Bridge_Running" xml:space="preserve"><value>后台运行中：A2DPWB {0}（{1}）</value></data>
-  <data name="Bridge_Incompatible" xml:space="preserve"><value>正在运行的 A2DPWB 与此版本 EncoDeck 的通信协议不兼容（{0}）。请更新 EncoDeck 或 A2DPWB。</value></data>
-  <data name="Bridge_Connecting" xml:space="preserve"><value>正在连接 A2DPWB 后台…</value></data>
-  <data name="Bridge_Stopped" xml:space="preserve"><value>已安装 A2DPWB {0}（{1}），后台未运行。</value></data>
-  <data name="Bridge_StoreMissing" xml:space="preserve"><value>商店版不会下载或启动其他程序。如已自行安装 A2DP Windows Bridge，启动它后 EncoDeck 会自动连接并显示状态。</value></data>
-  <data name="Bridge_StoreStart" xml:space="preserve"><value>请从开始菜单启动 A2DP Windows Bridge。</value></data>
-  <data name="Bridge_Missing" xml:space="preserve"><value>未安装。组件约 {0:F1} MB，是 A2DPWB 官方的便携版构建，直接从 A2DPWB 官方 Release 原样下载并按 SHA-256 校验。更新时获取最新的官方 2.x 版本（含测试版）。下载不会更改任何驱动。</value></data>
+  <data name="Bridge_Summary.Text" xml:space="preserve"><value>BlueCaster（原 A2DP Windows Bridge）接管一个独立的 USB 蓝牙适配器，用自己的蓝牙协议栈以 LDAC、LHDC V5、aptX HD 等编码向耳机发送声音，不需要测试签名驱动。EncoDeck 负责下载和启动它，并在首页识别、控制通过它连接的耳机。</value></data>
+  <data name="Bridge_Running" xml:space="preserve"><value>后台运行中：BlueCaster {0}（{1}）</value></data>
+  <data name="Bridge_Incompatible" xml:space="preserve"><value>正在运行的 BlueCaster 与此版本 EncoDeck 的通信协议不兼容（{0}）。请更新 EncoDeck 或 BlueCaster。</value></data>
+  <data name="Bridge_Connecting" xml:space="preserve"><value>正在连接 BlueCaster 后台…</value></data>
+  <data name="Bridge_Stopped" xml:space="preserve"><value>已安装 BlueCaster {0}（{1}），后台未运行。</value></data>
+  <data name="Bridge_StoreMissing" xml:space="preserve"><value>商店版不会下载或启动其他程序。如已自行安装 BlueCaster，启动它后 EncoDeck 会自动连接并显示状态。</value></data>
+  <data name="Bridge_StoreStart" xml:space="preserve"><value>请从开始菜单启动 BlueCaster。</value></data>
+  <data name="Bridge_Missing" xml:space="preserve"><value>未安装。组件约 {0:F1} MB，是 BlueCaster 官方的便携版构建，直接从 BlueCaster 官方 Release 原样下载并按 SHA-256 校验。更新时获取最新的官方版本（含测试版）。下载不会更改任何驱动。</value></data>
   <data name="Bridge_Unpublished" xml:space="preserve"><value>此版本 EncoDeck 对应的 A2DP Bridge 组件尚未发布。</value></data>
   <data name="Bridge_UpdateAvailable" xml:space="preserve"><value>有新的组件 {0} 可用，可以更新。</value></data>
   <data name="Bridge_StandaloneLink.Content" xml:space="preserve"><value>下载非商店版本</value></data>
@@ -617,25 +617,25 @@
   <data name="Bridge_Update" xml:space="preserve"><value>更新组件（{0:F1} MB）</value></data>
   <data name="Bridge_Start" xml:space="preserve"><value>启动后台</value></data>
   <data name="Bridge_Quit" xml:space="preserve"><value>退出后台</value></data>
-  <data name="Bridge_OpenWindow" xml:space="preserve"><value>打开 A2DPWB</value></data>
+  <data name="Bridge_OpenWindow" xml:space="preserve"><value>打开 BlueCaster</value></data>
   <data name="Bridge_RefreshAdapters" xml:space="preserve"><value>刷新</value></data>
   <data name="Bridge_OpenSettingsFolder" xml:space="preserve"><value>打开设置文件夹</value></data>
-  <data name="Bridge_ManageInWindow.Text" xml:space="preserve"><value>耳机的配对、连接配置、编码和音量请在 A2DPWB 窗口中管理（“打开 A2DPWB”）。</value></data>
-  <data name="Bridge_AutoStart.Header" xml:space="preserve"><value>EncoDeck 启动时同时启动 A2DPWB 后台</value></data>
+  <data name="Bridge_ManageInWindow.Text" xml:space="preserve"><value>耳机的配对、连接配置、编码和音量请在 BlueCaster 窗口中管理（“打开 BlueCaster”）。</value></data>
+  <data name="Bridge_AutoStart.Header" xml:space="preserve"><value>EncoDeck 启动时同时启动 BlueCaster 后台</value></data>
   <data name="Bridge_Adapters.Header" xml:space="preserve"><value>适配器</value></data>
-  <data name="Bridge_AdaptersNote.Text" xml:space="preserve"><value>A2DPWB 只能使用分配了 WinUSB 驱动的独立 USB 适配器，分配后 Windows 不再使用它。EncoDeck 不允许分配 Windows 正在使用的蓝牙适配器。Realtek 适配器还需要固件文件，放入设置文件夹后点击“刷新”。</value></data>
+  <data name="Bridge_AdaptersNote.Text" xml:space="preserve"><value>BlueCaster 只能使用分配了 WinUSB 驱动的独立 USB 适配器，分配后 Windows 不再使用它。EncoDeck 不允许分配 Windows 正在使用的蓝牙适配器。Realtek 适配器还需要固件文件，放入设置文件夹后点击“刷新”。</value></data>
   <data name="Bridge_FirmwareLink.Content" xml:space="preserve"><value>Realtek 固件下载页</value></data>
-  <data name="Bridge_Disclaimer.Text" xml:space="preserve"><value>免责声明：A2DP Windows Bridge 是 Seiya Funaoka 的第三方开源项目（Apache-2.0 / MIT），本组件是其官方构建的未修改副本；其中静态链接的 BTstack 仅许可个人、非商业用途。耳机兼容性、无线质量和适配器固件不在 EncoDeck 控制范围内，请自行评估并承担使用风险。</value></data>
+  <data name="Bridge_Disclaimer.Text" xml:space="preserve"><value>免责声明：BlueCaster（原 A2DP Windows Bridge）是 Seiya Funaoka 的第三方开源项目（Apache-2.0 / MIT），本组件是其官方构建的未修改副本；其中静态链接的 BTstack 仅许可个人、非商业用途。耳机兼容性、无线质量和适配器固件不在 EncoDeck 控制范围内，请自行评估并承担使用风险。</value></data>
   <data name="Bridge_Help.Header" xml:space="preserve"><value>A2DP Bridge 使用说明</value></data>
   <data name="Bridge_HelpRequirements.Text" xml:space="preserve"><value>需要一个独立的 USB 蓝牙适配器（与电脑自带蓝牙分开，上游验证过 TP-Link UB500 / Realtek RTL8761BU），以及 Windows 10 22H2 或 Windows 11。不要把 WinUSB 分配给电脑自带的蓝牙。</value></data>
-  <data name="Bridge_HelpSetup.Text" xml:space="preserve"><value>1. 下载组件并启动后台后，在“适配器”中为独立适配器分配 WinUSB（需管理员授权）；Realtek 适配器还需放入固件文件。然后点击“打开 A2DPWB”，在它的窗口中添加耳机、选择编码并连接。</value></data>
-  <data name="Bridge_HelpDaily.Text" xml:space="preserve"><value>2. 之后在 A2DPWB 窗口中连接、断开耳机，切换配置和调节音量。A2DPWB 默认采集 Windows 正在播放的声音；关闭 EncoDeck 不会中断播放。可以开启“EncoDeck 启动时同时启动 A2DPWB 后台”。</value></data>
-  <data name="Bridge_HelpControls.Text" xml:space="preserve"><value>3. 通过独立适配器连接时，Windows 看不到耳机。A2DPWB 2.0.2 及以上可以替 EncoDeck 打开控制通道：首页照常显示电量和耳机设置，并带有 A2DP Bridge 徽标；只在 A2DPWB 中配对过的耳机也会出现在 EncoDeck 中。支持双设备连接的耳机也可以同时连接电脑自带蓝牙；此时请把 Windows 的默认输出设为其他设备，避免两路声音同时发往耳机。</value></data>
+  <data name="Bridge_HelpSetup.Text" xml:space="preserve"><value>1. 下载组件并启动后台后，在“适配器”中为独立适配器分配 WinUSB（需管理员授权）；Realtek 适配器还需放入固件文件。然后点击“打开 BlueCaster”，在它的窗口中添加耳机、选择编码并连接。</value></data>
+  <data name="Bridge_HelpDaily.Text" xml:space="preserve"><value>2. 之后在 BlueCaster 窗口中连接、断开耳机，切换配置和调节音量。BlueCaster 默认采集 Windows 正在播放的声音；关闭 EncoDeck 不会中断播放。可以开启“EncoDeck 启动时同时启动 BlueCaster 后台”。</value></data>
+  <data name="Bridge_HelpControls.Text" xml:space="preserve"><value>3. 通过独立适配器连接时，Windows 看不到耳机。BlueCaster（及 A2DPWB 2.0.2 及以上）可以替 EncoDeck 打开控制通道：首页照常显示电量和耳机设置，并带有 A2DP Bridge 徽标；只在 BlueCaster 中配对过的耳机也会出现在 EncoDeck 中。支持双设备连接的耳机也可以同时连接电脑自带蓝牙；此时请把 Windows 的默认输出设为其他设备，避免两路声音同时发往耳机。</value></data>
   <data name="Bridge_HelpRestore.Text" xml:space="preserve"><value>4. 不再使用时，在“适配器”中点击“恢复驱动”把适配器交还给 Windows，然后退出后台。卸载 EncoDeck 不会自动恢复驱动。</value></data>
   <data name="Bridge_Guide.Content" xml:space="preserve"><value>查看详细教程</value></data>
-  <data name="Bridge_Upstream.Content" xml:space="preserve"><value>A2DP Windows Bridge 项目主页</value></data>
+  <data name="Bridge_Upstream.Content" xml:space="preserve"><value>BlueCaster 项目主页</value></data>
   <data name="Bridge_V1Running" xml:space="preserve"><value>A2DPWB v1 正在运行，可能占用了适配器，请先退出 v1。</value></data>
-  <data name="Bridge_NoAdapter" xml:space="preserve"><value>还没有交给 A2DPWB 的适配器：插入独立 USB 蓝牙适配器，在“适配器”中分配 WinUSB，或在 A2DPWB 窗口完成首次设置。</value></data>
+  <data name="Bridge_NoAdapter" xml:space="preserve"><value>还没有交给 BlueCaster 的适配器：插入独立 USB 蓝牙适配器，在“适配器”中分配 WinUSB，或在 BlueCaster 窗口完成首次设置。</value></data>
   <data name="Bridge_AdapterLine" xml:space="preserve"><value>适配器：{0}（WinUSB）· {1}</value></data>
   <data name="Bridge_AdapterStatus_Stopped" xml:space="preserve"><value>待机（连接时启动）</value></data>
   <data name="Bridge_AdapterStatus_Initializing" xml:space="preserve"><value>正在初始化</value></data>
@@ -658,7 +658,7 @@
   <data name="Bridge_SourceTone" xml:space="preserve"><value>测试音</value></data>
   <data name="Bridge_CodecFallback" xml:space="preserve"><value>耳机不支持配置中的 {0}，已改用其他编码。</value></data>
   <data name="Bridge_NoUsbAdapters" xml:space="preserve"><value>没有找到 USB 蓝牙适配器。</value></data>
-  <data name="Bridge_DriverWinUsb" xml:space="preserve"><value>WinUSB · 由 A2DPWB 使用</value></data>
+  <data name="Bridge_DriverWinUsb" xml:space="preserve"><value>WinUSB · 由 BlueCaster 使用</value></data>
   <data name="Bridge_DriverWindowsInUse" xml:space="preserve"><value>Windows 蓝牙正在使用</value></data>
   <data name="Bridge_DriverBluetooth" xml:space="preserve"><value>Windows 蓝牙驱动</value></data>
   <data name="Bridge_DriverNone" xml:space="preserve"><value>没有驱动</value></data>
@@ -666,19 +666,19 @@
   <data name="Bridge_RestoreDriver" xml:space="preserve"><value>恢复驱动</value></data>
   <data name="Bridge_AssignWinUsb" xml:space="preserve"><value>分配 WinUSB</value></data>
   <data name="Bridge_WindowsAdapterTip" xml:space="preserve"><value>这是 Windows 正在使用的蓝牙适配器。分配后这台电脑上的蓝牙设备都会断开，EncoDeck 也将无法控制耳机，因此不提供此操作。</value></data>
-  <data name="Bridge_AssignTitle" xml:space="preserve"><value>把 {0} 交给 A2DPWB？</value></data>
+  <data name="Bridge_AssignTitle" xml:space="preserve"><value>把 {0} 交给 BlueCaster？</value></data>
   <data name="Bridge_AssignBody" xml:space="preserve"><value>分配 WinUSB 后，Windows 不再使用这个适配器，连接在它上面的蓝牙设备都会断开。需要管理员授权；随时可以点击“恢复驱动”交还给 Windows。</value></data>
   <data name="Bridge_RestoreTitle" xml:space="preserve"><value>把 {0} 交还给 Windows？</value></data>
-  <data name="Bridge_RestoreBody" xml:space="preserve"><value>恢复后 A2DPWB 无法再使用这个适配器，正在播放的声音会中断。需要管理员授权。</value></data>
+  <data name="Bridge_RestoreBody" xml:space="preserve"><value>恢复后 BlueCaster 无法再使用这个适配器，正在播放的声音会中断。需要管理员授权。</value></data>
   <data name="Bridge_DriverChanging" xml:space="preserve"><value>正在更改驱动，请在 Windows 提示时允许管理员操作…</value></data>
-  <data name="Bridge_NotConnected" xml:space="preserve"><value>A2DPWB 后台未运行。</value></data>
-  <data name="Bridge_Starting" xml:space="preserve"><value>正在启动 A2DPWB 后台…</value></data>
-  <data name="Bridge_StartTimeout" xml:space="preserve"><value>A2DPWB 后台没有在 15 秒内响应。可以点击“打开 A2DPWB”查看原因。</value></data>
+  <data name="Bridge_NotConnected" xml:space="preserve"><value>BlueCaster 后台未运行。</value></data>
+  <data name="Bridge_Starting" xml:space="preserve"><value>正在启动 BlueCaster 后台…</value></data>
+  <data name="Bridge_StartTimeout" xml:space="preserve"><value>BlueCaster 后台没有在 15 秒内响应。可以点击“打开 BlueCaster”查看原因。</value></data>
   <data name="Bridge_Downloading" xml:space="preserve"><value>正在连接下载源…</value></data>
   <data name="Bridge_DownloadProgress" xml:space="preserve"><value>正在下载 A2DP Bridge：{0:F1} / {1:F1} MB，完成后校验并解压。</value></data>
   <data name="Bridge_Cancelled" xml:space="preserve"><value>下载已取消。再次下载会从中断处继续。</value></data>
   <data name="Bridge_OriginManaged" xml:space="preserve"><value>EncoDeck 管理</value></data>
-  <data name="Bridge_OriginInstalled" xml:space="preserve"><value>A2DPWB 安装版</value></data>
+  <data name="Bridge_OriginInstalled" xml:space="preserve"><value>BlueCaster 安装版</value></data>
   <data name="Bridge_OriginRunning" xml:space="preserve"><value>正在运行的副本</value></data>
   <data name="Codec_Experimental.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>实验性：上游已通过编码器和虚拟接收端测试，尚未经真实耳机确认</value></data>
   <data name="Codec_Experimental.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.HelpText" xml:space="preserve"><value>实验性编码</value></data>
@@ -701,17 +701,17 @@
   <data name="Lhdc_Uninstalled" xml:space="preserve"><value>LHDC 组件已卸载。</value></data>
   <data name="Bridge_ManagedVersion" xml:space="preserve"><value>EncoDeck 管理的组件版本：{0}</value></data>
   <data name="Bridge_UninstallTitle" xml:space="preserve"><value>卸载 A2DP Bridge 组件？</value></data>
-  <data name="Bridge_UninstallBody" xml:space="preserve"><value>将退出 EncoDeck 管理的 A2DPWB 后台并删除其文件（约 25 MB），同时移除指向它的开机启动项。A2DPWB 的设置文件夹（配对、固件、日志）会保留；你自行安装的 A2DP Windows Bridge 不受影响。</value></data>
-  <data name="Bridge_UninstallRestore" xml:space="preserve"><value>同时把 A2DPWB 占用的 {0} 个适配器交还给 Windows（推荐，需要一次管理员授权）</value></data>
+  <data name="Bridge_UninstallBody" xml:space="preserve"><value>将退出 EncoDeck 管理的 BlueCaster 后台并删除其文件（约 25 MB），同时移除指向它的开机启动项。BlueCaster 的设置文件夹（配对、固件、日志）会保留；你自行安装的 BlueCaster 不受影响。</value></data>
+  <data name="Bridge_UninstallRestore" xml:space="preserve"><value>同时把 BlueCaster 占用的 {0} 个适配器交还给 Windows（推荐，需要一次管理员授权）</value></data>
   <data name="Bridge_Uninstalling" xml:space="preserve"><value>正在卸载…</value></data>
   <data name="Bridge_UninstallingRestore" xml:space="preserve"><value>正在恢复适配器驱动并卸载，请在 Windows 提示时允许管理员操作…</value></data>
   <data name="Bridge_Uninstalled" xml:space="preserve"><value>A2DP Bridge 组件已卸载。</value></data>
-  <data name="Bridge_UninstallCoreRunning" xml:space="preserve"><value>A2DPWB 后台没有退出，请从它的托盘图标退出后重试。</value></data>
+  <data name="Bridge_UninstallCoreRunning" xml:space="preserve"><value>BlueCaster 后台没有退出，请从它的托盘图标退出后重试。</value></data>
   <data name="Bridge_UninstallRestoreFailed" xml:space="preserve"><value>恢复适配器驱动没有全部成功（代码 {0}），组件未卸载。可以在“适配器”中逐个恢复后重试。</value></data>
-  <data name="Bridge_UninstallBusy" xml:space="preserve"><value>组件文件正在使用中（A2DPWB 可能仍在运行），请退出后重试。</value></data>
+  <data name="Bridge_UninstallBusy" xml:space="preserve"><value>组件文件正在使用中（BlueCaster 可能仍在运行），请退出后重试。</value></data>
   <data name="Bridge_UninstallUacDeclined" xml:space="preserve"><value>已取消管理员授权，组件未卸载。</value></data>
   <data name="Bridge_UpdateAfterRestart" xml:space="preserve"><value>组件已更新。后台正在播放，新版本将在下次启动后台时生效。</value></data>
-  <data name="Bridge_OwnInstallNote.Text" xml:space="preserve"><value>当前使用你自行安装的 A2DP Windows Bridge：它会自行检查更新；卸载请在 Windows 设置的“已安装的应用”中进行。</value></data>
+  <data name="Bridge_OwnInstallNote.Text" xml:space="preserve"><value>当前使用你自行安装的 BlueCaster：它会自行检查更新；卸载请在 Windows 设置的“已安装的应用”中进行。</value></data>
   <data name="Bridge_OpenAppsSettings.Content" xml:space="preserve"><value>打开“已安装的应用”</value></data>
   <data name="Xiaomi_Level_0" xml:space="preserve"><value>档位 1</value></data>
   <data name="Xiaomi_Level_1" xml:space="preserve"><value>档位 2</value></data>

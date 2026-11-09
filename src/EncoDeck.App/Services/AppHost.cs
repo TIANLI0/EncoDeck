@@ -85,7 +85,7 @@ public sealed class AppHost : IAsyncDisposable
     /// <summary>Store updates for the MSIX build (see <see cref="PackageIdentity"/>).</summary>
     public StoreUpdateService StoreUpdates { get; }
 
-    /// <summary>A2DP Windows Bridge: the optional component, its core and the "connected through the bridge" state.</summary>
+    /// <summary>BlueCaster: the optional component, its core and the "connected through the bridge" state.</summary>
     public A2dpBridgeCompanion Bridge { get; internal set; }
 
     /// <summary>Labs: keeps LE Audio earbuds' left and right channels aligned on Intel offload PCs.</summary>

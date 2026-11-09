@@ -93,7 +93,7 @@
                     Severity="Informational"
                     Title="Unrecognized model"
                     Message="{x:Bind ViewModel.GenericModelMessage, Mode=OneWay}" />
-                <!-- A2DP Windows Bridge streams to these earbuds over its own adapter, but their controls are unreachable. -->
+                <!-- BlueCaster streams to these earbuds over its own adapter, but their controls are unreachable. -->
                 <InfoBar
                     x:Uid="Home_Bridge"
                     Margin="0,0,0,16"

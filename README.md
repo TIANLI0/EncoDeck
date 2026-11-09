@@ -147,9 +147,9 @@ EncoDeck 是用 **WinUI 3** 编写的 Windows 耳机控制工具。它把常用�
 
 ### A2DP Bridge（可选 / 实验性）
 
-非商店版可在“实验室”页面下载并管理 [A2DP Windows Bridge](https://github.com/SeiyaFunaokaJP/A2DP-Windows-Bridge)：它接管一个**独立的 USB 蓝牙适配器**，以 LDAC、LHDC V5、aptX HD 等编码向耳机发送声音，不需要测试签名驱动。EncoDeck 负责下载（上游官方构建的原样副本）、启动后台、连接与断开、音量和适配器驱动管理，并在首页识别通过它连接的耳机。
+非商店版可在“实验室”页面下载并管理 [BlueCaster](https://github.com/SeiyaFunaokaJP/BlueCaster)（原 A2DP Windows Bridge）：它接管一个**独立的 USB 蓝牙适配器**，以 LDAC、LHDC V5、aptX HD 等编码向耳机发送声音，不需要测试签名驱动。EncoDeck 负责下载（上游官方构建的原样副本）、启动后台、连接与断开、音量和适配器驱动管理，并在首页识别通过它连接的耳机。
 
-需要第二个 USB 蓝牙适配器；只经 Bridge 连接时 Windows 看不到耳机，电量与耳机设置不可用（支持双设备连接的耳机可同时连接电脑蓝牙）。商店版只连接你自行安装并启动的 A2DP Windows Bridge。详见 [A2DP Bridge 说明](docs/A2DP_BRIDGE.md)。
+需要第二个 USB 蓝牙适配器；只经 Bridge 连接时 Windows 看不到耳机，电量与耳机设置不可用（支持双设备连接的耳机可同时连接电脑蓝牙）。商店版只连接你自行安装并启动的 BlueCaster。详见 [A2DP Bridge 说明](docs/A2DP_BRIDGE.md)。
 
 LHDC 与 A2DP Bridge 组件都有各自独立的 Release，更新 EncoDeck 不会重新下载它们；组件可以在实验室页单独检查更新、更新和卸载，下载内容按大小与 SHA-256 校验。
 

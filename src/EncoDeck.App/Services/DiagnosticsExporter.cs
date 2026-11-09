@@ -67,7 +67,7 @@ internal static class DiagnosticsExporter
         };
         // Settings carry device ids (PreferredDeviceId, DisconnectedDeviceIds), which contain Bluetooth addresses.
         await WriteEntryAsync(zip, "summary.json", LogRedactor.Redact(JsonSerializer.Serialize(summary, new JsonSerializerOptions { WriteIndented = true })));
-        // A2DP Windows Bridge's own diagnostics (its addresses masked by the core), when it runs.
+        // BlueCaster's own diagnostics (its addresses masked by the core), when it runs.
         if (await host.Bridge.DiagnosticsAsync() is { } bridge) await WriteEntryAsync(zip, "a2dpwb.txt", LogRedactor.Redact(bridge));
 
         foreach (var log in new DirectoryInfo(host.Paths.LogDirectory).GetFiles("encodeck-*.log").OrderByDescending(f => f.Name).Take(3))

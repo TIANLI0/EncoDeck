@@ -28,10 +28,10 @@ public sealed record DeviceState
     /// <summary>The earbuds were switched to LE Audio on this PC, whether or not that link is up now.</summary>
     public bool IsLeAudioBonded { get; init; }
 
-    /// <summary>A2DP Windows Bridge is connecting or streaming to this device over its own adapter; null otherwise.</summary>
+    /// <summary>BlueCaster is connecting or streaming to this device over its own adapter; null otherwise.</summary>
     public BridgeAudioLink? Bridge { get; init; }
 
-    /// <summary>Only A2DP Windows Bridge's adapter is linked to the earbuds (Windows is not): control runs through it.</summary>
+    /// <summary>Only BlueCaster's adapter is linked to the earbuds (Windows is not): control runs through it.</summary>
     public bool LinkViaBridge { get; init; }
 
     public BatteryStatus Battery { get; init; } = BatteryStatus.Unknown;

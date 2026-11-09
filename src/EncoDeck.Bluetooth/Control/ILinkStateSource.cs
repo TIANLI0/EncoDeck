@@ -23,7 +23,7 @@ public interface ILinkStateSource : IDisposable
     /// <summary>Raised on an arbitrary thread when <see cref="IsLeAudio"/> changes.</summary>
     event EventHandler? TransportChanged { add { } remove { } }
 
-    /// <summary>Only A2DP Windows Bridge's own adapter is linked to the device, not Windows: control runs through the bridge.</summary>
+    /// <summary>Only BlueCaster's own adapter is linked to the device, not Windows: control runs through the bridge.</summary>
     bool IsViaBridge => false;
 
     /// <summary>

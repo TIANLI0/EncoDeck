@@ -9,7 +9,7 @@ namespace EncoDeck.Platform.A2dpBridge;
 
 public enum BridgeLink
 {
-    /// <summary>No A2DPWB core runs for this user.</summary>
+    /// <summary>No BlueCaster core runs for this user.</summary>
     NotRunning,
 
     /// <summary>The core runs; the pipe session is being opened.</summary>
@@ -21,7 +21,7 @@ public enum BridgeLink
     Incompatible,
 }
 
-/// <param name="Server">"a2dpwb-core/2.0.1" while connected.</param>
+/// <param name="Server">"bluecaster-core/3.0.0" ("a2dpwb-core/2.0.1" up to 2.0.x) while connected.</param>
 /// <param name="Detail">Why the core is not usable (Incompatible), in English from the core.</param>
 /// <param name="Rfcomm">The core opens RFCOMM channels to the device it streams to (its "rfcomm" feature, 2.0.2).</param>
 public sealed record BridgeStatus(BridgeLink Link, BridgeSnapshot? Snapshot = null, string? Server = null, string? Detail = null, bool Rfcomm = false)
@@ -35,12 +35,12 @@ public sealed record BridgeStatus(BridgeLink Link, BridgeSnapshot? Snapshot = nu
 }
 
 /// <summary>The core is not running or not connected.</summary>
-public sealed class BridgeUnavailableException() : InvalidOperationException("A2DPWB is not running.");
+public sealed class BridgeUnavailableException() : InvalidOperationException("BlueCaster is not running.");
 
 /// <summary>
-/// Follows the A2DPWB core of this user and keeps one pipe session to it while it runs. Detection is a check of
-/// the core's single-instance mutex (opened and closed at once, like A2DPWB's own <c>--quit</c>), every
-/// <see cref="IdleInterval"/> while no core runs; once connected, everything is pushed by the core.
+/// Follows the BlueCaster core of this user (or an A2DP Windows Bridge 2.0.x one) and keeps one pipe session to it
+/// while it runs. Detection is a check of the core's single-instance mutex (opened and closed at once, like the core's
+/// own <c>--quit</c>), every <see cref="IdleInterval"/> while no core runs; once connected, everything is pushed by the core.
 /// </summary>
 public sealed class A2dpBridgeMonitor : IAsyncDisposable
 {
@@ -58,7 +58,7 @@ public sealed class A2dpBridgeMonitor : IAsyncDisposable
     private Task _loop = Task.CompletedTask;
     private BridgeStatus _status = BridgeStatus.NotRunning;
 
-    /// <param name="instance">A2DPWB's <c>A2DPWB_INSTANCE</c> (a side-by-side test core); null for the normal one.</param>
+    /// <param name="instance">The core's <c>BLUECASTER_INSTANCE</c> (a side-by-side test core); null for the normal one.</param>
     public A2dpBridgeMonitor(ILogger? logger = null, string? instance = null)
     {
         _logger = logger ?? NullLogger.Instance;
@@ -77,21 +77,39 @@ public sealed class A2dpBridgeMonitor : IAsyncDisposable
     /// <summary>Raised on a background thread whenever <see cref="Status"/> changes.</summary>
     public event EventHandler? Changed;
 
-    public static string PipeName(string? instance = null) => $"a2dpwb-{WindowsIdentity.GetCurrent().User?.Value}{Suffix(instance)}";
+    /// <summary>BlueCaster's pipe (3.0 and later), <c>bluecaster-&lt;SID&gt;</c>.</summary>
+    public static string PipeName(string? instance = null) => $"bluecaster-{WindowsIdentity.GetCurrent().User?.Value}{Suffix(instance)}";
 
-    public static string MutexName(string? instance = null) => $@"Local\A2DPWB_v2_Core{Suffix(instance)}";
+    /// <summary>The pipe of A2DP Windows Bridge 2.0.x, <c>a2dpwb-&lt;SID&gt;</c>, which BlueCaster serves as well for a while.</summary>
+    public static string LegacyPipeName(string? instance = null) => $"a2dpwb-{WindowsIdentity.GetCurrent().User?.Value}{Suffix(instance)}";
+
+    /// <summary>BlueCaster's single-instance mutex.</summary>
+    public static string MutexName(string? instance = null) => $@"Local\BlueCaster_Core{Suffix(instance)}";
+
+    /// <summary>The mutex of a 2.0.x core (a BlueCaster core holds it too, for a while).</summary>
+    public static string LegacyMutexName(string? instance = null) => $@"Local\A2DPWB_v2_Core{Suffix(instance)}";
 
     private static string Suffix(string? instance) => string.IsNullOrEmpty(instance) ? "" : "-" + instance;
 
+    /// <summary>Whether a core (BlueCaster, or A2DP Windows Bridge 2.0.x) runs in this session.</summary>
+    public static bool IsCoreRunning(string? instance = null) => RunningPipe(instance) is not null;
+
     /// <summary>
-    /// Whether a core runs in this session. The handle is closed at once: holding it would keep the mutex alive
-    /// after the core exits and make the next core believe another one runs.
+    /// The pipe of the core that runs in this session: BlueCaster's own name when its mutex is there, the 2.0.x name
+    /// when only a 2.0.x core runs; null when none does.
     /// </summary>
-    public static bool IsCoreRunning(string? instance = null)
+    internal static string? RunningPipe(string? instance = null) =>
+        MutexExists(MutexName(instance)) ? PipeName(instance) : MutexExists(LegacyMutexName(instance)) ? LegacyPipeName(instance) : null;
+
+    /// <summary>
+    /// The handle is closed at once: holding it would keep the mutex alive after the core exits and make the next
+    /// core believe another one runs.
+    /// </summary>
+    private static bool MutexExists(string name)
     {
         try
         {
-            if (!Mutex.TryOpenExisting(MutexName(instance), out var mutex)) return false;
+            if (!Mutex.TryOpenExisting(name, out var mutex)) return false;
             mutex.Dispose();
             return true;
         }
@@ -163,7 +181,7 @@ public sealed class A2dpBridgeMonitor : IAsyncDisposable
         if (connection is null) return Task.FromException<BridgeRfcommChannel>(new BridgeUnavailableException());
         // Cores before 2.0.2 close the session on a request they do not know.
         if (!connection.Features.Contains(A2dpBridgeConnection.RfcommFeature))
-            return Task.FromException<BridgeRfcommChannel>(new NotSupportedException("This A2DPWB core cannot open RFCOMM channels."));
+            return Task.FromException<BridgeRfcommChannel>(new NotSupportedException("This BlueCaster core cannot open RFCOMM channels."));
         return connection.OpenRfcommAsync(address, service, ct);
     }
 
@@ -195,27 +213,27 @@ public sealed class A2dpBridgeMonitor : IAsyncDisposable
                 await using (connection)
                 {
                     lock (_gate) _connection = connection;
-                    _logger.LogInformation("A2DPWB connected ({Server})", connection.Server);
+                    _logger.LogInformation("BlueCaster connected ({Server})", connection.Server);
                     connection.Changed += _ => SetConnected(connection);
                     SetConnected(connection);
                     await Task.WhenAny(connection.Completion, stopped).ConfigureAwait(false);
                     lock (_gate) _connection = null;
                 }
-                _logger.LogInformation("A2DPWB disconnected");
+                _logger.LogInformation("BlueCaster disconnected");
                 SetStatus(BridgeStatus.NotRunning);
                 // The core is exiting or restarting: give it a moment before looking again.
                 await IdleAsync(TimeSpan.FromSeconds(1), token).ConfigureAwait(false);
             }
             catch (BridgeRejectedException ex)
             {
-                _logger.LogWarning("A2DPWB refused the connection: {Reason}", ex.Message);
+                _logger.LogWarning("BlueCaster refused the connection: {Reason}", ex.Message);
                 SetStatus(new BridgeStatus(BridgeLink.Incompatible, Detail: ex.Message));
                 await IdleAsync(TimeSpan.FromMinutes(1), token).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (token.IsCancellationRequested) { break; }
             catch (Exception ex)
             {
-                _logger.LogWarning("A2DPWB session failed: {Error}", ex.Message);
+                _logger.LogWarning("BlueCaster session failed: {Error}", ex.Message);
                 SetStatus(BridgeStatus.NotRunning);
                 try { await IdleAsync(TimeSpan.FromSeconds(5), token).ConfigureAwait(false); }
                 catch (OperationCanceledException) { break; }
@@ -227,13 +245,14 @@ public sealed class A2dpBridgeMonitor : IAsyncDisposable
     {
         for (int attempt = 0; attempt < 5; attempt++)
         {
+            // Asked again each time: a 2.0.x core may have just been replaced by BlueCaster (or the other way round).
+            if (RunningPipe(_instance) is not { } pipe) return null;
             try
             {
-                return await A2dpBridgeConnection.OpenAsync(PipeName(_instance), _client, TimeSpan.FromSeconds(2), token).ConfigureAwait(false);
+                return await A2dpBridgeConnection.OpenAsync(pipe, _client, TimeSpan.FromSeconds(2), token).ConfigureAwait(false);
             }
             catch (Exception ex) when (ex is TimeoutException or FileNotFoundException or IOException and not BridgeRejectedException)
             {
-                if (!IsCoreRunning(_instance)) return null;
                 await Task.Delay(400, token).ConfigureAwait(false);
             }
         }
@@ -269,7 +288,7 @@ public sealed class A2dpBridgeMonitor : IAsyncDisposable
         lock (_gate) _status = new BridgeStatus(BridgeLink.Connected, connection.Snapshot, connection.Server,
             Rfcomm: connection.Features.Contains(A2dpBridgeConnection.RfcommFeature));
         try { Changed?.Invoke(this, EventArgs.Empty); }
-        catch (Exception ex) { _logger.LogWarning(ex, "A2DPWB status handler failed"); }
+        catch (Exception ex) { _logger.LogWarning(ex, "BlueCaster status handler failed"); }
     }
 
     private void SetStatus(BridgeStatus status)
@@ -280,7 +299,7 @@ public sealed class A2dpBridgeMonitor : IAsyncDisposable
             _status = status;
         }
         try { Changed?.Invoke(this, EventArgs.Empty); }
-        catch (Exception ex) { _logger.LogWarning(ex, "A2DPWB status handler failed"); }
+        catch (Exception ex) { _logger.LogWarning(ex, "BlueCaster status handler failed"); }
     }
 
     private static TaskCompletionSource NewWake() => new(TaskCreationOptions.RunContinuationsAsynchronously);

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # Component releases, separate from app releases: lhdc-v<version> is compiled from the pinned LHDC-Win commit,
-# a2dpwb-v<version> mirrors the official A2DP Windows Bridge builds byte for byte. Each runs once per component
+# a2dpwb-v<version> mirrors the official BlueCaster (formerly A2DP Windows Bridge) builds byte for byte. Each runs once per component
 # version (push its tag); an app release only checks that its pins are published (build/verify-components.ps1).
 # The app accepts exactly the sizes and SHA-256 digests pinned in src/EncoDeck.Platform/Components/components.json.
 name: Components
