@@ -4,13 +4,21 @@
 
 This file records the user-visible changes of every EncoDeck version (Keep a Changelog, Semantic Versioning). Since 1.15.0 each version lists the Chinese notes first and the English ones below the divider.
 
-## [Unreleased]
+## [1.15.0-beta.3] - 2026-11-09 · BlueCaster 适配与 W830NB 降噪 / BlueCaster support and W830NB noise control
+
+### 新增
+
+- EDIFIER W830NB 支持降噪：深度 / 舒适 / 宽频 / 防风 / 关闭，环境声可选 −3～+3 档；支持预设音效（经典 / 流行 / 古典 / 摇滚）；场景模式（音乐 / 游戏 / 空间音效）作为实验功能放在控制页，每次切换都回读确认。用耳机按键切换后，界面随耳机上报同步更新（[#18](https://github.com/TIANLI0/EncoDeck/issues/18)）。
 
 ### 改进
 
 - 实验室的 A2DP Bridge 组件适配 [BlueCaster](https://github.com/SeiyaFunaokaJP/BlueCaster)（A2DP Windows Bridge 3.0 起更名）：内置版本更新为 3.0.0-beta.3，组件更新不再限定 2.x，会取官方最新版本（含测试版，不含只推送给主动开启用户的 alpha 版本）。EncoDeck 同时识别 BlueCaster 与仍在使用的 A2DPWB 2.0.x：新旧程序、安装位置、开机启动项、后台管道与互斥体、驱动记录文件夹都能找到，已有的组件可直接在实验室更新，配对和设置由 BlueCaster 首次启动时自动迁移。
 
 ---
+
+### Added
+
+- EDIFIER W830NB noise control: Deep / Comfort / Broadband / Wind / Off, with ambient sound levels −3 to +3; EQ presets (Classic / Pop / Classical / Rock); scene modes (Music / Game / Spatial sound) as an experimental feature on the Controls page, each change confirmed by read-back. Changes made with the earbuds' buttons show up as the earbuds report them ([#18](https://github.com/TIANLI0/EncoDeck/issues/18)).
 
 ### Improved
 
