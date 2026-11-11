@@ -87,6 +87,7 @@ public sealed partial class NoiseModeCircles : UserControl
         vm.PropertyChanged += OnViewModelPropertyChanged;
         vm.NoiseLevels.CollectionChanged += OnLevelsChanged;
         vm.AdaptiveLevels.CollectionChanged += OnLevelsChanged;
+        vm.TransparencyLevels.CollectionChanged += OnLevelsChanged;
         vm.NoiseSubModes.CollectionChanged += OnSubModesChanged;
         vm.NoiseManualLevels.CollectionChanged += OnManualLevelsChanged;
         _shownLevels = null;
@@ -101,6 +102,7 @@ public sealed partial class NoiseModeCircles : UserControl
         vm.PropertyChanged -= OnViewModelPropertyChanged;
         vm.NoiseLevels.CollectionChanged -= OnLevelsChanged;
         vm.AdaptiveLevels.CollectionChanged -= OnLevelsChanged;
+        vm.TransparencyLevels.CollectionChanged -= OnLevelsChanged;
         vm.NoiseSubModes.CollectionChanged -= OnSubModesChanged;
         vm.NoiseManualLevels.CollectionChanged -= OnManualLevelsChanged;
         foreach (var (level, _) in _levelButtons.Concat(_subModeButtons).Concat(_manualLevelButtons)) level.PropertyChanged -= OnLevelPropertyChanged;
@@ -159,8 +161,10 @@ public sealed partial class NoiseModeCircles : UserControl
             for (int i = 0; i < visible; i++) ModeGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         }
 
-        var levels = vm.ShowNoiseLevels ? vm.NoiseLevels : vm.ShowAdaptiveLevels ? vm.AdaptiveLevels : null;
-        if (!ReferenceEquals(levels, _shownLevels)) RebuildLevels(levels, vm.ShowNoiseLevels);
+        var levels = vm.ShowNoiseLevels ? vm.NoiseLevels : vm.ShowAdaptiveLevels ? vm.AdaptiveLevels
+            : vm.ShowTransparencyLevels ? vm.TransparencyLevels : null;
+        if (!ReferenceEquals(levels, _shownLevels)) RebuildLevels(levels,
+            vm.ShowNoiseLevels ? "NoiseSelector_Level" : vm.ShowAdaptiveLevels ? "NoiseSelector_AdaptiveLevel" : "NoiseSelector_TransparencyLevel");
         LevelsPanel.Visibility = levels is null ? Visibility.Collapsed : Visibility.Visible;
         if (_subModesStale) RebuildSubModes(vm);
         SubModesTitle.Text = vm.NoiseSubModesTitle;
@@ -213,7 +217,7 @@ public sealed partial class NoiseModeCircles : UserControl
         }
     }
 
-    private void RebuildLevels(ObservableCollection<NoiseLevelViewModel>? levels, bool isNoiseCancelling)
+    private void RebuildLevels(ObservableCollection<NoiseLevelViewModel>? levels, string titleKey)
     {
         foreach (var (level, _) in _levelButtons) level.PropertyChanged -= OnLevelPropertyChanged;
         _levelButtons.Clear();
@@ -222,7 +226,7 @@ public sealed partial class NoiseModeCircles : UserControl
         _shownLevels = levels;
         if (levels is null) return;
 
-        LevelsTitle.Text = Loc.Get(isNoiseCancelling ? "NoiseSelector_Level" : "NoiseSelector_AdaptiveLevel");
+        LevelsTitle.Text = Loc.Get(titleKey);
         int column = 0;
         foreach (var level in levels)
         {

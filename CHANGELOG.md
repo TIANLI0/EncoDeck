@@ -4,6 +4,56 @@
 
 This file records the user-visible changes of every EncoDeck version (Keep a Changelog, Semantic Versioning). Since 1.15.0 each version lists the Chinese notes first and the English ones below the divider.
 
+## [1.15.0] - 2026-11-12 · 多品牌适配与连接控制 / Multi-brand support and connection control
+
+### 新增
+
+- 耳机面板、首页和设备页支持连接 / 断开这台电脑；断开后 EncoDeck 不再自动重连，重启后仍保持，便于其他应用使用耳机。关闭双连时切换到其他设备后，这台电脑不会把耳机连回（[#16](https://github.com/TIANLI0/EncoDeck/issues/16)）。
+- EDIFIER W830NB 支持电量、深度 / 舒适 / 宽频 / 防风降噪、关闭、环境声（通透）−3～+3 档和四种预设音效；主页补齐通透档位入口。音乐 / 游戏 / 空间音效场景切换不再需要开启实验功能，每次切换仍回读确认；耳机按键切换后同步更新界面（[#18](https://github.com/TIANLI0/EncoDeck/issues/18)）。
+- 耳机面板和首页可直接切换 EarFun 的降噪 / 通透子模式；Air Pro 4+ / 5 和 Wave Pro X 的降噪分为耳道智能自适应 / 自适应 / 手动 / 抗风噪，手动模式下可选 1–4 档（[#16](https://github.com/TIANLI0/EncoDeck/issues/16)）。
+
+### 改进
+
+- A2DP Bridge 组件适配更名后的 BlueCaster 3.x，内置版本为 3.0.0-beta.3；兼容已有 A2DPWB 2.x 安装，组件更新不再限定 2.x，可从实验室更新并由 BlueCaster 自动迁移配对和设置。
+- LE Audio 左右声道校准保持的静音流改为“游戏”类音频流，避免游戏开始或停止发声时因流模式切换而重建链路。更新后请重新检查左右对齐；“传输方式”为“自动”时会持续使用低延迟参数，需要稳定对齐请固定为“抗干扰优先”。
+- 界面图标改用 Fluent UI System Icons；耳机面板右上角提供连接 / 断开按钮，点击耳机图片或名称打开主界面；未连接时电量淡化，低电量时标红。
+- Probe 的 `watch` 按型号选择控制服务和协议，支持 W830NB 等非 OPPO 设备逐帧记录控制数据；仅支持 OPPO 的命令不会向其他品牌发送数据。
+
+### 修复
+
+- 华为空间音频状态回读后，音效页提供关闭 / 固定 / 头部跟踪切换；主页入口与设置卡片共用判断，避免点入空页。未能确认的模式在本次连接内隐藏（[#19](https://github.com/TIANLI0/EncoDeck/issues/19)）。
+- 托盘右键菜单只显示耳机支持的降噪模式；不支持降噪时隐藏整个子菜单。
+- 修复 Probe `watch` 对 W830NB 报 `ServiceNotFound`、LHDC 组件接管 A2DP 时的编码显示及首页顶部多余空白；LE Audio 校准在耳机刚连接时继续重试。
+
+### 移除
+
+- 移除实验室中仅 Enco X4 可用的“Intel 左右同步调度”开关。
+
+---
+
+### Added
+
+- Connect or disconnect this PC from the tray panel, Home and Devices. After disconnecting, EncoDeck leaves the headphones alone, including after an app restart. Switching to another host with multipoint disabled no longer pulls the headphones back to this PC ([#16](https://github.com/TIANLI0/EncoDeck/issues/16)).
+- EDIFIER W830NB battery, Deep / Comfort / Broadband / Wind noise cancellation, Off, ambient sound (transparency) levels −3 to +3 and four EQ presets. Home now exposes ambient levels. Music / Game / Spatial sound scenes no longer require experimental features; every write is checked by read-back, and headset button changes update the interface ([#18](https://github.com/TIANLI0/EncoDeck/issues/18)).
+- EarFun ANC and ambient sub-modes on Home and the tray panel. Air Pro 4+ / 5 and Wave Pro X offer Ear adaptive / Adaptive / Manual / Wind reduction, with levels 1–4 under Manual ([#16](https://github.com/TIANLI0/EncoDeck/issues/16)).
+
+### Improved
+
+- Support BlueCaster 3.x, the renamed A2DP Windows Bridge, with built-in version 3.0.0-beta.3. Existing A2DPWB 2.x installations are recognized, updates are no longer limited to 2.x, and BlueCaster migrates pairings and settings on first start.
+- LE Audio left/right calibration holds a game audio stream to avoid link rebuilds when games start or stop playing. Check alignment again after updating. Automatic transport keeps low-latency parameters; choose reliability first for stable alignment.
+- Fluent UI System Icons, a connect/disconnect button in the tray panel, clickable headphone image/name to open the main window, faded disconnected battery indicators and red low-battery indicators.
+- Probe `watch` selects the model's control service and protocol and traces frames for non-OPPO devices including W830NB. OPPO-only commands do not send data to other brands.
+
+### Fixed
+
+- HUAWEI spatial audio settings appear after a valid device report, offering Off / Fixed / Head tracking with read-back confirmation. Home and Sound share the availability check, preventing empty destinations; unconfirmed modes are hidden for the current connection ([#19](https://github.com/TIANLI0/EncoDeck/issues/19)).
+- The tray menu offers only supported noise modes and hides the submenu when noise control is unavailable.
+- W830NB Probe `watch` ServiceNotFound errors, codec display while the LHDC component handles A2DP, extra space at the top of Home, and calibration retries immediately after connection.
+
+### Removed
+
+- The Enco X4-only Intel left/right sync schedule switch in Labs.
+
 ## [1.15.0-beta.3] - 2026-11-09 · BlueCaster 适配与 W830NB 降噪 / BlueCaster support and W830NB noise control
 
 ### 新增

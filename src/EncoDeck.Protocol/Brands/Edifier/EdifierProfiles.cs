@@ -41,12 +41,11 @@ public static partial class EdifierProfiles
                 Evidence: "W860NB PRO: HyperEars real-device verification (battery, noise slot 0x10)")),
         // devicePEQ W830NB capture: BES v2 with XOR payloads, sound effect set 0xC4 / query 0xD5; v1
         // frames go unanswered and the link drops. Issue #18 user recordings: noise slot 0x1B with an
-        // ambient level byte, and a three-way scene in 0x08. The scene write has no sample (experimental).
+        // ambient level byte, and a three-way scene in 0x08. Issue #18 also confirms scene writes on beta.3.
         new EdifierProfile("edifier-w830nb", "EDIFIER W830NB", "w830nb", isGeneric: false,
             spec: new EdifierSpec(EdifierFraming.V2Xor, StateBattery: false, EdifierAnc.SlotW830,
                 EdifierFeatures.Noise | EdifierFeatures.SoundEffect | EdifierFeatures.SceneMode,
-                Experimental: EdifierFeatures.SceneMode,
-                Evidence: "W830NB: devicePEQ capture (BES v2, XOR payloads, sound effect) and issue #18 recordings (noise slot 0x1B with ambient level, scene mode)")),
+                Evidence: "W830NB: devicePEQ capture (BES v2, XOR payloads, sound effect), issue #18 recordings (noise slot 0x1B with ambient level, scene mode) and beta.3 hardware confirmation of scene switching")),
         .. CreateTwsProfiles(),
         new EdifierProfile("edifier", "EDIFIER headphones", "edifier", isGeneric: true),
     ];

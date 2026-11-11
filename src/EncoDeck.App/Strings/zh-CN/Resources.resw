@@ -835,7 +835,7 @@
   <data name="LeAudioSync_Notes.Text" xml:space="preserve"><value>开启后，EncoDeck 会让耳机的 LE Audio 输出一直保持播放（静音），之后打开的程序都沿用这条已校准的链路；耳机和电脑会多耗一点电，也可能影响手机抢占连接。重新建立链路前需要先暂停其他正在播放的程序。</value></data>
   <data name="LeAudioSync_Help.Header" xml:space="preserve"><value>工作原理与限制</value></data>
   <data name="LeAudioSync_HelpHow.Text" xml:space="preserve"><value>Windows 每次建立 LE Audio 链路时就决定了左右是否对齐，之后只要链路不断开就不会再变。“检查左右是否对齐”会在同一条链路上播放双耳完全相同的咔哒声：对齐时声音在头部正中间；错开一帧时会明显偏向一侧，或听成两声。偏了就点“偏向一侧或听成两声”，EncoDeck 会重新建立链路并再次播放，通常一两次就能对齐。</value></data>
-  <data name="LeAudioSync_HelpLimits.Text" xml:space="preserve"><value>耳机断开重连，或有程序使用耳机麦克风（通话、游戏语音）时，Windows 会重新建立链路，卡片会提示重新检查。仅支持使用 Intel 蓝牙、并通过 Intel 智音技术（SST）运行 LE Audio 的电脑。</value></data>
+  <data name="LeAudioSync_HelpLimits.Text" xml:space="preserve"><value>耳机断开重连，或有程序使用耳机麦克风（通话、游戏语音）时，Windows 会重新建立链路，卡片会提示重新检查。保持的静音流按游戏音频播放，游戏开始或停止发声时链路不再重建；“传输方式”为“自动”时会一直使用低延迟传输。仅支持使用 Intel 蓝牙、并通过 Intel 智音技术（SST）运行 LE Audio 的电脑。</value></data>
   <data name="LeAudioSync_Check" xml:space="preserve"><value>检查左右是否对齐</value></data>
   <data name="LeAudioSync_CheckPrompt" xml:space="preserve"><value>正在播放测试音（双耳完全相同的咔哒声）。声音在头部正中间吗？</value></data>
   <data name="LeAudioSync_Centered" xml:space="preserve"><value>在正中间</value></data>

@@ -423,7 +423,7 @@ public sealed class EdifierDeviceController : BrandControllerBase
 
     /// <summary>
     /// W830NB scene (music / game / spatial). No write was recorded, so the <c>0x09</c> payload mirrors
-    /// the <c>0x08</c> report, as every other recorded EDIFIER setting does; experimental, read back.
+    /// the <c>0x08</c> report; confirmed by the W830NB user in issue #18, and still read back on every write.
     /// </summary>
     private Task<CommandResult> SetSceneAsync(int scene, CancellationToken ct)
     {
@@ -522,7 +522,7 @@ public sealed class EdifierDeviceController : BrandControllerBase
             case EdifierConstants.QueryGameMode when Spec.Features.HasFlag(EdifierFeatures.SceneMode) && p is [var scene, var extra] && scene <= EdifierSettings.SceneSpatial:
                 lock (_gate) _sceneExtra = extra;
                 Confirm(EdifierFeatures.SceneMode);
-                // Without a recorded write the scene is offered (and shown) only with experimental features on.
+                // Like other settings, the scene is offered only after a valid device report.
                 if (CurrentProfile.Offers(EdifierFeatures.SceneMode))
                 {
                     Store.TryUpdate(DeviceId, s => s with { Options = s.Options.SetItem(EdifierSettings.SceneOption, Observed.From(EdifierSettings.SceneModeOption(scene), now, source)), LastUpdateSource = source });

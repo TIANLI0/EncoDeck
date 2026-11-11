@@ -322,10 +322,10 @@ public sealed class EdifierSettingsTests
             Assert.Equal(CapabilitySupport.Supported, profile.Capabilities.Get(DeviceCapability.NoiseCancellationLevel).Support);
             Assert.Equal(4, profile.EqualizerPresets.Count);
             Assert.Equal("edifier-eq-0", store.Current.Equalizer?.Value.ActivePresetId);
-            // The scene write was never recorded: without experimental features it is neither shown nor sent.
-            Assert.False(store.Current.Options.ContainsKey(EdifierSettings.SceneOption));
-            Assert.Equal(CommandStatus.Unsupported, (await controller.SetOptionAsync(EdifierSettings.SceneOption, EdifierSettings.SceneGame, Ct)).Status);
-            Assert.DoesNotContain(device.Requests, r => r.Command == 0x09);
+            // Issue #18 beta.3 hardware feedback confirms scene writes: no experimental opt-in needed.
+            Assert.Equal(EdifierSettings.SceneMusic, Scene(store));
+            Assert.True((await controller.SetOptionAsync(EdifierSettings.SceneOption, EdifierSettings.SceneGame, Ct)).IsSuccess);
+            Assert.Equal(Hex("01 06"), device.Last(0x09));
 
             Assert.True((await controller.SetNoiseControlAsync(new(NoiseControlMode.NoiseCancellation, EdifierSettings.BroadbandLevel), Ct)).IsSuccess);
             Assert.Equal(Hex("1B 03"), device.Last(0xC1));
@@ -347,11 +347,13 @@ public sealed class EdifierSettingsTests
         });
     }
 
-    [Fact]
-    public async Task W830nb_FollowsButtonChangesAndOffersTheSceneWithExperimentalFeatures()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task W830nb_FollowsButtonChangesAndOffersTheScene(bool allowExperimental)
     {
         var device = new FakeEdifier(Hex("1B 05 06"), version2: true, xor: true) { Scene = Hex("02 06"), SoundEffect = 4 };
-        await RunAsync("EDIFIER W830NB", device, true, async (controller, store) =>
+        await RunAsync("EDIFIER W830NB", device, allowExperimental, async (controller, store) =>
         {
             Assert.Equal(new NoiseControlState(NoiseControlMode.Transparency, "ambient0"), store.Current.NoiseControl?.Value);
             Assert.Equal(EdifierSettings.SceneSpatial, Scene(store));
@@ -380,6 +382,72 @@ public sealed class EdifierSettingsTests
 
     private static int? Scene(DeviceStateStore store) =>
         store.Current.Options.TryGetValue(EdifierSettings.SceneOption, out var option) ? option.Value.Value : null;
+
+    [Fact]
+    public async Task W830nb_AllOfferedSettingsRoundTripWithoutExperimentalFeatures()
+    {
+        var device = new FakeEdifier(Hex("1B 06"), version2: true, xor: true) { Scene = Hex("00 06") };
+        await RunAsync("EDIFIER W830NB", device, false, async (controller, store) =>
+        {
+            var profile = Assert.IsType<EdifierProfile>(store.Current.Profile);
+            foreach (var option in profile.NoiseControlOptions)
+            {
+                Assert.True((await controller.SetNoiseControlAsync(option.ToState(), Ct)).IsSuccess);
+                // A plain mode can read back with the headset's concrete level (e.g. ANC → deep).
+                Assert.True(EdifierSettings.Satisfies(store.Current.NoiseControl!.Value, option.ToState()));
+                Assert.Equal(StateSource.QueryResponse, store.Current.NoiseControl.Source);
+            }
+            foreach (var preset in profile.EqualizerPresets)
+            {
+                Assert.True((await controller.SetEqualizerPresetAsync(preset.Id, Ct)).IsSuccess);
+                Assert.Equal(preset.Id, store.Current.Equalizer?.Value.ActivePresetId);
+            }
+            foreach (int scene in new[] { EdifierSettings.SceneSpatial, EdifierSettings.SceneGame, EdifierSettings.SceneMusic })
+            {
+                Assert.True((await controller.SetOptionAsync(EdifierSettings.SceneOption, scene, Ct)).IsSuccess);
+                Assert.Equal(new byte[] { (byte)scene, 6 }, device.Last(0x09));
+                Assert.Equal(scene, Scene(store));
+            }
+            Assert.Empty(store.Current.PendingCommands);
+            Assert.Null(store.Current.LastError);
+        });
+    }
+
+    [Fact]
+    public async Task W830nb_IgnoredWritesKeepTheDeviceReportedSettings()
+    {
+        var device = new FakeEdifier(Hex("1B 05 06"), version2: true, xor: true)
+        {
+            Scene = Hex("00 06"), IgnoreWrites = true,
+        };
+        await RunAsync("EDIFIER W830NB", device, false, async (controller, store) =>
+        {
+            Assert.Equal(CommandStatus.Rejected, (await controller.SetNoiseControlAsync(new(NoiseControlMode.Transparency, "ambient+3"), Ct)).Status);
+            Assert.Equal(new NoiseControlState(NoiseControlMode.Transparency, "ambient0"), store.Current.NoiseControl?.Value);
+            Assert.Equal(CommandStatus.Rejected, (await controller.SetEqualizerPresetAsync("edifier-eq-3", Ct)).Status);
+            Assert.Equal("edifier-eq-0", store.Current.Equalizer?.Value.ActivePresetId);
+            Assert.Equal(CommandStatus.Rejected, (await controller.SetOptionAsync(EdifierSettings.SceneOption, EdifierSettings.SceneSpatial, Ct)).Status);
+            Assert.Equal(EdifierSettings.SceneMusic, Scene(store));
+            Assert.Empty(store.Current.PendingCommands);
+        });
+    }
+
+    [Fact]
+    public async Task W830nb_UnansweredSettingsStayHiddenAndCannotBeWritten()
+    {
+        var device = new FakeEdifier(Hex("1B 06"), version2: true, xor: true) { Silent = [0xCC, 0xD5, 0x08] };
+        await RunAsync("EDIFIER W830NB", device, false, async (controller, store) =>
+        {
+            var profile = Assert.IsType<EdifierProfile>(store.Current.Profile);
+            Assert.Empty(profile.NoiseControlOptions);
+            Assert.Empty(profile.EqualizerPresets);
+            Assert.Null(Scene(store));
+            Assert.Equal(CommandStatus.Unsupported, (await controller.SetNoiseControlAsync(new(NoiseControlMode.Transparency, "ambient+1"), Ct)).Status);
+            Assert.Equal(CommandStatus.Unsupported, (await controller.SetEqualizerPresetAsync("edifier-eq-1", Ct)).Status);
+            Assert.Equal(CommandStatus.Unsupported, (await controller.SetOptionAsync(EdifierSettings.SceneOption, EdifierSettings.SceneGame, Ct)).Status);
+            Assert.DoesNotContain(device.Requests, r => r.Command is 0xC1 or 0xC4 or 0x09);
+        });
+    }
 
     [Fact]
     public async Task EvoPro_ReadsTheCapturedStateAndOffersWindNoise()

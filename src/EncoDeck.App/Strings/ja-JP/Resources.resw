@@ -835,7 +835,7 @@
   <data name="LeAudioSync_Notes.Text" xml:space="preserve"><value>オンの間、EncoDeck はイヤホンの LE Audio 出力を無音で再生し続け、あとから起動したプログラムも調整済みのリンクを使います。バッテリーの消費が少し増え、スマートフォンへの切り替えに影響することがあります。リンクを作り直す前に、再生中のほかのプログラムを一時停止してください。</value></data>
   <data name="LeAudioSync_Help.Header" xml:space="preserve"><value>しくみと制限</value></data>
   <data name="LeAudioSync_HelpHow.Text" xml:space="preserve"><value>Windows は LE Audio リンクを確立するたびに左右がそろうかどうかが決まり、リンクが閉じるまで変わりません。「左右がそろっているか確認」は、同じリンクで左右まったく同じクリック音を再生します。そろっていれば頭の真ん中で聞こえ、1 フレームずれていると片側に寄るか 2 回に聞こえます。その場合は「片側に寄る／2 回に聞こえる」をクリックすると、EncoDeck がリンクを作り直してもう一度再生します。通常 1～2 回でそろいます。</value></data>
-  <data name="LeAudioSync_HelpLimits.Text" xml:space="preserve"><value>イヤホンが再接続されたときや、プログラムがイヤホンのマイクを使ったとき（通話、ゲームのボイスチャット）は Windows がリンクを作り直すため、もう一度確認するよう表示します。Intel の Bluetooth で、LE Audio が Intel スマート・サウンド・テクノロジー（SST）経由で動作する PC 専用です。</value></data>
+  <data name="LeAudioSync_HelpLimits.Text" xml:space="preserve"><value>イヤホンが再接続されたときや、プログラムがイヤホンのマイクを使ったとき（通話、ゲームのボイスチャット）は Windows がリンクを作り直すため、もう一度確認するよう表示します。保持する無音はゲームの音声として再生するため、ゲームが音を出し始めたり止めたりしてもリンクは作り直されません。「伝送方式」が「自動」のときは、常に低遅延の伝送になります。Intel の Bluetooth で、LE Audio が Intel スマート・サウンド・テクノロジー（SST）経由で動作する PC 専用です。</value></data>
   <data name="LeAudioSync_Check" xml:space="preserve"><value>左右がそろっているか確認</value></data>
   <data name="LeAudioSync_CheckPrompt" xml:space="preserve"><value>テスト音（左右まったく同じクリック音）を再生しています。頭の真ん中で聞こえますか？</value></data>
   <data name="LeAudioSync_Centered" xml:space="preserve"><value>真ん中で聞こえる</value></data>

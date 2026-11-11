@@ -21,12 +21,18 @@ public interface IKeepAliveStream : IDisposable
 /// <summary>
 /// Shared-mode WASAPI render stream that submits zero samples (and, on request, the check clicks). While any stream is
 /// open on the LE Audio endpoint Windows keeps the CIS; streams other apps open later join it and inherit its alignment.
+/// The stream is a game stream (<see cref="Category"/>): Windows runs the endpoint's LE Audio stream in game mode as
+/// long as any game stream plays, and rebuilds the link whenever that mode changes. Held as a game stream, the link is
+/// built in game mode from the start, so a game that starts or stops playing joins it instead of rebuilding it.
 /// </summary>
 public sealed class AudioKeepAlive : IKeepAliveStream
 {
     private const int ClsctxAll = 0x17;
     private const uint StreamFlagsEventCallback = 0x00040000;
     private const float ClickLevel = 0.2f;
+
+    /// <summary>AUDIO_STREAM_CATEGORY AudioCategory_GameEffects: what games play their sound as.</summary>
+    internal const int Category = 6;
 
     private static readonly Guid SubtypeIeeeFloat = new("00000003-0000-0010-8000-00aa00389b71");
     private static readonly Guid SubtypePcm = new("00000001-0000-0010-8000-00aa00389b71");
@@ -69,6 +75,9 @@ public sealed class AudioKeepAlive : IKeepAliveStream
             Guid audioClient = typeof(IAudioClient).GUID;
             Check(device.Activate(ref audioClient, ClsctxAll, 0, out object clientObject));
             client = (IAudioClient)clientObject;
+            // Before Initialize: the category is fixed when the stream is created.
+            var properties = new AudioClientProperties { Size = (uint)Marshal.SizeOf<AudioClientProperties>(), Category = Category };
+            Check(((IAudioClient2)clientObject).SetClientProperties(ref properties));
             Check(client.GetMixFormat(out nint format));
             try
             {
@@ -290,6 +299,37 @@ public sealed class AudioKeepAlive : IKeepAliveStream
         [PreserveSig] int Reset();
         [PreserveSig] int SetEventHandle(nint handle);
         [PreserveSig] int GetService(ref Guid iid, [MarshalAs(UnmanagedType.IUnknown)] out object service);
+    }
+
+    /// <summary>AudioClientProperties: cbSize, bIsOffload, eCategory, Options.</summary>
+    [StructLayout(LayoutKind.Sequential)]
+    private struct AudioClientProperties
+    {
+        public uint Size;
+        public int IsOffload;
+        public int Category;
+        public int Options;
+    }
+
+    /// <summary>IAudioClient2: IAudioClient's methods (vtable order), then its own.</summary>
+    [ComImport, Guid("726778CD-F60A-4EDA-82DE-E47610CD78AA"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IAudioClient2
+    {
+        [PreserveSig] int Initialize(int shareMode, uint streamFlags, long bufferDuration, long periodicity, nint format, nint sessionGuid);
+        [PreserveSig] int GetBufferSize(out uint frames);
+        [PreserveSig] int GetStreamLatency(out long latency);
+        [PreserveSig] int GetCurrentPadding(out uint frames);
+        [PreserveSig] int IsFormatSupported(int shareMode, nint format, out nint closest);
+        [PreserveSig] int GetMixFormat(out nint format);
+        [PreserveSig] int GetDevicePeriod(out long defaultPeriod, out long minimumPeriod);
+        [PreserveSig] int Start();
+        [PreserveSig] int Stop();
+        [PreserveSig] int Reset();
+        [PreserveSig] int SetEventHandle(nint handle);
+        [PreserveSig] int GetService(ref Guid iid, [MarshalAs(UnmanagedType.IUnknown)] out object service);
+        [PreserveSig] int IsOffloadCapable(int category, out int capable);
+        [PreserveSig] int SetClientProperties(ref AudioClientProperties properties);
+        [PreserveSig] int GetBufferSizeLimits(nint format, int eventDriven, out long minimum, out long maximum);
     }
 
     [ComImport, Guid("F294ACFC-3146-4483-A7BF-ADDCA7C260E2"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]

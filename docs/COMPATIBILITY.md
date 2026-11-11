@@ -260,7 +260,7 @@ EQ：LE Audio 下设备只上报预设 id，EncoDeck 按编号显示名称（Off
 | EDIFIER W200BT Plus | 电量；预设音效、定时关机（耳机回读后显示）；无降噪 |
 | EDIFIER W200BT | 电量、降噪、通透 |
 | EDIFIER W860NB PRO | 电量；深度 / 舒适 / 防风降噪、环境声、关闭 |
-| EDIFIER W830NB | 电量；深度 / 舒适 / 宽频 / 防风降噪、环境声（−3～+3）、关闭；预设音效（经典 / 流行 / 古典 / 摇滚）；场景模式（音乐 / 游戏 / 空间音效）为实验功能 |
+| EDIFIER W830NB | 电量；深度 / 舒适 / 宽频 / 防风降噪、环境声（−3～+3）、关闭；预设音效（经典 / 流行 / 古典 / 摇滚）；场景模式（音乐 / 游戏 / 空间音效），回读确认后直接提供 |
 | 漫步者・花再 Evo Pro | 左右耳电量；降噪、防风降噪、环境声、关闭 |
 | EDIFIER FitBuds Turbo | 左右耳电量；降噪、防风降噪、环境声、关闭；游戏模式 |
 | EDIFIER FitClip Ultra | 左右耳电量、游戏模式；无降噪 |
@@ -269,7 +269,7 @@ EQ：LE Audio 下设备只上报预设 id，EncoDeck 按编号显示名称（Off
 
 真无线型号按型号使用 SPP 或 GATT 控制通道（Lolli Pods Pro 仅 GATT），连接后先用只读状态查询协商帧版本，不发送控制命令试探。电量来自 TWS 状态查询，离线（0）和不可用（255）不显示为 0%；只有单耳在线时不保留另一耳的旧读数。Lolli / Atom 等 28 款目录真无线型号均未真机验证，暂不支持充电状态、降噪档位和 EQ。
 
-头戴与社区记录型号的证据：W820NB、W820NB 双金标版、W200BT Plus 有社区真机测试或完整抓包（mEDIFIER、Macifier）；W860NB PRO、花再 Evo Pro、FitBuds Turbo、FitClip Ultra 有社区真机记录（HyperEars）；W830NB 有社区真机抓包（devicePEQ，BES 新协议、异或编码与预设音效）和用户在 [#18](https://github.com/TIANLI0/EncoDeck/issues/18) 记录的降噪、环境声档位与场景模式上报，场景模式没有写入样本，因此只在开启实验功能后提供；X5 Pro 有社区贡献者的电量与降噪测试（BudsLink），游戏模式和佩戴检测没有应答样本，因此只在开启实验功能后提供。EncoDeck 未在这些型号上真机验证。
+头戴与社区记录型号的证据：W820NB、W820NB 双金标版、W200BT Plus 有社区真机测试或完整抓包（mEDIFIER、Macifier）；W860NB PRO、花再 Evo Pro、FitBuds Turbo、FitClip Ultra 有社区真机记录（HyperEars）；W830NB 有社区真机抓包（devicePEQ，BES 新协议、异或编码与预设音效）和用户在 [#18](https://github.com/TIANLI0/EncoDeck/issues/18) 记录的降噪、环境声档位与场景模式上报，用户已在 1.15.0-beta.3 确认场景切换提示音、界面回显与按键同步正常，场景模式不再需要实验开关；环境声逐档写入仍待新版真机复测；X5 Pro 有社区贡献者的电量与降噪测试（BudsLink），游戏模式和佩戴检测没有应答样本，因此只在开启实验功能后提供。除上述 W830NB 用户反馈外，EncoDeck 未在这些型号上真机验证。
 
 - 每项设置都先查询，耳机给出有效应答后才显示；写入后再次查询确认，耳机未采用时提示失败并保留原值。
 - 定时关机只提供 5 / 15 / 30 分钟、1 / 3 小时与关闭；关闭使用单独的取消命令，不会发送 0 分钟（会立即关机）。
