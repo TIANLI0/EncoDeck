@@ -4,6 +4,34 @@
 
 This file records the user-visible changes of every EncoDeck version (Keep a Changelog, Semantic Versioning). Since 1.15.0 each version lists the Chinese notes first and the English ones below the divider.
 
+## [1.15.1] - 2026-11-13 · 漫步者 W830NB 场景模式修复与新安装程序 / W830NB scene fixes and a new installer
+
+### 修复
+
+- EDIFIER W830NB：连续切换场景模式不再失败。耳机每次切换后会播约 2 秒提示音，期间不理会新的设置；现在 EncoDeck 会等提示音播完再发送下一次切换（用耳机按键切换后也一样），偶尔没有应答时自动重发一次，不再提示“耳机没有响应，设置未改变”（[#18](https://github.com/TIANLI0/EncoDeck/issues/18)）。
+- EDIFIER W830NB：耳机拒绝切换到某个场景模式时（例如通过 BlueCaster 使用时切换空间音效），如实提示“耳机没有切换到这个场景模式”并说明原因，不再误报为没有响应（[#18](https://github.com/TIANLI0/EncoDeck/issues/18)）。
+- 从 1.15.0 及更早版本（Inno Setup 安装包）覆盖安装或应用内更新到本版本时，沿用原来的安装位置（当前用户或所有用户）、桌面快捷方式和“开机自启”设置，设置与设备数据不受影响；旧版的卸载程序（`unins000.exe`）在更新时一并清理，“应用和功能”里只保留一个 EncoDeck。
+
+### 改进
+
+- 安装程序改用 [FluentSetup](https://github.com/TIANLI0/FluentSetup) 制作，界面与 Windows 11 一致；安装中途出错或取消时自动还原，不留下半装的文件。
+- 应用内更新时显示安装进度窗口，完成后自动重新打开 EncoDeck；为所有用户安装的副本会先请求管理员权限。
+- 卸载时只弹出一次管理员权限确认（以前最多三次），即可撤销 EncoDeck 用管理员权限做过的改动（编解码日志、蓝牙服务权限、LE Audio 恢复任务）。
+
+---
+
+### Fixed
+
+- EDIFIER W830NB: switching scenes several times in a row no longer fails. The headphones announce each new scene with a voice prompt of about two seconds and ignore settings meanwhile; EncoDeck now waits for the prompt before the next switch (also after a switch with the headphones' button) and sends an unanswered switch once more, instead of reporting "The earbuds didn't respond" ([#18](https://github.com/TIANLI0/EncoDeck/issues/18)).
+- EDIFIER W830NB: when the headphones refuse a scene (for example spatial audio while they are used through BlueCaster), EncoDeck says so and why, instead of reporting that they did not respond ([#18](https://github.com/TIANLI0/EncoDeck/issues/18)).
+- Installing over 1.15.0 or earlier (Inno Setup installers), or updating from the app, keeps the install location (current user or all users), the desktop shortcut and the "Start with Windows" setting; settings and device data are untouched. The old uninstaller (`unins000.exe`) is removed during the update, so Apps & features lists EncoDeck once.
+
+### Improved
+
+- The installer is now built with [FluentSetup](https://github.com/TIANLI0/FluentSetup): a Windows 11 style setup that rolls everything back if it fails or is cancelled.
+- In-app updates show the setup's progress window and open EncoDeck again when done; a copy installed for all users asks for administrator permission first.
+- Uninstalling asks for administrator permission once (previously up to three times) to undo what EncoDeck changed with administrator rights (codec log, Bluetooth service access, LE Audio restore task).
+
 ## [1.15.0] - 2026-11-12 · 多品牌适配与连接控制 / Multi-brand support and connection control
 
 ### 新增
