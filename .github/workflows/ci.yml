@@ -114,7 +114,10 @@ jobs:
           Compress-Archive artifacts/EncoDeck-win-x64/* artifacts/EncoDeck-win-x64.zip
           Compress-Archive artifacts/EncoDeck.Probe-win-x64/* artifacts/EncoDeck.Probe-win-x64.zip
 
-      - name: Build installer (Inno Setup)
+      # fluentsetup CLI + installer runtime (verified download of the pinned release), on PATH.
+      - uses: TIANLI0/FluentSetup@v1.0.0
+
+      - name: Build installer (FluentSetup)
         shell: pwsh
         run: |
           $props = Get-Content Directory.Build.props -Raw

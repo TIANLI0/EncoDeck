@@ -164,7 +164,7 @@ dotnet test tests/EncoDeck.Tests
 pwsh build/build-installer.ps1
 ```
 
-The installer is written to `artifacts/installer`. See [DEVELOPMENT.md](docs/DEVELOPMENT.md) for the dev environment, project layout and other build commands.
+The installer is written to `artifacts/installer` and built with [FluentSetup](https://github.com/TIANLI0/FluentSetup) (the `fluentsetup` CLI on PATH, or `FLUENTSETUP` pointing to it). See [DEVELOPMENT.md](docs/DEVELOPMENT.md) for the dev environment, project layout and other build commands.
 
 The repo also ships a command-line diagnostic tool, **EncoDeck.Probe**, for inspecting Bluetooth devices and SDP services, reading earbud state and listening to protocol events. Bluetooth addresses are redacted by default; see [TESTING.md](docs/TESTING.md) for usage.
 

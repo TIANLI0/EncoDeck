@@ -1,0 +1,91 @@
+{
+  "$schema": "https://raw.githubusercontent.com/TIANLI0/FluentSetup/v1.0.0/shared/schemas/fluentsetup.project.schema.json",
+  "schemaVersion": 1,
+  // EncoDeck installer, built with FluentSetup (build\build-installer.ps1 passes -D Version=<version>).
+  //
+  // Self-contained WinUI 3 app (.NET and Windows App SDK included). Per-user by default
+  // (%LOCALAPPDATA%\Programs\EncoDeck); "for all users" installs into Program Files with UAC.
+  //
+  // Upgrades, including from the Inno Setup installers up to 1.15.0:
+  //   * the Inno install ({48E531A0-...}_is1, per-user or per-machine) is adopted in place and its unins00*.* removed;
+  //   * a running EncoDeck is asked to exit (EncoDeck.exe --exit), then closed if it is still running;
+  //   * "Start with Windows" follows the app's own Run value "EncoDeck" (the setting in EncoDeck), so an update keeps it.
+  // In-app update: EncoDeck runs the setup with /SILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS /RELAUNCH=1
+  // /LOG=... and exits: /SILENT shows the progress window (UAC first for a per-machine install), /RELAUNCH=1 starts
+  // "EncoDeck.exe --updated". The release asset must stay EncoDeck-Setup-<version>-win-x64.exe for the updater.
+  // Uninstall: undoes what EncoDeck changed with administrator rights (codec log session, BthAvctpSvc access, LE Audio
+  // hook task; one UAC prompt, only if one of them is present) and asks before deleting %LOCALAPPDATA%\EncoDeck.
+  "variables": { "Version": "0.0.0-dev" },
+  "app": {
+    "id": "EncoDeck",
+    "name": "EncoDeck",
+    "publisher": "Tianli",
+    "version": "$(Version)",
+    "description": "Windows 原生的多品牌耳机控制中心 · Native multi-brand earbuds control center",
+    "website": "https://github.com/TIANLI0/EncoDeck",
+    "icon": "../src/EncoDeck.App/Assets/EncoDeck.ico",
+    "mainExecutable": "EncoDeck.exe"
+  },
+  "files": {
+    "source": "../artifacts/EncoDeck-win-x64",
+    "include": ["**/*"],
+    "exclude": ["**/*.pdb"]
+  },
+  "install": {
+    "scope": "userOrMachine",
+    "defaultScope": "user",
+    "userDir": "{LocalAppData}\\Programs\\{AppName}",
+    "machineDir": "{ProgramFiles}\\{AppName}",
+    "allowCustomDir": true,
+    "desktopShortcut": "optionalOff",
+    "startMenuShortcut": "on",
+    "launchAfterInstall": "optionalOn",
+    "minWindowsBuild": 19041,
+    "closeCommand": { "run": "EncoDeck.exe", "arguments": ["--exit"] },
+    "closeProcesses": ["EncoDeck.exe"],
+    "legacyUninstallKeys": ["{48E531A0-79E2-4001-9F04-1F43A8C52FE9}_is1"],
+    "relaunchArguments": ["--updated"],
+    "cleanup": {
+      "removeFiles": ["unins*.exe", "unins*.dat", "unins*.msg"]
+    }
+  },
+  "options": [
+    {
+      "id": "autostart",
+      "label": { "en-US": "Start EncoDeck in the background when Windows starts" },
+      "default": false,
+      "startup": { "name": "EncoDeck", "arguments": ["--background"] }
+    }
+  ],
+  "uninstall": {
+    "removeRunValues": ["EncoDeck"],
+    "removeData": ["{LocalAppData}\\EncoDeck\\bluetooth-audio-service-access"],
+    "userData": {
+      "paths": ["{LocalAppData}\\EncoDeck"],
+      "default": false
+    },
+    "elevated": {
+      "ifExists": [
+        "{CommonAppData}\\EncoDeck\\Codec",
+        "{LocalAppData}\\EncoDeck\\bluetooth-audio-service-access",
+        "{CommonAppData}\\EncoDeck\\LeHook\\state.txt"
+      ],
+      "traceSessions": ["EncoDeck-BthA2dp"],
+      "scheduledTasks": ["EncoDeck\\LE Audio hook"],
+      "serviceAccess": [{ "service": "BthAvctpSvc", "rights": ["LCRPWP", "RPWPLC"] }],
+      "removeData": ["{CommonAppData}\\EncoDeck\\Codec"]
+    }
+  },
+  "ui": {
+    "license": "../LICENSE",
+    "localization": "locales",
+    "defaultLanguage": "auto"
+  },
+  "output": {
+    "directory": "../artifacts/installer",
+    "fileName": "EncoDeck-Setup-{Version}-win-{Architecture}.exe",
+    "architecture": "x64",
+    "compression": "max",
+    "includeWinUI": true
+  }
+}

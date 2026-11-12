@@ -165,7 +165,7 @@ dotnet test tests/EncoDeck.Tests
 pwsh build/build-installer.ps1
 ```
 
-安装包输出到 `artifacts/installer`。开发环境、项目结构及其他构建命令见 [DEVELOPMENT.md](docs/DEVELOPMENT.md)。
+安装包输出到 `artifacts/installer`，由 [FluentSetup](https://github.com/TIANLI0/FluentSetup) 生成（需要 `fluentsetup` 命令行在 PATH 中，或用环境变量 `FLUENTSETUP` 指向它）。开发环境、项目结构及其他构建命令见 [DEVELOPMENT.md](docs/DEVELOPMENT.md)。
 
 仓库还附带命令行诊断工具 **EncoDeck.Probe**，可用于检查蓝牙设备、SDP 服务、读取耳机状态和监听协议事件。诊断信息默认会对蓝牙地址脱敏，使用方法见 [TESTING.md](docs/TESTING.md)。
 

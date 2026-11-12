@@ -1,0 +1,5 @@
+{
+  "options": {
+    "autostart": "Windows の起動時に EncoDeck をバックグラウンドで開始する"
+  }
+}

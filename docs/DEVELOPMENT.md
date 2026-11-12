@@ -103,7 +103,7 @@ tests/EncoDeck.Tests     单元测试（含 X4 实测抓包回归）
 
 ## 应用内更新
 
-`UpdateManager`（`src/EncoDeck.Platform/Updates`）匿名查询 `https://api.github.com/repos/TIANLI0/EncoDeck/releases`：跳过草稿；未开启“接收预览版”时跳过预发布（GitHub 标记或带 `-` 后缀的标签）；按 SemVer 取最高版本中带有 `EncoDeck-Setup-<版本>-win-x64.exe` 的发布。下载时校验大小，并按 `<安装包>.sha256` / `SHA256SUMS` 资产（或 GitHub 资产的 `digest`）校验 SHA-256，完成后才原子重命名。开启“自动检查更新”时启动约 1 分钟后检查，之后每 24 小时一次（时间记录在 `Updates\last-check.txt`），发现新版本即后台下载并发一次托盘通知（全屏时延后）；只有用户点击“立即重启并更新”才会以 `/SILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS /RELAUNCH=1` 启动安装程序并退出，安装完成后 `[Run]` 以 `--updated` 重新启动 EncoDeck。
+`UpdateManager`（`src/EncoDeck.Platform/Updates`）匿名查询 `https://api.github.com/repos/TIANLI0/EncoDeck/releases`：跳过草稿；未开启“接收预览版”时跳过预发布（GitHub 标记或带 `-` 后缀的标签）；按 SemVer 取最高版本中带有 `EncoDeck-Setup-<版本>-win-x64.exe` 的发布。下载时校验大小，并按 `<安装包>.sha256` / `SHA256SUMS` 资产（或 GitHub 资产的 `digest`）校验 SHA-256，完成后才原子重命名。开启“自动检查更新”时启动约 1 分钟后检查，之后每 24 小时一次（时间记录在 `Updates\last-check.txt`），发现新版本即后台下载并发一次托盘通知（全屏时延后）；只有用户点击“立即重启并更新”才会以 `/SILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS /RELAUNCH=1` 启动安装程序并退出；安装程序（[FluentSetup](https://github.com/TIANLI0/FluentSetup)，定义在 `installer/fluentsetup.json`）把 `/SILENT` 当作只显示进度窗口，为所有用户安装时先请求管理员权限，完成后按 `/RELAUNCH=1` 以 `--updated` 重新启动 EncoDeck。安装包文件名必须保持 `EncoDeck-Setup-<版本>-win-x64.exe`，否则已发布的版本找不到更新。
 
 ## 新增设备型号
 

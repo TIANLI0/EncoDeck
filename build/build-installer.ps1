@@ -6,7 +6,8 @@
 .DESCRIPTION
   1. Runs the unit tests (unless -SkipTests).
   2. Publishes the WinUI app self-contained for win-x64 into artifacts\EncoDeck-win-x64.
-  3. Downloads the Inno Setup compiler and builds the installer.
+  3. Builds the installer with FluentSetup (installer\fluentsetup.json). The fluentsetup CLI comes from
+     $env:FLUENTSETUP or PATH (https://github.com/TIANLI0/FluentSetup/releases; CI uses the TIANLI0/FluentSetup action).
   Device images and animations are downloaded by the installed app through EncoAPI.
 
 .EXAMPLE
@@ -62,16 +63,12 @@ if ($WithLhdc) {
     if (-not $?) { throw 'LHDC component build failed.' }
 }
 
-dotnet restore installer/InnoSetup.Tool.csproj --nologo -v q
-if ($LASTEXITCODE -ne 0) { throw "Could not download the Inno Setup compiler." }
-$innoVersion = [regex]::Match((Get-Content installer/InnoSetup.Tool.csproj -Raw), "<InnoSetupVersion>([^<]+)</InnoSetupVersion>").Groups[1].Value
-$nugetRoot = if ($env:NUGET_PACKAGES) { $env:NUGET_PACKAGES } else { Join-Path $env:USERPROFILE ".nuget\packages" }
-$iscc = Join-Path $nugetRoot "tools.innosetup\$innoVersion\tools\ISCC.exe"
-if (-not (Test-Path $iscc)) { throw "ISCC.exe not found at $iscc" }
+$fluentsetup = if ($env:FLUENTSETUP) { $env:FLUENTSETUP } else { (Get-Command fluentsetup -ErrorAction SilentlyContinue).Source }
+if (-not $fluentsetup) { throw "fluentsetup not found. Install FluentSetup (https://github.com/TIANLI0/FluentSetup/releases) or set FLUENTSETUP to fluentsetup.exe." }
 
 $output = Join-Path $root "artifacts\installer"
-& $iscc "/DAppVersion=$Version" "/DAppVersionNumeric=$numeric" "/DSourceDir=$publish" "/DOutputDir=$output" "/Qp" installer\EncoDeck.iss
-if ($LASTEXITCODE -ne 0) { throw "Inno Setup compilation failed." }
+& $fluentsetup build installer\fluentsetup.json -D "Version=$Version" -o $output
+if ($LASTEXITCODE -ne 0) { throw "Building the installer failed." }
 
 $setup = Get-ChildItem $output -Filter "EncoDeck-Setup-$Version-win-x64.exe" | Select-Object -First 1
 $hash = (Get-FileHash $setup.FullName -Algorithm SHA256).Hash
