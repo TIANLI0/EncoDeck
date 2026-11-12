@@ -54,6 +54,17 @@ $app = Invoke-RestMethod "$api" -Headers $headers
 if ($app.pendingApplicationSubmission -and $ReplacePending) {
     $pending = Invoke-RestMethod "$api/submissions/$($app.pendingApplicationSubmission.id)" -Headers $headers
     if ($pending.status -notin "PendingCommit", "CommitFailed") {
+        # The same release running again (a later job of its workflow failed and was fixed): this package is already
+        # in certification, so there is nothing to submit. Any other pending submission still stops the run.
+        $leaf = Split-Path $Package -Leaf
+        $version = [regex]::Match($leaf, '-(\d+(?:\.\d+){1,3})\.msixupload$').Groups[1].Value
+        $same = @($pending.applicationPackages | Where-Object {
+                $_.fileStatus -ne "PendingDelete" -and ($_.fileName -eq $leaf -or ($version -and "$($_.version)" -in $version, "$version.0"))
+            })
+        if ($same.Count -gt 0) {
+            Write-Host "Submission $($pending.id) with $leaf is already $($pending.status) in Partner Center; nothing to submit."
+            return
+        }
         throw "Submission $($pending.id) is $($pending.status) in Partner Center; it can no longer be replaced."
     }
     Invoke-RestMethod -Method Delete "$api/submissions/$($pending.id)" -Headers $headers | Out-Null
