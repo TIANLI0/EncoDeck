@@ -61,6 +61,12 @@ public static class EdifierConstants
     public const byte SetGameMode = 0x09;
 
     /// <summary>
+    /// Unsolicited notice. The W830NB sent <c>16 08</c> instead of echoing a spatial-scene write while it was
+    /// used through BlueCaster, and kept its scene (issue #18); its other meanings are not recorded.
+    /// </summary>
+    public const byte StateNotice = 0x16;
+
+    /// <summary>
     /// Power-off timer: query → <c>[00]</c> (off) or <c>[minutes hi][minutes lo]</c>; set
     /// <c>[hi][lo]</c>; disable with an empty <see cref="DisablePowerOffTimer"/>. Set and disable are
     /// answered with a <c>CC</c>-headed <c>[01]</c>. A set of zero minutes powers the headphones off

@@ -228,6 +228,7 @@
   <data name="Error_RemoveConnected" xml:space="preserve"><value>Only unconnected devices can be removed</value></data>
   <data name="Error_MaxPresets" xml:space="preserve"><value>You have reached the maximum number of custom EQs</value></data>
   <data name="Error_InvalidName" xml:space="preserve"><value>The name must be unique, not empty and at most 42 characters</value></data>
+  <data name="Error_SceneUnavailable" xml:space="preserve"><value>The earbuds didn't switch to this scene and kept the current one. Spatial audio may be unavailable while the earbuds are used through BlueCaster.</value></data>
   <data name="Common_Cancel" xml:space="preserve"><value>Cancel</value></data>
   <data name="Common_OK" xml:space="preserve"><value>OK</value></data>
   <data name="Common_TurnOn" xml:space="preserve"><value>Turn on</value></data>

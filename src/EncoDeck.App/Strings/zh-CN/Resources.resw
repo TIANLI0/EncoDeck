@@ -228,6 +228,7 @@
   <data name="Error_RemoveConnected" xml:space="preserve"><value>只能移除未连接的设备</value></data>
   <data name="Error_MaxPresets" xml:space="preserve"><value>自定义音效已达上限</value></data>
   <data name="Error_InvalidName" xml:space="preserve"><value>名称不能为空、不能重复，且不超过 42 个字符</value></data>
+  <data name="Error_SceneUnavailable" xml:space="preserve"><value>耳机没有切换到这个场景模式，已保持原来的模式。通过 BlueCaster 使用耳机时，空间音效可能不可用。</value></data>
   <data name="Common_Cancel" xml:space="preserve"><value>取消</value></data>
   <data name="Common_OK" xml:space="preserve"><value>确定</value></data>
   <data name="Common_TurnOn" xml:space="preserve"><value>开启</value></data>

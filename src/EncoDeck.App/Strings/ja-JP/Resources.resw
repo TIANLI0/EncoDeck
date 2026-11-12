@@ -228,6 +228,7 @@
   <data name="Error_RemoveConnected" xml:space="preserve"><value>削除できるのは未接続のデバイスのみです</value></data>
   <data name="Error_MaxPresets" xml:space="preserve"><value>カスタムイコライザーの上限に達しました</value></data>
   <data name="Error_InvalidName" xml:space="preserve"><value>名前は空にできず、重複不可、42 文字以内にしてください</value></data>
+  <data name="Error_SceneUnavailable" xml:space="preserve"><value>イヤホンはこのシーンに切り替えず、現在のシーンのままです。BlueCaster 経由で使用している間は、空間オーディオを利用できない場合があります。</value></data>
   <data name="Common_Cancel" xml:space="preserve"><value>キャンセル</value></data>
   <data name="Common_OK" xml:space="preserve"><value>OK</value></data>
   <data name="Common_TurnOn" xml:space="preserve"><value>オンにする</value></data>

@@ -399,6 +399,7 @@ public sealed partial class DeviceViewModel : ObservableObject
         (CommandStatus.Rejected, "le-audio-multipoint") => Loc.Get("Error_LeAudioMultipoint"),
         (CommandStatus.Rejected, "max-presets") => Loc.Get("Error_MaxPresets"),
         (CommandStatus.Rejected, "invalid-name") => Loc.Get("Error_InvalidName"),
+        (CommandStatus.Rejected, EncoDeck.Protocol.Brands.Edifier.EdifierDeviceController.SceneUnavailableDetail) => Loc.Get("Error_SceneUnavailable"),
         (CommandStatus.Timeout, _) => Loc.Get("Error_Timeout"),
         (CommandStatus.TransportError, _) => Loc.Get("Error_Transport"),
         (CommandStatus.Rejected, _) => Loc.Get("Error_Rejected"),

@@ -383,6 +383,71 @@ public sealed class EdifierSettingsTests
     private static int? Scene(DeviceStateStore store) =>
         store.Current.Options.TryGetValue(EdifierSettings.SceneOption, out var option) ? option.Value.Value : null;
 
+    private static int SceneWrites(FakeEdifier device) => device.Requests.Count(r => r.Command == EdifierConstants.SetGameMode);
+
+    [Fact]
+    public async Task W830nb_SceneChangesInARowWaitForTheVoicePromptInsteadOfFailing()
+    {
+        // Issue #18: a change right after the previous one was ignored while the headset announced the scene.
+        var device = new FakeEdifier(Hex("1B 06"), version2: true, xor: true) { Scene = Hex("00 06"), ScenePrompt = TimeSpan.FromSeconds(2) };
+        await RunAsync("EDIFIER W830NB", device, false, async (controller, store) =>
+        {
+            Assert.True((await controller.SetOptionAsync(EdifierSettings.SceneOption, EdifierSettings.SceneGame, Ct)).IsSuccess);
+            Assert.True((await controller.SetOptionAsync(EdifierSettings.SceneOption, EdifierSettings.SceneMusic, Ct)).IsSuccess);
+            Assert.Equal(EdifierSettings.SceneMusic, Scene(store));
+            // The second write waited for the prompt: nothing was sent while the headset would ignore it.
+            Assert.Equal(2, SceneWrites(device));
+            Assert.Null(store.Current.LastError);
+        });
+    }
+
+    [Fact]
+    public async Task W830nb_SceneChangedWithTheButtonDelaysTheNextWrite()
+    {
+        var device = new FakeEdifier(Hex("1B 06"), version2: true, xor: true) { Scene = Hex("00 06"), ScenePrompt = TimeSpan.FromSeconds(2) };
+        await RunAsync("EDIFIER W830NB", device, false, async (controller, store) =>
+        {
+            device.PressSceneButton(EdifierSettings.SceneGame);
+            for (int i = 0; i < 40 && Scene(store) != EdifierSettings.SceneGame; i++) await Task.Delay(50, Ct);
+            Assert.Equal(EdifierSettings.SceneGame, Scene(store));
+
+            Assert.True((await controller.SetOptionAsync(EdifierSettings.SceneOption, EdifierSettings.SceneSpatial, Ct)).IsSuccess);
+            Assert.Equal(EdifierSettings.SceneSpatial, Scene(store));
+            Assert.Equal(1, SceneWrites(device));
+        });
+    }
+
+    [Fact]
+    public async Task W830nb_AnUnansweredSceneWriteIsSentOnceMore()
+    {
+        var device = new FakeEdifier(Hex("1B 06"), version2: true, xor: true) { Scene = Hex("00 06"), IgnoreSceneWrites = 1 };
+        await RunAsync("EDIFIER W830NB", device, false, async (controller, store) =>
+        {
+            Assert.True((await controller.SetOptionAsync(EdifierSettings.SceneOption, EdifierSettings.SceneGame, Ct)).IsSuccess);
+            Assert.Equal(EdifierSettings.SceneGame, Scene(store));
+            Assert.Equal(2, SceneWrites(device));
+            Assert.Null(store.Current.LastError);
+        });
+    }
+
+    [Fact]
+    public async Task W830nb_RefusedSceneIsReportedAsUnavailableAndNotRetried()
+    {
+        // Issue #18, through BlueCaster: 09 02 06 answered with 16 08, the headset stays on its scene.
+        var device = new FakeEdifier(Hex("1B 06"), version2: true, xor: true) { Scene = Hex("00 06"), RefusedScene = EdifierSettings.SceneSpatial };
+        await RunAsync("EDIFIER W830NB", device, false, async (controller, store) =>
+        {
+            var result = await controller.SetOptionAsync(EdifierSettings.SceneOption, EdifierSettings.SceneSpatial, Ct);
+            Assert.Equal(CommandStatus.Rejected, result.Status);
+            Assert.Equal(EdifierDeviceController.SceneUnavailableDetail, result.Detail);
+            Assert.Equal(EdifierSettings.SceneMusic, Scene(store));
+            Assert.Equal(1, SceneWrites(device));
+            Assert.Equal(EdifierDeviceController.SceneUnavailableDetail, store.Current.LastError?.Message);
+            // The other scenes still switch.
+            Assert.True((await controller.SetOptionAsync(EdifierSettings.SceneOption, EdifierSettings.SceneGame, Ct)).IsSuccess);
+        });
+    }
+
     [Fact]
     public async Task W830nb_AllOfferedSettingsRoundTripWithoutExperimentalFeatures()
     {
@@ -746,6 +811,25 @@ public sealed class EdifierSettingsTests
         /// <summary>W830NB-style <c>0x08</c> report <c>[scene][extra]</c>; null answers a game Boolean.</summary>
         public byte[]? Scene { get; set; }
 
+        /// <summary>After a scene change the headset announces it and ignores scene writes for this long (issue #18).</summary>
+        public TimeSpan ScenePrompt { get; init; }
+
+        /// <summary>Scene writes to ignore before the headset answers again (a prompt this test does not model).</summary>
+        public int IgnoreSceneWrites { get; set; }
+
+        /// <summary>A scene the headset refuses with a <c>16 08</c> notice instead of the echo (spatial through BlueCaster, issue #18).</summary>
+        public int? RefusedScene { get; init; }
+
+        private DateTime _sceneBusyUntil;
+
+        /// <summary>The headset's button changes the scene: it reports the new one unsolicited and announces it.</summary>
+        public void PressSceneButton(int scene)
+        {
+            Scene = [(byte)scene, 6];
+            _sceneBusyUntil = DateTime.UtcNow + ScenePrompt;
+            Channel.Receive(Encode(EdifierConstants.ResponseHeadBb, 0x08, Scene));
+        }
+
         public IReadOnlyList<(byte Command, byte[] Payload)> Requests
         {
             get { lock (_requests) return [.. _requests]; }
@@ -768,6 +852,20 @@ public sealed class EdifierSettingsTests
                         // A request in the other framing goes unanswered, as on the headset.
                         if (Parse(writes[handled]) is not (var command, var payload)) continue;
                         lock (_requests) _requests.Add((command, payload));
+                        if (command == 0x09 && Scene is not null && payload is [var scene, ..])
+                        {
+                            if (DateTime.UtcNow < _sceneBusyUntil || IgnoreSceneWrites > 0)
+                            {
+                                if (IgnoreSceneWrites > 0) IgnoreSceneWrites--;
+                                continue;  // announcing the last change: the write is lost
+                            }
+                            if (RefusedScene == scene)
+                            {
+                                Channel.Receive(Encode(EdifierConstants.ResponseHeadBb, EdifierConstants.StateNotice, [0x08]));
+                                continue;
+                            }
+                            if (!IgnoreWrites) _sceneBusyUntil = DateTime.UtcNow + ScenePrompt;
+                        }
                         if (!Silent.Contains(command) && Answer(command, payload) is { } reply) Channel.Receive(Encode(reply.Head, command, reply.Payload));
                     }
                     await Task.Delay(5, ct);
