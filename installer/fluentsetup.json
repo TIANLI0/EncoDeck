@@ -1,5 +1,5 @@
 {
-  "$schema": "https://raw.githubusercontent.com/TIANLI0/FluentSetup/v1.0.0/shared/schemas/fluentsetup.project.schema.json",
+  "$schema": "https://raw.githubusercontent.com/TIANLI0/FluentSetup/v1.2.0/shared/schemas/fluentsetup.project.schema.json",
   "schemaVersion": 1,
   // EncoDeck installer, built with FluentSetup (build\build-installer.ps1 passes -D Version=<version>).
   //
@@ -14,7 +14,8 @@
   // /LOG=... and exits: /SILENT shows the progress window (UAC first for a per-machine install), /RELAUNCH=1 starts
   // "EncoDeck.exe --updated". The release asset must stay EncoDeck-Setup-<version>-win-x64.exe for the updater.
   // Uninstall: undoes what EncoDeck changed with administrator rights (codec log session, BthAvctpSvc access, LE Audio
-  // hook task; one UAC prompt, only if one of them is present) and asks before deleting %LOCALAPPDATA%\EncoDeck.
+  // hook task, its settings in HKLM\SOFTWARE\EncoDeck and its folder in %ProgramData%\EncoDeck; one UAC prompt, only if
+  // one of them is present) and asks before deleting %LOCALAPPDATA%\EncoDeck.
   "variables": { "Version": "0.0.0-dev" },
   "app": {
     "id": "EncoDeck",
@@ -73,7 +74,9 @@
       "traceSessions": ["EncoDeck-BthA2dp"],
       "scheduledTasks": ["EncoDeck\\LE Audio hook"],
       "serviceAccess": [{ "service": "BthAvctpSvc", "rights": ["LCRPWP", "RPWPLC"] }],
-      "removeData": ["{CommonAppData}\\EncoDeck\\Codec"]
+      // Codec (A2DP codec log) and LeHook (hook copies, state, symbols); LeHook settings the hook reads from HKLM.
+      "removeData": ["{CommonAppData}\\EncoDeck"],
+      "removeRegistryKeys": ["HKLM\\Software\\EncoDeck"]
     }
   },
   "ui": {
