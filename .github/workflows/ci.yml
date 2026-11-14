@@ -115,7 +115,7 @@ jobs:
           Compress-Archive artifacts/EncoDeck.Probe-win-x64/* artifacts/EncoDeck.Probe-win-x64.zip
 
       # fluentsetup CLI + installer runtime (verified download of the pinned release), on PATH.
-      - uses: TIANLI0/FluentSetup@v1.2.0
+      - uses: TIANLI0/FluentSetup@latest
 
       - name: Build installer (FluentSetup)
         shell: pwsh
