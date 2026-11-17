@@ -251,6 +251,16 @@ public sealed class ControlChannelSupervisor : IAsyncDisposable
             }
 
             attempt++;
+            if (_store.Current.LinkRestarting)
+            {
+                // The earbuds restart their radio for this setting (LDAC): wait for them to come back
+                // instead of counting failed attempts towards giving up.
+                attempt = 0;
+                exhausted = false;
+                SetConnection(DeviceConnectionState.Reconnecting);
+                await WaitAsync(CurrentWake(), _policy.GetDelay(1) ?? TimeSpan.FromSeconds(1), ct).ConfigureAwait(false);
+                continue;
+            }
             if (_policy.GetDelay(attempt) is not { } delay)
             {
                 _logger.LogWarning("Control channel retries exhausted after {Attempts} attempts", attempt - 1);
@@ -436,6 +446,8 @@ public sealed class ControlChannelSupervisor : IAsyncDisposable
             ? s : s with
             {
                 Connection = state, IsLeAudio = leAudio, IsLeAudioBonded = bonded, LeAudioLinks = links, LinkViaBridge = viaBridge,
+                // An expected restart (the X5s Pro on an LDAC change) clears once the new session is up.
+                LinkRestarting = s.LinkRestarting && state != DeviceConnectionState.ControlReady,
             });
     }
 

@@ -4,6 +4,20 @@
 
 This file records the user-visible changes of every EncoDeck version (Keep a Changelog, Semantic Versioning). Since 1.15.0 each version lists the Chinese notes first and the English ones below the divider.
 
+## [未发布] / [Unreleased] · 荣耀亲选 X5s Pro / HONOR CHOICE Earbuds X5s Pro
+
+### 新增
+
+- HONOR CHOICE Earbuds X5s Pro（`USFY`，Wingcloud 方案）支持电量、降噪（智能 / 轻度 / 中度 / 深度）、通透、预设 EQ、LDAC 开关、空间环绕声开关、长按降噪循环、左右耳双击 / 三击手势和固件信息。协议依据独立安卓项目 [my-x5s-pro](https://github.com/shui-tiao/my-x5s-pro)，已在真机（固件 1.1.64.2）逐项验证。
+- 切换 LDAC 时耳机会重启蓝牙：EncoDeck 直接采信写入值，连接自行恢复后不再提示“耳机没有响应”，残留的提示也会自动消失。
+
+### Added
+
+- Added support for the HONOR CHOICE Earbuds X5s Pro (`USFY`, Wingcloud): battery, noise cancelling (dynamic / cozy / general / ultra), transparency, EQ presets, LDAC and surround sound switches, the squeeze-and-hold noise cycle, double / triple squeeze gestures and firmware information. Protocol facts come from the independent Android project [my-x5s-pro](https://github.com/shui-tiao/my-x5s-pro) and were verified on hardware (firmware 1.1.64.2).
+- Switching LDAC restarts the earbuds' Bluetooth: EncoDeck trusts the write and reconnects on its own instead of reporting "The earbuds didn't respond", and clears that stale message.
+
+---
+
 ## [1.15.1] - 2026-11-13 · 漫步者 W830NB 场景模式修复与新安装程序 / W830NB scene fixes and a new installer
 
 ### 修复

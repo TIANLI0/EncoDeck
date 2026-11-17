@@ -135,6 +135,7 @@ vectors such as a single-earbud battery event) are credited here. No source file
 | OppoPodsWindows — https://github.com/3295074384/OppoPodsWindows (GitHub user 3295074384) | GPL-3.0 | WinRT RFCOMM approach, frame layout, command ids, Enco X3 behaviour |
 | OppoPodsManager — https://github.com/Zhaoyi-ya/OppoPodsManager, Copyright (C) 2026 Zhaoyi-ya | GPL-3.0-or-later | Capability bitmap, feature ids, multi-device and firmware commands |
 | OppoPods — https://github.com/Leaf-lsgtky/OppoPods (Leaf-lsgtky), derived from Art-Chen/HyperPods | GPL-3.0 (stated in README) | Protocol notes (variable-length LEN, link control byte, ANC indices) |
+| my-x5s-pro — https://github.com/shui-tiao/my-x5s-pro (shui-tiao) | GPL-3.0 | `Brands/Wingcloud`: HONOR CHOICE Earbuds X5s Pro handshake order, `2B xx` service commands, `01 39` / `01 3A` property channel, battery envelope and gesture addresses; the independently written app is the source of the protocol facts, and its captures are the test fixtures |
 | Microsoft WinUI Gallery — https://github.com/microsoft/WinUI-Gallery | MIT | Control usage patterns only |
 | sennheiser-control — https://github.com/xndbogdan/sennheiser-control, revision `e6d795c9cefad154ed1bb92e11cd09f15018dd3f` | MIT stated in `Cargo.toml`; no licence file or copyright line | Sennheiser GAIA v3 framing, notification registration `0x0007` |
 | Sennheiser-MOMENTUM-TW4-widget-gaia-protocol — https://github.com/sandrolucy/Sennheiser-MOMENTUM-TW4-widget-gaia-protocol | as published | MOMENTUM TW 4 ANC/transparency notification behaviour |

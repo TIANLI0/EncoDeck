@@ -796,6 +796,17 @@
   <data name="Toggle_AptXLossless" xml:space="preserve"><value>aptX Lossless</value></data>
   <data name="Toggle_AptXLossless_Description" xml:space="preserve"><value>Device-side aptX Lossless switch. This does not install an aptX encoder in Windows; it affects phones and other sources that support it.</value></data>
   <data name="Toggle_Ldac_EarFun_Description" xml:space="preserve"><value>Device-side LDAC switch; it cannot be on together with dual connection, so turning on either turns the other off. This does not install an LDAC encoder in Windows.</value></data>
+  <data name="Toggle_Ldac_Wingcloud_Description" xml:space="preserve"><value>Device-side LDAC switch. The earbuds restart their Bluetooth briefly when it is switched; the connection comes back on its own, and surround sound turns off. This does not install an LDAC encoder in Windows.</value></data>
+  <data name="Toggle_SpatialAudio" xml:space="preserve"><value>Surround sound</value></data>
+  <data name="Toggle_SpatialAudio_Description" xml:space="preserve"><value>Device-side surround sound switch; it cannot be on together with LDAC (turning LDAC on turns it off).</value></data>
+  <data name="Wingcloud_Eq_Standard" xml:space="preserve"><value>Standard</value></data>
+  <data name="Wingcloud_Eq_Bass" xml:space="preserve"><value>Bass boost</value></data>
+  <data name="Wingcloud_Eq_Treble" xml:space="preserve"><value>Treble boost</value></data>
+  <data name="Wingcloud_Cycle_All" xml:space="preserve"><value>Off, noise cancelling, transparency</value></data>
+  <data name="Wingcloud_Cycle_AncOff" xml:space="preserve"><value>Off, noise cancelling</value></data>
+  <data name="Wingcloud_Cycle_AncTransparency" xml:space="preserve"><value>Noise cancelling, transparency</value></data>
+  <data name="Wingcloud_Cycle_OffTransparency" xml:space="preserve"><value>Off, transparency</value></data>
+  <data name="Error_Reconnecting" xml:space="preserve"><value>The earbuds are restarting Bluetooth for this setting; it syncs once the connection is back.</value></data>
   <data name="Toggle_Lc3" xml:space="preserve"><value>LC3</value></data>
   <data name="Toggle_Lc3_Description" xml:space="preserve"><value>Device-side LC3 codec switch. This does not change the Windows Bluetooth transport.</value></data>
   <data name="Toggle_ChannelSwap" xml:space="preserve"><value>Swap left / right channels</value></data>
