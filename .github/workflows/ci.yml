@@ -86,6 +86,9 @@ jobs:
   package:
     needs: [version, build-test]
     runs-on: windows-latest
+    # Release builds only: the "codesign" environment holds the Certum credentials (secrets CERTUM_EMAIL,
+    # CERTUM_OTPAUTH, variable CERTUM_THUMBPRINT) and admits only main and v* tags. Other builds use no environment.
+    environment: ${{ needs.version.outputs.release == 'true' && 'codesign' || '' }}
     env:
       RELEASE_VERSION: ${{ needs.version.outputs.release == 'true' && needs.version.outputs.version || '' }}
     steps:
@@ -111,11 +114,32 @@ jobs:
           foreach ($f in 'EncoDeck.exe', 'EncoDeck.pri', 'Microsoft.WindowsAppRuntime.dll', 'Microsoft.ui.xaml.dll', 'EncoDeck.LeHook.dll') {
             if (-not (Test-Path "artifacts/EncoDeck-win-x64/$f")) { throw "Missing $f in publish output" }
           }
-          Compress-Archive artifacts/EncoDeck-win-x64/* artifacts/EncoDeck-win-x64.zip
-          Compress-Archive artifacts/EncoDeck.Probe-win-x64/* artifacts/EncoDeck.Probe-win-x64.zip
 
       # fluentsetup CLI + installer runtime (verified download of the pinned release), on PATH.
       - uses: TIANLI0/FluentSetup@latest
+
+      # Code signing (releases): signed in only after the build, so no build tool runs with the session open.
+      - name: Code signing login (Certum)
+        if: env.RELEASE_VERSION != ''
+        uses: TIANLI0/codesign@v1
+        with:
+          email: ${{ secrets.CERTUM_EMAIL }}
+          otpauth: ${{ secrets.CERTUM_OTPAUTH }}
+          thumbprint: ${{ vars.CERTUM_THUMBPRINT }}
+
+      - name: Sign EncoDeck binaries
+        if: env.RELEASE_VERSION != ''
+        shell: pwsh
+        run: |
+          # Own code only (app, libraries, LE Audio hook, Probe); .NET / Windows App SDK / NuGet files are not ours.
+          & $env:CODESIGN_SIGN -Root artifacts/EncoDeck-win-x64 -Path 'EncoDeck*.exe', 'EncoDeck*.dll' -Description 'EncoDeck' -DescriptionUrl 'https://github.com/TIANLI0/EncoDeck'
+          & $env:CODESIGN_SIGN -Root artifacts/EncoDeck.Probe-win-x64 -Path 'EncoDeck*.exe', 'EncoDeck*.dll' -Description 'EncoDeck Probe' -DescriptionUrl 'https://github.com/TIANLI0/EncoDeck'
+
+      - name: Zip
+        shell: pwsh
+        run: |
+          Compress-Archive artifacts/EncoDeck-win-x64/* artifacts/EncoDeck-win-x64.zip
+          Compress-Archive artifacts/EncoDeck.Probe-win-x64/* artifacts/EncoDeck.Probe-win-x64.zip
 
       - name: Build installer (FluentSetup)
         shell: pwsh
@@ -123,7 +147,12 @@ jobs:
           $props = Get-Content Directory.Build.props -Raw
           $prefix = [regex]::Match($props, '<VersionPrefix>([^<]+)</VersionPrefix>').Groups[1].Value
           $version = if ($env:RELEASE_VERSION) { $env:RELEASE_VERSION } else { "$prefix-ci.$env:GITHUB_RUN_NUMBER" }
-          ./build/build-installer.ps1 -SkipTests -Version $version
+          # The published folder above (signed for releases); setup.exe and uninstall.exe are signed by FluentSetup.
+          ./build/build-installer.ps1 -SkipTests -NoPublish -Version $version
+
+      - name: Code signing logout
+        if: always() && env.RELEASE_VERSION != ''
+        uses: TIANLI0/codesign/logout@v1
 
       - uses: actions/upload-artifact@v4
         with:
