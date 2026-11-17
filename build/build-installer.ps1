@@ -5,9 +5,14 @@
 
 .DESCRIPTION
   1. Runs the unit tests (unless -SkipTests).
-  2. Publishes the WinUI app self-contained for win-x64 into artifacts\EncoDeck-win-x64.
-  3. Builds the installer with FluentSetup (installer\fluentsetup.json). The fluentsetup CLI comes from
+  2. Publishes the WinUI app self-contained for win-x64 into artifacts\EncoDeck-win-x64 (-NoPublish: uses the
+     folder as CI published it, so the zip and the installer carry the same files).
+  3. Code signing, only when the TIANLI0/codesign action has signed in (release builds in CI; it sets
+     CODESIGN_SIGN and CODESIGN_THUMBPRINT): EncoDeck's own EncoDeck*.exe / EncoDeck*.dll, then FluentSetup signs the
+     setup and its uninstall.exe. The .NET, Windows App SDK and NuGet libraries are not ours and stay as they are.
+  4. Builds the installer with FluentSetup (installer\fluentsetup.json). The fluentsetup CLI comes from
      $env:FLUENTSETUP or PATH (https://github.com/TIANLI0/FluentSetup/releases; CI uses the TIANLI0/FluentSetup action).
+     The .sha256 next to it is computed after signing.
   Device images and animations are downloaded by the installed app through EncoAPI.
 
 .EXAMPLE
@@ -18,6 +23,7 @@ param(
     [string] $Configuration = "Release",
     [string] $Version,
     [switch] $SkipTests,
+    [switch] $NoPublish,
     [switch] $WithLhdc,
     [string] $LhdcPowerShellDirectory
 )
@@ -46,11 +52,15 @@ if ($running) { throw "EncoDeck is running from $publish (PID $($running.Id -joi
 $publish = [IO.Path]::GetFullPath($publish)
 $artifactRoot = [IO.Path]::GetFullPath((Join-Path $root "artifacts")) + [IO.Path]::DirectorySeparatorChar
 if (-not $publish.StartsWith($artifactRoot, [StringComparison]::OrdinalIgnoreCase)) { throw "Unexpected publish directory: $publish" }
-if (Test-Path -LiteralPath $publish) { Remove-Item -LiteralPath $publish -Recurse -Force }
-dotnet publish src/EncoDeck.App -c $Configuration -r win-x64 -p:Platform=x64 `
-    -p:VersionPrefix=$((($Version -split "[-+]")[0])) -p:VersionSuffix="$(if ($Version -match '-(.+)$') { $Matches[1] } else { '' })" `
-    -o $publish --nologo
-if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed." }
+if ($NoPublish) {
+    if (-not (Test-Path -LiteralPath (Join-Path $publish 'EncoDeck.exe'))) { throw "-NoPublish: $publish has no EncoDeck.exe." }
+} else {
+    if (Test-Path -LiteralPath $publish) { Remove-Item -LiteralPath $publish -Recurse -Force }
+    dotnet publish src/EncoDeck.App -c $Configuration -r win-x64 -p:Platform=x64 `
+        -p:VersionPrefix=$((($Version -split "[-+]")[0])) -p:VersionSuffix="$(if ($Version -match '-(.+)$') { $Matches[1] } else { '' })" `
+        -o $publish --nologo
+    if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed." }
+}
 
 foreach ($required in "EncoDeck.exe", "EncoDeck.pri", "Microsoft.WindowsAppRuntime.dll", "Microsoft.ui.xaml.dll", "LICENSE", "THIRD_PARTY_NOTICES.md", "Assets\EncoDeck.ico", "Assets\EncoDeck-48.png") {
     if (-not (Test-Path (Join-Path $publish $required))) { throw "Publish output is missing $required." }
@@ -66,8 +76,14 @@ if ($WithLhdc) {
 $fluentsetup = if ($env:FLUENTSETUP) { $env:FLUENTSETUP } else { (Get-Command fluentsetup -ErrorAction SilentlyContinue).Source }
 if (-not $fluentsetup) { throw "fluentsetup not found. Install FluentSetup (https://github.com/TIANLI0/FluentSetup/releases) or set FLUENTSETUP to fluentsetup.exe." }
 
+$signArgs = @()
+if ($env:CODESIGN_SIGN) {
+    & $env:CODESIGN_SIGN -Root $publish -Path 'EncoDeck*.exe', 'EncoDeck*.dll' -Description 'EncoDeck' -DescriptionUrl 'https://github.com/TIANLI0/EncoDeck'
+    $signArgs = @('--sign', '-D', "CodesignThumbprint=$env:CODESIGN_THUMBPRINT")
+}
+
 $output = Join-Path $root "artifacts\installer"
-& $fluentsetup build installer\fluentsetup.json -D "Version=$Version" -o $output
+& $fluentsetup build installer\fluentsetup.json -D "Version=$Version" @signArgs -o $output
 if ($LASTEXITCODE -ne 0) { throw "Building the installer failed." }
 
 $setup = Get-ChildItem $output -Filter "EncoDeck-Setup-$Version-win-x64.exe" | Select-Object -First 1
