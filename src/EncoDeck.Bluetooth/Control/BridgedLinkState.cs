@@ -104,6 +104,13 @@ internal sealed class NoWindowsLink : ILinkStateSource
     public void Dispose() { }
 }
 
+/// <summary>The Windows side of a device disconnected in EncoDeck: never opens anything.</summary>
+internal sealed class NoWindowsConnector : IChannelConnector
+{
+    public Task<ChannelOpenResult> OpenAsync(string deviceId, IReadOnlyList<Guid> serviceUuids, CancellationToken cancellationToken) =>
+        Task.FromResult(ChannelOpenResult.Failed(ChannelOpenStatus.DeviceUnreachable, "Disconnected in EncoDeck: Windows is left alone."));
+}
+
 /// <summary>Opens the control channel over Windows Bluetooth, or through BlueCaster while only the bridge is linked.</summary>
 internal sealed class BridgeRoutingConnector(IChannelConnector windows, IChannelConnector bridge, ILinkStateSource link) : IChannelConnector
 {

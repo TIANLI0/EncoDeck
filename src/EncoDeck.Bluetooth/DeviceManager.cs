@@ -363,10 +363,25 @@ public sealed class DeviceManager : IDeviceManager
 
             if (choice.Identity.Transport == DeviceTransport.Bluetooth && _disconnected.Contains(choice.Identity.DeviceId))
             {
-                // No control channel, no LE links kept, no paging: nothing of EncoDeck's holds or brings back the link.
-                _logger.LogInformation("{Device} was disconnected in EncoDeck: leaving it alone", choice.Identity);
                 _store.TryUpdate(choice.Identity.DeviceId, s => s with { Connection = DeviceConnectionState.DisconnectedByUser });
-                _active = new ActiveDevice(choice.Identity, new NoWindowsLink(), null);
+                if (BridgeConnector is { } carrier && profile is IControllableProfile viaBridge && IsBridgeable(profile))
+                {
+                    // Nothing touches Windows or pages the earbuds: the control channel only follows BlueCaster's own link,
+                    // which the user made in BlueCaster (issue 16: EncoDeck stayed silent while BlueCaster streamed).
+                    _logger.LogInformation("{Device} was disconnected in EncoDeck: leaving it alone, except through BlueCaster", choice.Identity);
+                    var bridgedOnly = new BridgedLinkState(new NoWindowsLink(), _store, choice.Identity.DeviceId);
+                    var viaConnector = new BridgeRoutingConnector(new NoWindowsConnector(), carrier, bridgedOnly);
+                    var idle = new ControlChannelSupervisor(choice.Identity, viaBridge, bridgedOnly, viaConnector, _store, _policy, _allowExperimental, _loggers, trace: _trace,
+                        idleState: DeviceConnectionState.DisconnectedByUser);
+                    _active = new ActiveDevice(choice.Identity, bridgedOnly, idle);
+                    idle.Start();
+                }
+                else
+                {
+                    // No control channel, no LE links kept, no paging: nothing of EncoDeck's holds or brings back the link.
+                    _logger.LogInformation("{Device} was disconnected in EncoDeck: leaving it alone", choice.Identity);
+                    _active = new ActiveDevice(choice.Identity, new NoWindowsLink(), null);
+                }
                 KnownDevicesChanged?.Invoke(this, EventArgs.Empty);
                 return;
             }

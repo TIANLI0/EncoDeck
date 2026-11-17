@@ -243,6 +243,32 @@ public class ControlChannelSupervisorTests
     }
 
     [Fact]
+    public async Task DisconnectedInEncoDeck_StillFollowsTheBridge_AndNeverTouchesWindows()
+    {
+        var store = new DeviceStateStore();
+        store.Reset(DeviceState.Empty with { Device = X4, Connection = DeviceConnectionState.DisconnectedByUser });
+        var bridgeConnector = new FakeConnector();
+        using var link = new BridgedLinkState(new NoWindowsLink(), store, X4.DeviceId);
+        var connector = new BridgeRoutingConnector(new NoWindowsConnector(), bridgeConnector, link);
+        await using var supervisor = new ControlChannelSupervisor(X4, new OppoDeviceProfile(OppoModels.EncoX4), link, connector, store, FastPolicy,
+            linkSettleDelay: TimeSpan.FromMilliseconds(20), idleState: DeviceConnectionState.DisconnectedByUser);
+        supervisor.Start();
+
+        // Idle while BlueCaster does not stream to it: still "disconnected in EncoDeck", nothing opened or paged.
+        await Task.Delay(100, TestContext.Current.CancellationToken);
+        Assert.Equal(DeviceConnectionState.DisconnectedByUser, store.Current.Connection);
+        Assert.Equal(0, bridgeConnector.Attempts);
+
+        store.TryUpdate(X4.DeviceId, s => s with { Bridge = new BridgeAudioLink(true, "AAC", 256, 48000, "X4", CanCarryControl: true) });
+        await WaitFor(store, DeviceConnectionState.ControlReady);
+        Assert.True(store.Current.LinkViaBridge);
+
+        store.TryUpdate(X4.DeviceId, s => s with { Bridge = null });
+        await WaitFor(store, DeviceConnectionState.DisconnectedByUser);
+        Assert.Null(supervisor.Controller);
+    }
+
+    [Fact]
     public void OnlyRfcommServicesGoThroughTheBridge()
     {
         Assert.True(EncoDeck.Bluetooth.Rfcomm.RfcommChannelConnector.IsRfcommService(OppoServiceUuids.Primary));

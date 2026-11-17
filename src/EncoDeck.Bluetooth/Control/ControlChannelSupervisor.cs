@@ -42,6 +42,8 @@ public sealed class ControlChannelSupervisor : IAsyncDisposable
     private readonly TimeProvider _time;
     private readonly IProtocolTrace? _trace;
     private readonly TimeSpan _linkSettleDelay;
+    /// <summary>What a down link shows instead of "not connected" (disconnected in EncoDeck, followed through BlueCaster only).</summary>
+    private readonly DeviceConnectionState? _idleState;
     private readonly CancellationTokenSource _lifetime = new();
     private readonly Lock _gate = new();
     private TaskCompletionSource _wake = NewWake();
@@ -62,8 +64,10 @@ public sealed class ControlChannelSupervisor : IAsyncDisposable
         ILoggerFactory? loggers = null,
         TimeProvider? time = null,
         IProtocolTrace? trace = null,
-        TimeSpan? linkSettleDelay = null)
+        TimeSpan? linkSettleDelay = null,
+        DeviceConnectionState? idleState = null)
     {
+        _idleState = idleState;
         _identity = identity;
         _profile = profile;
         _link = link;
@@ -194,7 +198,7 @@ public sealed class ControlChannelSupervisor : IAsyncDisposable
                 exhausted = false;
                 linkWasUp = false;
                 firstIteration = false;
-                SetConnection(everLinked ? DeviceConnectionState.Disconnected : DeviceConnectionState.PairedNotConnected);
+                SetConnection(_idleState ?? (everLinked ? DeviceConnectionState.Disconnected : DeviceConnectionState.PairedNotConnected));
                 if (Interlocked.Exchange(ref _pageRequested, 0) == 1)
                 {
                     _logger.LogInformation("Link down: paging the earbuds once over Classic control");
