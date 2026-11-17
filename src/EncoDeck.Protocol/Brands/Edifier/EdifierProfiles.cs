@@ -45,7 +45,8 @@ public static partial class EdifierProfiles
         new EdifierProfile("edifier-w830nb", "EDIFIER W830NB", "w830nb", isGeneric: false,
             spec: new EdifierSpec(EdifierFraming.V2Xor, StateBattery: false, EdifierAnc.SlotW830,
                 EdifierFeatures.Noise | EdifierFeatures.SoundEffect | EdifierFeatures.SceneMode,
-                Evidence: "W830NB: devicePEQ capture (BES v2, XOR payloads, sound effect), issue #18 recordings (noise slot 0x1B with ambient level, scene mode) and beta.3 hardware confirmation of scene switching")),
+                Evidence: "W830NB: devicePEQ capture (BES v2, XOR payloads, sound effect), issue #18 recordings (noise slot 0x1B with ambient level, scene mode) and beta.3 hardware confirmation of scene switching",
+                Prompts: EdifierPrompts.W830)),
         .. CreateTwsProfiles(),
         new EdifierProfile("edifier", "EDIFIER headphones", "edifier", isGeneric: true),
     ];
@@ -124,9 +125,24 @@ public enum EdifierFeatures
     SceneMode = 128,
 }
 
+/// <summary>
+/// How long a headset announces each kind of change with a voice prompt. Writes sent meanwhile go unanswered
+/// and are lost, so the next write of any of these settings waits until the prompt is over.
+/// </summary>
+internal sealed record EdifierPrompts(TimeSpan Noise, TimeSpan SoundEffect, TimeSpan Scene)
+{
+    /// <summary>
+    /// W830NB, issue #18 recordings. Noise mode: a change 1.07 s after the previous one went unanswered, 1.27 s
+    /// was applied (ambient level steps alone are not announced). Sound effect: 1.6 s went unanswered. Scene:
+    /// 1.3 s went unanswered, 2.3 s was applied.
+    /// </summary>
+    public static EdifierPrompts W830 { get; } = new(TimeSpan.FromMilliseconds(1500), TimeSpan.FromMilliseconds(2500), TimeSpan.FromMilliseconds(2500));
+}
+
 /// <summary>What a model is known to speak, and with what evidence.</summary>
 /// <param name="Experimental">Features without reply samples: offered after read-back only while experimental features are on.</param>
 /// <param name="RequireBrand">Only match names carrying "EDIFIER" / "漫步者" (the bare model name is used by other brands).</param>
+/// <param name="Prompts">Voice prompts after a change, during which the headset ignores writes; null where none were observed.</param>
 internal sealed record EdifierSpec(
     EdifierFraming Framing,
     bool StateBattery,
@@ -135,7 +151,8 @@ internal sealed record EdifierSpec(
     EdifierFeatures Experimental = EdifierFeatures.None,
     string Evidence = "EDIFIER v1 protocol (mEDIFIER via OppoPodsManager). No local hardware verification.",
     IReadOnlyList<string>? Aliases = null,
-    bool RequireBrand = false)
+    bool RequireBrand = false,
+    EdifierPrompts? Prompts = null)
 {
     /// <summary>Noise control that is offered before any read-back (v1 headphones, as before).</summary>
     public bool StaticNoise => Anc == EdifierAnc.V1 && !StateBattery;
