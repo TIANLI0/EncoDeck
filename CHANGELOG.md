@@ -4,7 +4,7 @@
 
 This file records the user-visible changes of every EncoDeck version (Keep a Changelog, Semantic Versioning). Since 1.15.0 each version lists the Chinese notes first and the English ones below the divider.
 
-## [未发布] / [Unreleased] · 荣耀亲选 X5s Pro / HONOR CHOICE Earbuds X5s Pro
+## [1.16.0] - 2026-11-18 · 荣耀亲选 X5s Pro / HONOR CHOICE Earbuds X5s Pro
 
 ### 新增
 
