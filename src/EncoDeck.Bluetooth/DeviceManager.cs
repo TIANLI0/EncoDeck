@@ -23,7 +23,12 @@ namespace EncoDeck.Bluetooth;
 
 /// <summary>A paired device EncoDeck has a profile for.</summary>
 /// <param name="IsDisconnectedByUser">Disconnected in EncoDeck: EncoDeck leaves it alone until connected in EncoDeck again.</param>
-public sealed record KnownDevice(DeviceIdentity Identity, IDeviceProfile Profile, bool IsConnected, bool IsActive, bool IsDisconnectedByUser = false);
+/// <param name="IsViaBridge">
+/// Connected only through BlueCaster (it streams to them over its own adapter): connecting and disconnecting them is
+/// BlueCaster's, EncoDeck only follows that link.
+/// </param>
+public sealed record KnownDevice(DeviceIdentity Identity, IDeviceProfile Profile, bool IsConnected, bool IsActive, bool IsDisconnectedByUser = false,
+    bool IsViaBridge = false);
 
 /// <summary>The devices the user disconnected in EncoDeck, kept across restarts.</summary>
 public interface IUserDisconnectedDevices
@@ -160,6 +165,9 @@ public sealed class DeviceManager : IDeviceManager
             string? activeId = _usbIdentity?.DeviceId ?? _active?.Identity.DeviceId;
             var paired = _watcher.Devices;
             var bridgeOnly = _bridgeDevices.Where(b => !paired.Any(p => p.Identity.Address == b.Identity.Address)).ToList();
+            // BlueCaster streams to these: in use whether or not Windows is connected to them, so a stream BlueCaster
+            // starts counts as a new connection and EncoDeck turns to those earbuds (their control runs through it).
+            var bridgeStreaming = _bridgeDevices.Where(b => b.IsConnected).Select(b => b.Identity.Address).ToHashSet();
             return paired.Concat(bridgeOnly).Concat(_usbWatcher.Devices)
                 .Select(d => (Device: d, Profile: _profiles.Match(d.Identity)))
                 .Where(x => x.Profile is not null)
@@ -170,8 +178,14 @@ public sealed class DeviceManager : IDeviceManager
                 // The read-only generic profile matches by name ("OPPO …"), which also hits phones and
                 // watches; only accept it for audio devices. Exact model profiles are trusted as-is.
                 .Where(x => !IsGeneric(x.Profile!) || x.Device.IsAudioDevice)
-                .Select(x => new KnownDevice(x.Device.Identity, x.Profile!, x.Device.IsConnected, x.Device.Identity.DeviceId == activeId,
-                    x.Device.Identity.Transport == DeviceTransport.Bluetooth && _disconnected.Contains(x.Device.Identity.DeviceId)))
+                .Select(x =>
+                {
+                    bool bluetooth = x.Device.Identity.Transport == DeviceTransport.Bluetooth;
+                    bool windows = x.Device.IsConnected && !bridgeOnly.Contains(x.Device);
+                    bool viaBridge = !windows && IsBridgeable(x.Profile!) && bridgeStreaming.Contains(x.Device.Identity.Address);
+                    return new KnownDevice(x.Device.Identity, x.Profile!, windows || viaBridge, x.Device.Identity.DeviceId == activeId,
+                        bluetooth && _disconnected.Contains(x.Device.Identity.DeviceId), viaBridge);
+                })
                 .ToList();
         }
     }
@@ -537,6 +551,8 @@ public sealed class DeviceManager : IDeviceManager
     {
         if (KnownDevices.FirstOrDefault(d => d.Identity.DeviceId == deviceId) is not { Identity.Transport: DeviceTransport.Bluetooth } device)
             return CommandResult.NotConnected;
+        // Connected only through BlueCaster: disconnecting them is BlueCaster's, not something Windows can do.
+        if (device.IsViaBridge && !handedOver) return new CommandResult(CommandStatus.Unsupported, "Connected through BlueCaster: disconnect them in BlueCaster.");
         _logger.LogInformation("Disconnecting {Device} at the user's request{HandedOver}", device.Identity, handedOver ? " (handed over to another device)" : "");
         ulong address = device.Identity.Address.Value;
         // Audio first: closing control drops the Classic link, LE Audio earbuds drop their LE links with it (Enco X4), and
@@ -595,6 +611,8 @@ public sealed class DeviceManager : IDeviceManager
     {
         if (KnownDevices.FirstOrDefault(d => d.Identity.DeviceId == deviceId) is not { Identity.Transport: DeviceTransport.Bluetooth } device)
             return CommandResult.NotConnected;
+        // BlueCaster carries them: Windows paging them would compete with its link.
+        if (device.IsViaBridge) return new CommandResult(CommandStatus.Unsupported, "Connected through BlueCaster.");
         _logger.LogInformation("Connecting {Device} at the user's request", device.Identity);
         _disconnected.Set(deviceId, false);
         _reopenActive = true;

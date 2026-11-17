@@ -467,7 +467,8 @@ public sealed partial class DeviceViewModel : ObservableObject
             IsLeAudio = false;
         }
         IsClassicAudio = !IsLeAudio && !IsLinkDown && !IsBridgeOnly && state.Connection.IsLinkUp();
-        bool windowsBluetooth = state.Device is { Transport: DeviceTransport.Bluetooth } && !IsBridgeOnly;
+        // Earbuds BlueCaster carries (audio, or control through it too) are connected and disconnected in BlueCaster.
+        bool windowsBluetooth = state.Device is { Transport: DeviceTransport.Bluetooth } && !IsBridgeOnly && !state.LinkViaBridge;
         CanDisconnect = windowsBluetooth && state.Connection.IsLinkUp();
         CanConnect = windowsBluetooth && IsLinkDown;
         BatteryOpacity = IsLinkDown ? 0.35 : 1;

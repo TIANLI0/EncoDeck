@@ -167,6 +167,17 @@ public sealed partial class DevicesPage : Page
         }
     }
 
+    private static Button UseThisButton(KnownDevice device)
+    {
+        var button = new Button { Content = Loc.Get("Devices_UseThis") };
+        button.Click += async (_, _) =>
+        {
+            App.Instance.Host.Settings.Update(s => s with { PreferredDeviceId = device.Identity.DeviceId });
+            await App.Instance.Host.Devices.SelectDeviceAsync(device.Identity.DeviceId);
+        };
+        return button;
+    }
+
     private UIElement CreateRow(KnownDevice device)
     {
         var grid = new Grid { ColumnSpacing = 12, Padding = new Thickness(0, 4, 0, 4) };
@@ -180,7 +191,8 @@ public sealed partial class DevicesPage : Page
         };
         var text = new StackPanel();
         text.Children.Add(new TextBlock { Text = device.Identity.Name });
-        string status = device.IsDisconnectedByUser ? Loc.Get("Connection_DisconnectedByUser")
+        string status = device.IsViaBridge ? Loc.Get("Devices_StatusViaBridge")
+            : device.IsDisconnectedByUser ? Loc.Get("Connection_DisconnectedByUser")
             : device.IsConnected ? Loc.Get("Devices_StatusConnected") : Loc.Get("Devices_StatusNotConnected");
         string model = device.Profile.DisplayName;
         text.Children.Add(new TextBlock
@@ -193,7 +205,14 @@ public sealed partial class DevicesPage : Page
 
         var action = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
         bool bluetooth = device.Identity.Transport == EncoDeck.Core.Devices.DeviceTransport.Bluetooth;
-        if (bluetooth && (device.IsDisconnectedByUser || !device.IsConnected))
+        // Connected through BlueCaster: connecting and disconnecting them is done in BlueCaster.
+        if (device.IsViaBridge)
+        {
+            action.Children.Add(device.IsActive
+                ? new TextBlock { Text = Loc.Get("Devices_Active"), VerticalAlignment = VerticalAlignment.Center, Style = (Style)Application.Current.Resources["SecondaryTextStyle"] }
+                : UseThisButton(device));
+        }
+        else if (bluetooth && (device.IsDisconnectedByUser || !device.IsConnected))
         {
             // Pages the earbuds and has Windows' audio drivers connect; the supervisor attaches control once the link is up.
             action.Children.Add(ConnectionButton("link", Loc.Get("Device_ConnectThisPc"), devices =>
@@ -216,13 +235,7 @@ public sealed partial class DevicesPage : Page
             }
             else
             {
-                var button = new Button { Content = Loc.Get("Devices_UseThis") };
-                button.Click += async (_, _) =>
-                {
-                    App.Instance.Host.Settings.Update(s => s with { PreferredDeviceId = device.Identity.DeviceId });
-                    await App.Instance.Host.Devices.SelectDeviceAsync(device.Identity.DeviceId);
-                };
-                action.Children.Add(button);
+                action.Children.Add(UseThisButton(device));
             }
             if (bluetooth)
                 action.Children.Add(ConnectionButton("link_dismiss", Loc.Get("Device_DisconnectThisPc"), devices => devices.DisconnectDeviceAsync(device.Identity.DeviceId)));

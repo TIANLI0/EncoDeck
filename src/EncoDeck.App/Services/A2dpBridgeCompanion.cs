@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: GPL-3.0-only
-using System.Globalization;
 using System.Text.Json.Nodes;
 using EncoDeck.Core.Devices;
 using EncoDeck.Core.State;
@@ -13,9 +12,11 @@ using Microsoft.Extensions.Logging;
 namespace EncoDeck.App.Services;
 
 /// <summary>
-/// EncoDeck's side of BlueCaster (A2DP Windows Bridge up to 2.0.x): installs the pinned component, finds the user's own copy, starts and
-/// quits the core, follows it over its pipe and marks the active device as connected through the bridge (Windows
-/// cannot see that link). Costs nothing while no BlueCaster exists beyond a mutex check per interval.
+/// EncoDeck's side of BlueCaster (A2DP Windows Bridge up to 2.0.x): runs BlueCaster's own installer once on request,
+/// finds the installed copy, starts the core, follows it over its pipe and marks the earbuds it streams to as connected
+/// through the bridge (Windows cannot see that link). BlueCaster updates and uninstalls itself and manages adapters,
+/// earbuds and streams in its own window; EncoDeck only connects. Costs nothing while no BlueCaster exists beyond a
+/// mutex check per interval.
 /// </summary>
 public sealed class A2dpBridgeCompanion : IAsyncDisposable
 {
@@ -29,7 +30,7 @@ public sealed class A2dpBridgeCompanion : IAsyncDisposable
     private string? _runningDirectory;
     private bool _wasConnected;
     private bool _started;
-    private DateTimeOffset _lastUpdateCheck = DateTimeOffset.MinValue;
+    private readonly HttpClient _http = new();
 
     /// <param name="instance">A side-by-side test core (BLUECASTER_INSTANCE); null for the user's own.</param>
     public A2dpBridgeCompanion(string componentsRoot, IDeviceStateStore store, ISettingsStore settings, ILogger logger, string? instance = null)
@@ -38,7 +39,7 @@ public sealed class A2dpBridgeCompanion : IAsyncDisposable
         _store = store;
         _settings = settings;
         _logger = logger;
-        Component = A2dpBridgeComponent.CreateInstaller(new HttpClient(), Path.Combine(componentsRoot, "A2DPWB"));
+        Component = A2dpBridgeComponent.CreateInstaller(_http, Path.Combine(componentsRoot, "A2DPWB"));
         Monitor = new A2dpBridgeMonitor(logger, instance);
         Monitor.Changed += (_, _) => OnMonitorChanged();
         _store.StateChanged += OnStateChanged;
@@ -47,19 +48,7 @@ public sealed class A2dpBridgeCompanion : IAsyncDisposable
     /// <summary>The installed EncoDeck-managed copy, as of the last <see cref="RefreshInstallations"/>.</summary>
     public InstalledComponent? Managed => _managed;
 
-    /// <summary>A later BlueCaster release found online (null until checked, or when there is none).</summary>
-    public ComponentRelease? OnlineRelease { get; private set; }
-
-    /// <summary>What an update of the managed copy installs: this app's pin or a later release found online.</summary>
-    public ComponentRelease? UpdateTarget => _managed is null ? null : Component.UpdateTarget(OnlineRelease);
-
-    /// <summary>The managed copy is installed and a later release (pinned or online) is available.</summary>
-    public bool ManagedUpdateAvailable => UpdateTarget is not null;
-
-    /// <summary>What a download installs: the update, or the newest release for a first install.</summary>
-    public ComponentRelease? DownloadTarget => UpdateTarget ?? Component.Newest(OnlineRelease);
-
-    /// <summary>The EncoDeck-managed copy (the mirrored official build).</summary>
+    /// <summary>The portable copy EncoDeck downloaded before it ran BlueCaster's own installer instead.</summary>
     public ComponentInstaller Component { get; }
 
     public A2dpBridgeMonitor Monitor { get; }
@@ -69,7 +58,7 @@ public sealed class A2dpBridgeCompanion : IAsyncDisposable
     /// <summary>Raised on a background thread when the core's state, the installation or the link changes.</summary>
     public event EventHandler? Changed;
 
-    /// <summary>The Store build cannot download or start programs outside its package; it only connects to a running core.</summary>
+    /// <summary>The Store build cannot install or start programs outside its package; it only connects to a running core.</summary>
     public static bool CanManage => !PackageIdentity.IsPackaged;
 
     /// <summary>
@@ -146,87 +135,47 @@ public sealed class A2dpBridgeCompanion : IAsyncDisposable
     {
         _installed = A2dpBridgeComponent.FindInstalled(Component.Root);
         _managed = Component.Installed;
-        // A user without any BlueCaster pays for a mutex check every half minute; with one, a new core is found sooner.
-        Monitor.IdleInterval = _installed is not null || _managed is not null ? TimeSpan.FromSeconds(10) : TimeSpan.FromSeconds(30);
+        // A core started anywhere (its own window, the tray, Windows' startup, here) is found within this interval, and
+        // the earbuds it streams to are then followed. Without an installation found, a portable copy may still start.
+        Monitor.IdleInterval = _installed is not null || _managed is not null ? TimeSpan.FromSeconds(3) : TimeSpan.FromSeconds(15);
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>
-    /// Installs or updates the managed copy. A managed core that runs an older version and is not streaming is
-    /// restarted from the new one; while it streams, the new version takes over at its next start.
-    /// </summary>
-    public async Task<bool> InstallAsync(IProgress<UpdateDownloadProgress>? progress, CancellationToken ct)
-    {
-        string? running = Status.IsConnected && Installation is { Origin: BridgeOrigin.Managed } current ? current.Directory : null;
-        var target = DownloadTarget ?? Component.Release;
-        var installed = await Component.InstallAsync(target, progress, ct).ConfigureAwait(false);
-        RefreshInstallations();
-        if (running is null || SamePath(running, installed.Directory)) return false;
-        if (Status.Snapshot?.Stream.IsActive == true) return true;
-        await QuitCoreAsync().ConfigureAwait(false);
-        for (int i = 0; i < 60 && A2dpBridgeMonitor.IsCoreRunning(_instance); i++) await Task.Delay(250, ct).ConfigureAwait(false);
-        if (!A2dpBridgeMonitor.IsCoreRunning(_instance) && Installation is { Origin: BridgeOrigin.Managed } fresh)
-        {
-            // The old version was in use until now: remove it before starting the new one.
-            Component.CleanUp();
-            A2dpBridgeComponent.StartCore(fresh);
-            await Monitor.WaitForConnectionAsync(TimeSpan.FromSeconds(15), ct).ConfigureAwait(false);
-        }
-        return false;
-    }
+    /// <summary>BlueCaster's own installation is missing: offer to install it (the Store build cannot).</summary>
+    public bool CanInstall => CanManage && _installed is null;
 
     /// <summary>
-    /// Looks for the newest official BlueCaster build (betas included, any major version) on the project's own
-    /// releases, at most once a day unless <paramref name="force"/>; it is downloaded from there too. Only the managed
-    /// copy uses it: BlueCaster's own installation updates itself.
+    /// Downloads the installer of the newest official BlueCaster release (betas included) from the project's own
+    /// releases, held to GitHub's SHA-256 digest, and runs it unattended. BlueCaster then updates and uninstalls itself;
+    /// its window opens for the first-run setup (adapter, firmware, earbuds).
     /// </summary>
-    public async Task<ComponentUpdateOutcome?> CheckForUpdateAsync(bool force, CancellationToken ct = default)
+    public async Task InstallAsync(IProgress<UpdateDownloadProgress>? progress, CancellationToken ct)
     {
-        if (!CanManage || (!force && DateTimeOffset.UtcNow - _lastUpdateCheck < TimeSpan.FromHours(24))) return null;
         var app = SemanticVersion.FromAssembly(typeof(A2dpBridgeCompanion).Assembly);
-        using var http = new HttpClient();
-        string floor = _managed is { } managed && ComponentVersion.IsNewer(managed.Version, Component.Release.Version) ? managed.Version : Component.Release.Version;
-        var result = await new ComponentUpdateClient(http, app).CheckUpstreamAsync(Component.Release, floor, ct).ConfigureAwait(false);
-        if (result.Outcome is ComponentUpdateOutcome.Available or ComponentUpdateOutcome.UpToDate)
+        var found = await new ComponentUpdateClient(_http, app).FindUpstreamSetupAsync(Component.Release.Source.Repository, A2dpBridgeComponent.SetupArchitecture, ct).ConfigureAwait(false);
+        if (found.Setup is not { } setup)
         {
-            OnlineRelease = result.Release;
-            _lastUpdateCheck = DateTimeOffset.UtcNow;
-            Changed?.Invoke(this, EventArgs.Empty);
+            throw new IOException(Loc.Get(found.Outcome switch
+            {
+                ComponentUpdateOutcome.RateLimited => "Component_RateLimited",
+                ComponentUpdateOutcome.Offline => "Component_Offline",
+                _ => "Bridge_SetupNotFound",
+            }));
         }
-        return result.Outcome;
-    }
-
-    /// <summary>Adapters BlueCaster took from Windows and has not given back, from its records.</summary>
-    public int AssignedAdapterCount => A2dpBridgeComponent.DriverRecordCount(A2dpBridgeComponent.DriverRecordsDirectory(Status.Snapshot?.ConfigDirectory));
-
-    /// <summary>
-    /// Removes the EncoDeck-managed copy: quits its core if it runs, optionally gives every adapter BlueCaster took back
-    /// to Windows (one administrator prompt, BlueCaster's own helper), drops the autostart entries that name this copy,
-    /// then deletes its files. BlueCaster's settings folder (pairings, firmware) is left alone; so is its own installation.
-    /// </summary>
-    public async Task UninstallAsync(bool restoreDrivers, CancellationToken ct = default)
-    {
-        if (_managed is not { } managed) return;
-        var copy = new BridgeInstallation(managed.Directory, BridgeOrigin.Managed, ManagedVersion(managed.Version));
-        string records = A2dpBridgeComponent.DriverRecordsDirectory(Status.Snapshot?.ConfigDirectory);
-        if (Status.IsConnected && Installation is { Origin: BridgeOrigin.Managed })
-        {
-            await QuitCoreAsync().ConfigureAwait(false);
-            for (int i = 0; i < 80 && A2dpBridgeMonitor.IsCoreRunning(_instance); i++) await Task.Delay(250, ct).ConfigureAwait(false);
-            if (A2dpBridgeMonitor.IsCoreRunning(_instance)) throw new IOException(Loc.Get("Bridge_UninstallCoreRunning"));
-        }
-        if (restoreDrivers && A2dpBridgeComponent.DriverRecordCount(records) > 0)
-        {
-            int exit;
-            try { exit = await A2dpBridgeComponent.RestoreRecordedDriversAsync(copy, records, ct).ConfigureAwait(false); }
-            catch (OperationCanceledException) when (!ct.IsCancellationRequested) { throw new OperationCanceledException(Loc.Get("Bridge_UninstallUacDeclined")); }
-            if (exit != 0) throw new IOException(Loc.Format("Bridge_UninstallRestoreFailed", exit.ToString(CultureInfo.InvariantCulture)));
-        }
-        A2dpBridgeComponent.RemoveStartupEntryUnder(Component.Root);
-        if (_settings.Current.A2dpBridgeAutoStart && _installed is null) _settings.Update(s => s with { A2dpBridgeAutoStart = false });
-        if (!Component.Uninstall()) throw new IOException(Loc.Get("Bridge_UninstallBusy"));
-        OnlineRelease = null;
+        string folder = Path.Combine(Component.Root, "setup");
+        Directory.CreateDirectory(folder);
+        string path = Path.Combine(folder, setup.File);
+        await A2dpBridgeComponent.DownloadSetupAsync(_http, setup, path, progress, ct).ConfigureAwait(false);
+        _logger.LogInformation("Running BlueCaster's installer {Version}", setup.Version);
+        int exit = await A2dpBridgeComponent.RunSetupAsync(path).ConfigureAwait(false);
+        try { File.Delete(path); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         RefreshInstallations();
+        if (exit != 0 || _installed is not { } installed)
+            throw new IOException(Loc.Format("Bridge_SetupFailed", exit.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+        Monitor.Wake();
+        try { A2dpBridgeComponent.OpenWindow(installed); }
+        catch (Exception ex) when (ex is IOException or System.ComponentModel.Win32Exception) { _logger.LogWarning("Could not open BlueCaster: {Error}", ex.Message); }
     }
 
     /// <summary>Starts the core in the background and waits until EncoDeck is connected to it.</summary>
@@ -240,25 +189,6 @@ public sealed class A2dpBridgeCompanion : IAsyncDisposable
         }
         return await Monitor.WaitForConnectionAsync(TimeSpan.FromSeconds(15), ct).ConfigureAwait(false);
     }
-
-    /// <summary>Ends the core as its tray's Exit does (the stream stops, the adapter is reset).</summary>
-    public async Task QuitCoreAsync()
-    {
-        try { await Monitor.RequestAsync("app.quit", timeout: TimeSpan.FromSeconds(15)).ConfigureAwait(false); }
-        // The core may close the pipe before it answers.
-        catch (IOException) { }
-        Monitor.Wake();
-    }
-
-    /// <summary>Assigns WinUSB (the core asks for administrator rights): the adapter leaves Windows' Bluetooth.</summary>
-    public Task AssignWinUsbAsync(string instanceId) =>
-        Monitor.RequestAsync("adapter.assign_winusb", new JsonObject { ["instance_id"] = instanceId }, TimeSpan.FromMinutes(5));
-
-    /// <summary>Gives the adapter back to Windows' Bluetooth driver (administrator rights).</summary>
-    public Task RestoreDriverAsync(string instanceId) =>
-        Monitor.RequestAsync("adapter.restore_driver", new JsonObject { ["instance_id"] = instanceId }, TimeSpan.FromMinutes(5));
-
-    public Task RefreshAdaptersAsync() => Monitor.RequestAsync("adapter.list", timeout: TimeSpan.FromSeconds(20));
 
     /// <summary>BlueCaster's diagnostic text with Bluetooth addresses masked, for EncoDeck's diagnostics package.</summary>
     public async Task<string?> DiagnosticsAsync()
@@ -290,5 +220,6 @@ public sealed class A2dpBridgeCompanion : IAsyncDisposable
     {
         _store.StateChanged -= OnStateChanged;
         await Monitor.DisposeAsync().ConfigureAwait(false);
+        _http.Dispose();
     }
 }

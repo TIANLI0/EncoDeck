@@ -206,6 +206,36 @@ public sealed class ComponentUpdateTests
         Assert.Equal(ComponentUpdateOutcome.UpToDate, result.Outcome);
     }
 
+    [Fact]
+    public async Task FindsTheNewestOfficialInstallerForThisArchitecture()
+    {
+        var releases = new JsonArray(Upstream("v4.0.0-beta.1.alpha.1"), Upstream("v4.0.0-beta.2", draft: true), Upstream("v4.0.0-beta.1.x", arm64: false),
+            Upstream("v4.0.0-beta.1"), Upstream("v3.0.1", prerelease: false));
+        string repository = ComponentCatalog.A2dpBridge.Source.Repository;
+
+        // Neither the alpha nor the draft; beta.1.x has an installer for win64 only.
+        var x64 = await UpstreamClient(releases).FindUpstreamSetupAsync(repository, "win64", TestContext.Current.CancellationToken);
+        Assert.Equal(ComponentUpdateOutcome.Available, x64.Outcome);
+        Assert.Equal(("4.0.0-beta.1.x", "BlueCaster-4.0.0-beta.1.x-win64-setup.exe", 2000L, new string('c', 64)), (x64.Setup!.Version, x64.Setup.File, x64.Setup.Size, x64.Setup.Sha256));
+        Assert.Equal(new Uri("https://github.com/SeiyaFunaokaJP/BlueCaster/releases/download/v4.0.0-beta.1.x/BlueCaster-4.0.0-beta.1.x-win64-setup.exe"), x64.Setup.Url);
+
+        var arm64 = await UpstreamClient(releases).FindUpstreamSetupAsync(repository, "arm64", TestContext.Current.CancellationToken);
+        Assert.Equal("BlueCaster-4.0.0-beta.1-arm64-setup.exe", arm64.Setup!.File);
+    }
+
+    [Fact]
+    public async Task InstallersWithoutADigestOrFromElsewhereAreNotRun()
+    {
+        string repository = ComponentCatalog.A2dpBridge.Source.Repository;
+        var unsigned = await UpstreamClient(new JsonArray(Upstream("v3.0.1", digest: false))).FindUpstreamSetupAsync(repository, "win64", TestContext.Current.CancellationToken);
+        Assert.Null(unsigned.Setup);
+
+        var elsewhere = Upstream("v3.0.1");
+        foreach (var asset in elsewhere["assets"]!.AsArray()) asset!["browser_download_url"] = "https://example.com/" + asset["name"]!.GetValue<string>();
+        var foreign = await UpstreamClient(new JsonArray(elsewhere)).FindUpstreamSetupAsync(repository, "win64", TestContext.Current.CancellationToken);
+        Assert.Null(foreign.Setup);
+    }
+
     private sealed class Handler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) => Task.FromResult(respond(request));

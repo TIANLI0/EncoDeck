@@ -3,7 +3,7 @@
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  xmlns:local="using:EncoDeck.App.Controls">
- <!-- Same layout as the other labs cards: title, codecs, summary, status, message bar, progress, actions, details, disclaimer, help. -->
+ <!-- EncoDeck only installs BlueCaster once, starts it and connects to it; everything else is managed in BlueCaster's own window. -->
  <Border Style="{StaticResource CardStyle}">
   <StackPanel Spacing="10">
    <TextBlock x:Uid="Bridge_Title" Style="{StaticResource BodyStrongTextBlockStyle}" />
@@ -22,53 +22,30 @@
    <TextBlock x:Uid="Bridge_Summary" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" />
    <TextBlock x:Name="Status" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
    <InfoBar x:Name="Notice" IsOpen="False" Visibility="Collapsed" />
-   <!-- BlueCaster's own installation updates and uninstalls itself. -->
-   <StackPanel x:Name="OwnInstallNote" Spacing="2" Visibility="Collapsed">
-    <TextBlock x:Uid="Bridge_OwnInstallNote" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" />
-    <HyperlinkButton x:Uid="Bridge_OpenAppsSettings" NavigateUri="ms-settings:appsfeatures" Padding="0" />
-   </StackPanel>
    <HyperlinkButton x:Name="StandaloneLink" x:Uid="Bridge_StandaloneLink" NavigateUri="https://github.com/TIANLI0/EncoDeck/releases/latest" Visibility="Collapsed" Padding="0" />
    <ProgressBar x:Name="Progress" Visibility="Collapsed" Maximum="100" />
    <local:WrapPanel HorizontalSpacing="8" VerticalSpacing="8">
     <Button x:Name="Download" Click="OnDownload" Style="{StaticResource AccentButtonStyle}" Visibility="Collapsed" />
     <Button x:Name="Cancel" Click="OnCancel" Visibility="Collapsed" />
     <Button x:Name="StartCore" Click="OnStartCore" Visibility="Collapsed" />
-    <Button x:Name="QuitCore" Click="OnQuitCore" Visibility="Collapsed" />
     <Button x:Name="OpenWindow" Click="OnOpenWindow" Visibility="Collapsed" />
-    <Button x:Name="CheckUpdates" Click="OnCheckUpdates" Visibility="Collapsed" />
-    <Button x:Name="Uninstall" Click="OnUninstall" Visibility="Collapsed" />
    </local:WrapPanel>
 
-   <!-- While EncoDeck is connected to the core: adapter and stream. Earbuds, connection profiles and volume are
-        BlueCaster's own (its window), so the two never disagree about them. -->
+   <!-- While EncoDeck is connected to the core: what it streams, read only. Adapters, earbuds, connection profiles,
+        codecs and volume are managed in BlueCaster's own window, updates and uninstalling by BlueCaster itself. -->
    <StackPanel x:Name="Live" Spacing="10" Visibility="Collapsed">
-    <TextBlock x:Name="AdapterText" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" />
     <TextBlock x:Name="StreamText" TextWrapping="Wrap" />
     <TextBlock x:Uid="Bridge_ManageInWindow" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" />
    </StackPanel>
 
    <ToggleSwitch x:Name="AutoStart" x:Uid="Bridge_AutoStart" Toggled="OnAutoStartToggled" Visibility="Collapsed" />
 
-   <Expander x:Name="AdaptersPanel" x:Uid="Bridge_Adapters" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Visibility="Collapsed">
-    <StackPanel Spacing="10">
-     <TextBlock x:Uid="Bridge_AdaptersNote" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" />
-     <StackPanel x:Name="AdapterList" Spacing="8" />
-     <local:WrapPanel HorizontalSpacing="8" VerticalSpacing="8">
-      <Button x:Name="RefreshAdapters" Click="OnRefreshAdapters" />
-      <Button x:Name="OpenSettingsFolder" Click="OnOpenSettingsFolder" />
-      <HyperlinkButton x:Uid="Bridge_FirmwareLink" NavigateUri="https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/tree/rtl_bt" />
-     </local:WrapPanel>
-    </StackPanel>
-   </Expander>
-
    <TextBlock x:Uid="Bridge_Disclaimer" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" />
    <Expander x:Uid="Bridge_Help" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
     <StackPanel Spacing="10">
      <TextBlock x:Uid="Bridge_HelpRequirements" TextWrapping="Wrap" />
      <TextBlock x:Uid="Bridge_HelpSetup" TextWrapping="Wrap" />
-     <TextBlock x:Uid="Bridge_HelpDaily" TextWrapping="Wrap" />
      <TextBlock x:Uid="Bridge_HelpControls" TextWrapping="Wrap" />
-     <TextBlock x:Uid="Bridge_HelpRestore" TextWrapping="Wrap" />
      <HyperlinkButton x:Uid="Bridge_Guide" NavigateUri="https://github.com/TIANLI0/EncoDeck/blob/main/docs/A2DP_BRIDGE.md" Padding="0" />
      <HyperlinkButton x:Uid="Bridge_Upstream" NavigateUri="https://github.com/SeiyaFunaokaJP/BlueCaster" Padding="0" />
     </StackPanel>

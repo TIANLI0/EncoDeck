@@ -19,6 +19,11 @@ public enum ComponentUpdateOutcome
 
 public sealed record ComponentUpdateResult(ComponentUpdateOutcome Outcome, ComponentRelease? Release = null);
 
+/// <summary>An upstream project's own installer, as GitHub lists it: downloaded to this size and SHA-256 digest.</summary>
+public sealed record UpstreamSetup(string Version, string File, Uri Url, long Size, string Sha256);
+
+public sealed record UpstreamSetupResult(ComponentUpdateOutcome Outcome, UpstreamSetup? Setup = null);
+
 /// <summary>
 /// Finds component releases newer than what this app pins or has installed, without an app update. A candidate
 /// counts only when its <c>component.json</c> names the same component, tag and version, speaks this app's
@@ -83,6 +88,44 @@ public sealed class ComponentUpdateClient(HttpClient http, SemanticVersion app, 
             return new(ComponentUpdateOutcome.Available, offer with { Source = offer.Source with { Commit = commit } });
         }
         return new(ComponentUpdateOutcome.UpToDate);
+    }
+
+    /// <summary>
+    /// The installer of the newest official release of <paramref name="repositoryUrl"/> (betas included, alphas not,
+    /// as for <see cref="CheckUpstreamAsync"/>): the asset "&lt;Name&gt;-&lt;version&gt;-&lt;arch&gt;-setup.exe" that GitHub
+    /// reports a SHA-256 digest for. The installed program then updates and uninstalls itself.
+    /// </summary>
+    /// <param name="architecture">The asset's architecture tag ("win64", "arm64").</param>
+    public async Task<UpstreamSetupResult> FindUpstreamSetupAsync(string repositoryUrl, string architecture, CancellationToken ct = default)
+    {
+        if (UpstreamRepository(repositoryUrl) is not { } repository) return new(ComponentUpdateOutcome.Failed);
+        var (failure, releases) = await ListAsync(new Uri($"https://api.github.com/repos/{repository}/releases?per_page=30"), ct).ConfigureAwait(false);
+        if (failure is { } outcome) return new(outcome);
+        var setup = releases.OfType<JsonObject>()
+            .Select(r => (Release: r, Tag: Str(r["tag_name"])))
+            .Where(x => x.Tag is { Length: > 1 } tag && tag[0] == 'v' && !Bool(x.Release["draft"]))
+            .Select(x => (x.Release, x.Tag, Version: ComponentVersion.TryParse(x.Tag![1..] + "-r0", out var v) ? v : null))
+            .Where(x => x.Version is not null && !IsAlpha(x.Version))
+            .OrderByDescending(x => x.Version)
+            .Select(x => DescribeSetup(x.Tag!, x.Release, architecture))
+            .FirstOrDefault(s => s is not null);
+        return setup is null ? new(ComponentUpdateOutcome.Failed) : new(ComponentUpdateOutcome.Available, setup);
+    }
+
+    /// <summary>The release's installer for <paramref name="architecture"/>, or null without one that has a SHA-256 digest.</summary>
+    internal static UpstreamSetup? DescribeSetup(string tag, JsonObject release, string architecture)
+    {
+        string version = tag[1..];
+        string ending = $"-{version}-{architecture}-setup.exe";
+        var matches = (release["assets"] as JsonArray ?? []).OfType<JsonObject>()
+            .Where(a => Str(a["name"]) is { } n && n.EndsWith(ending, StringComparison.Ordinal) && IsProductName(n[..^ending.Length]))
+            .ToList();
+        if (matches is not [var asset]) return null;
+        long size = asset["size"] is JsonValue s && s.TryGetValue(out long reported) ? reported : 0;
+        string sha = Str(asset["digest"]) is { } digest && digest.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase) ? digest[7..] : "";
+        if (size is <= 0 or > 512L * 1024 * 1024 || sha.Length != 64 || !sha.All(Uri.IsHexDigit)) return null;
+        if (!Uri.TryCreate(Str(asset["browser_download_url"]), UriKind.Absolute, out var url) || url.Scheme != Uri.UriSchemeHttps || url.Host != "github.com") return null;
+        return new UpstreamSetup(version, Str(asset["name"])!, url, size, sha.ToLowerInvariant());
     }
 
     /// <summary>"owner/name" of a https://github.com/owner/name repository URL.</summary>

@@ -124,11 +124,6 @@ internal static class UiSnapshot
             if (FindScrollViewer(main.Content) is { } labs) labs.ChangeView(null, labs.ScrollableHeight, null, disableAnimation: true);
             await Task.Delay(400);
             await CaptureAsync(main, Path.Combine(outDir, "Bridge-Labs.png"));
-            foreach (var expander in Descendants(main.Content).OfType<Expander>().Where(e => e.Name is "AdaptersPanel")) expander.IsExpanded = true;
-            await Task.Delay(600);
-            if (FindScrollViewer(main.Content) is { } expanded) expanded.ChangeView(null, expanded.ScrollableHeight, null, disableAnimation: true);
-            await Task.Delay(400);
-            await CaptureAsync(main, Path.Combine(outDir, "Bridge-Labs-Adapters.png"));
             await host.Bridge.DisposeAsync();
             var link = new BridgeAudioLink(true, "LDAC", 990, 96000, "X4");
             foreach (var (name, state) in new[]

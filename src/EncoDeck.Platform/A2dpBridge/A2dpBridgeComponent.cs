@@ -38,9 +38,10 @@ public sealed record BridgeInstallation(string Directory, BridgeOrigin Origin, s
 
 /// <summary>
 /// BlueCaster (github.com/SeiyaFunaokaJP/BlueCaster, called A2DP Windows Bridge up to 2.0.x): A2DP from a dedicated
-/// USB Bluetooth adapter under WinUSB, with its own user-mode Bluetooth stack. EncoDeck downloads the official portable
-/// build from the project's own releases (the newest one, betas included) and starts, watches and controls the core;
-/// it never builds or patches it. Copies of 2.0.x (installed, running, or managed until their update) keep working.
+/// USB Bluetooth adapter under WinUSB, with its own user-mode Bluetooth stack. EncoDeck can run the official installer
+/// from the project's own releases (the newest one, betas included), then only finds, starts and connects to the core;
+/// BlueCaster updates and uninstalls itself, and manages adapters and earbuds in its own window. EncoDeck never builds
+/// or patches it. Portable copies EncoDeck downloaded before, and copies of 2.0.x, keep working.
 /// </summary>
 public static class A2dpBridgeComponent
 {
@@ -295,6 +296,31 @@ public static class A2dpBridgeComponent
             }
         }
         catch (Exception ex) when (ex is System.Security.SecurityException or UnauthorizedAccessException or IOException or ArgumentException) { }
+    }
+
+    /// <summary>The architecture tag of BlueCaster's installer for this PC ("win64", "arm64").</summary>
+    public static string SetupArchitecture =>
+        System.Runtime.InteropServices.RuntimeInformation.OSArchitecture == System.Runtime.InteropServices.Architecture.Arm64 ? "arm64" : "win64";
+
+    /// <summary>Downloads BlueCaster's own installer to <paramref name="path"/>, held to the size and digest GitHub reports.</summary>
+    public static Task DownloadSetupAsync(HttpClient http, UpstreamSetup setup, string path,
+        IProgress<EncoDeck.Platform.Updates.UpdateDownloadProgress>? progress, CancellationToken ct) =>
+        ComponentInstaller.DownloadAsync(http, [setup.Url], path, setup.Size, setup.Sha256, progress, ct);
+
+    /// <summary>
+    /// Runs BlueCaster's own installer unattended (a per-user installation, with its progress window) and returns its
+    /// exit code. The installed BlueCaster then updates and uninstalls itself; EncoDeck only finds and starts it.
+    /// </summary>
+    public static async Task<int> RunSetupAsync(string path)
+    {
+        using var process = Process.Start(new ProcessStartInfo(path, "/SILENT /SUPPRESSMSGBOXES /NORESTART")
+        {
+            UseShellExecute = true,
+            WorkingDirectory = Path.GetDirectoryName(path)!,
+        }) ?? throw new IOException("Cannot start the BlueCaster installer.");
+        // Never cut an installation short: it is waited for even when the card closes.
+        await process.WaitForExitAsync().ConfigureAwait(false);
+        return process.ExitCode;
     }
 
     /// <summary>BlueCaster's own window (first-run setup, adapter, firmware, pairing and diagnostics).</summary>
