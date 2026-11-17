@@ -30,5 +30,6 @@ public static class BuiltInProfiles
         .. Bose.BoseProfiles.CreateBuiltIn(),
         .. Nothing.NothingProfiles.CreateBuiltIn(),
         .. Usb.UsbHeadsetProfiles.Create(),
+        .. Wingcloud.WingcloudProfiles.CreateBuiltIn(),
     ];
 }

@@ -747,6 +747,17 @@
   <data name="Toggle_AptXLossless" xml:space="preserve"><value>aptX Lossless</value></data>
   <data name="Toggle_AptXLossless_Description" xml:space="preserve"><value>デバイス側の aptX Lossless スイッチです。Windows に aptX エンコーダーがインストールされるわけではなく、対応するスマートフォンなどの接続元で使われます。</value></data>
   <data name="Toggle_Ldac_EarFun_Description" xml:space="preserve"><value>デバイス側の LDAC スイッチです。マルチポイント接続と同時にはオンにできないため、どちらかをオンにするともう一方はオフになります。Windows に LDAC エンコーダーがインストールされるわけではありません。</value></data>
+  <data name="Toggle_Ldac_Wingcloud_Description" xml:space="preserve"><value>デバイス側の LDAC スイッチです。切り替えるとイヤホンが Bluetooth を一時的に再起動しますが、接続は自動で復帰し、空間サラウンドはオフになります。Windows に LDAC エンコーダーがインストールされるわけではありません。</value></data>
+  <data name="Toggle_SpatialAudio" xml:space="preserve"><value>空間サラウンド</value></data>
+  <data name="Toggle_SpatialAudio_Description" xml:space="preserve"><value>デバイス側の空間サラウンドスイッチです。LDAC と同時にはオンにできません（LDAC をオンにするとオフになります）。</value></data>
+  <data name="Wingcloud_Eq_Standard" xml:space="preserve"><value>標準</value></data>
+  <data name="Wingcloud_Eq_Bass" xml:space="preserve"><value>低音強調</value></data>
+  <data name="Wingcloud_Eq_Treble" xml:space="preserve"><value>高音強調</value></data>
+  <data name="Wingcloud_Cycle_All" xml:space="preserve"><value>オフ、ノイズキャンセリング、外音取り込み</value></data>
+  <data name="Wingcloud_Cycle_AncOff" xml:space="preserve"><value>オフ、ノイズキャンセリング</value></data>
+  <data name="Wingcloud_Cycle_AncTransparency" xml:space="preserve"><value>ノイズキャンセリング、外音取り込み</value></data>
+  <data name="Wingcloud_Cycle_OffTransparency" xml:space="preserve"><value>オフ、外音取り込み</value></data>
+  <data name="Error_Reconnecting" xml:space="preserve"><value>この設定を反映するためイヤホンが Bluetooth を再起動しています。接続が戻ると自動で同期されます。</value></data>
   <data name="Toggle_Lc3" xml:space="preserve"><value>LC3</value></data>
   <data name="Toggle_Lc3_Description" xml:space="preserve"><value>デバイス側の LC3 コーデックスイッチです。Windows の Bluetooth 転送方式は変更されません。</value></data>
   <data name="Toggle_ChannelSwap" xml:space="preserve"><value>左右チャンネルを入れ替え</value></data>

@@ -30,6 +30,9 @@ public sealed class ControlChannelSupervisor : IAsyncDisposable
     /// <summary>Settle time after Windows reports the link up before opening RFCOMM.</summary>
     public static readonly TimeSpan DefaultLinkSettleDelay = TimeSpan.FromSeconds(1);
 
+    /// <summary>How long an expected radio restart (LDAC on the X5s Pro) may keep the supervisor retrying.</summary>
+    private static readonly TimeSpan LinkRestartGrace = TimeSpan.FromSeconds(30);
+
     private readonly DeviceIdentity _identity;
     private readonly IControllableProfile _profile;
     private readonly ILinkStateSource _link;
@@ -180,6 +183,7 @@ public sealed class ControlChannelSupervisor : IAsyncDisposable
         bool everLinked = false;
         bool linkWasUp = false;
         bool firstIteration = true;
+        DateTimeOffset? restartSince = null;
 
         while (!ct.IsCancellationRequested)
         {
@@ -255,6 +259,24 @@ public sealed class ControlChannelSupervisor : IAsyncDisposable
             }
 
             attempt++;
+            if (_store.Current.LinkRestarting && restartSince is null) restartSince = _time.GetUtcNow();
+            if (_store.Current.LinkRestarting && _time.GetUtcNow() - restartSince > LinkRestartGrace)
+            {
+                // They never came back (switched off, out of range): fall back to the normal retry policy.
+                _logger.LogWarning("Earbuds did not return within {Grace} s of an expected restart", (int)LinkRestartGrace.TotalSeconds);
+                _store.TryUpdate(_identity.DeviceId, s => s with { LinkRestarting = false });
+            }
+            if (!_store.Current.LinkRestarting) restartSince = null;
+            else
+            {
+                // The earbuds restart their radio for this setting (LDAC): wait for them to come back
+                // instead of counting failed attempts towards giving up.
+                attempt = 0;
+                exhausted = false;
+                SetConnection(DeviceConnectionState.Reconnecting);
+                await WaitAsync(CurrentWake(), _policy.GetDelay(1) ?? TimeSpan.FromSeconds(1), ct).ConfigureAwait(false);
+                continue;
+            }
             if (_policy.GetDelay(attempt) is not { } delay)
             {
                 _logger.LogWarning("Control channel retries exhausted after {Attempts} attempts", attempt - 1);
@@ -440,6 +462,8 @@ public sealed class ControlChannelSupervisor : IAsyncDisposable
             ? s : s with
             {
                 Connection = state, IsLeAudio = leAudio, IsLeAudioBonded = bonded, LeAudioLinks = links, LinkViaBridge = viaBridge,
+                // An expected restart (the X5s Pro on an LDAC change) clears once the new session is up.
+                LinkRestarting = s.LinkRestarting && state != DeviceConnectionState.ControlReady,
             });
     }
 

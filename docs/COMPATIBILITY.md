@@ -322,7 +322,7 @@ EQ：LE Audio 下设备只上报预设 id，EncoDeck 按编号显示名称（Off
 | 系列 | 对应功能 |
 | --- | --- |
 | OPPO / 一加 / realme / DIZO | 尝试通用协议；按返回的产品 ID 识别，未知产品仅提供基础状态 |
-| vivo / iQOO、华为、漫步者 | 尝试各品牌通用协议，基础状态以设备实际应答为准 |
+| vivo / iQOO、华为、漫步者、荣耀 | 尝试各品牌通用协议，基础状态以设备实际应答为准 |
 | Xiaomi / Redmi | 按系列名称尝试鉴权、电量及已实现配置；名称不在目录中时按设备报告的 VID/PID 识别；仍无法识别的型号不开放猜测的降噪、EQ 预设或降噪档位 |
 | Sony / AKG、三星、Google、Bose、Nothing / CMF | 无通用型号兜底；仅匹配上表内置名称 |
 
@@ -417,9 +417,9 @@ dotnet run --project tools/EncoDeck.Probe -- usb-devices
 
 ## 荣耀耳机
 
-9 个型号档案，EncoDeck 尚未在荣耀真机上验证；新型号不继承旧型号的控制能力。
+10 个型号档案，其中 HONOR CHOICE Earbuds X5s Pro 已在真机上验证，其余型号 EncoDeck 尚未在荣耀真机上验证；新型号不继承旧型号的控制能力。
 
-| 兼容设备 | 对应功能 | 社区真机依据 |
+| 兼容设备 | 对应功能 | 真机依据 |
 | --- | --- | --- |
 | HONOR Earbuds 2 SE / 2 Lite | 电量、充电状态、降噪、通透、佩戴检测开关 | 电量、降噪、佩戴检测（OpenFreebuds 用户以 FreeBuds 4i 配置实测） |
 | HONOR Earbuds 3 Pro | 电量、充电状态、降噪、通透、降噪档位、佩戴检测开关、双设备连接 | — |
@@ -429,6 +429,8 @@ dotnet run --project tools/EncoDeck.Probe -- usb-devices
 | HONOR Earbuds X3 | 型号识别 / 素材；Milan BLE 控制未移植 | — |
 | HONOR CHOICE Earbuds X5 | 电量、充电状态、降噪 / 通透 / 关闭 | 全部列出项（[Nezerkill/honor-earbuds](https://github.com/Nezerkill/honor-earbuds/tree/13550440b50ebb51af501c737b418021d68253e2)，Linux） |
 | HONOR CHOICE Earbuds X5 Pro | 电量、充电状态、降噪 / 通透 / 关闭 | 社区工具（[TeskiOke/HonorEarbuds](https://github.com/TeskiOke/HonorEarbuds/tree/5339563383e819f8f5ca6afcd4b397b6fd167cc4)，Windows / Android），未逐项标注实测 |
+| HONOR CHOICE Earbuds X5s Pro（USFY） | 电量、充电状态、降噪（智能 / 轻度 / 中度 / 深度）、通透、预设 EQ、LDAC 开关、空间环绕声开关、长按降噪循环、双击 / 三击手势、固件信息 | 全部列出项（真机验证，固件 1.1.64.2，协议依据 [shui-tiao/my-x5s-pro](https://github.com/shui-tiao/my-x5s-pro)） |
 
 - 写入均以回读确认。耳机对写入的应答（TLV 1 = 0，或与华为相同的结果码 100000）只表示已收到。降噪模式按钮会保持耳机当前的降噪档位。
 - HONOR CHOICE 是使用 BES 方案的独立系列，查询不带参数、降噪写入只有一个字节，与名称相近的 HONOR Earbuds X3 / X5 档案互不通用。社区记录在 Linux 上直接打开 RFCOMM 通道 18 / 12，EncoDeck 通过标准串口服务（SPP）查找通道；X5 Pro 的社区 Windows 工具同样经 SPP 服务连接。X5 Pro 的硬件 EQ 没有可回读的状态，未开放。
+- X5s Pro 是 Wingcloud 方案，与上表 X5 / X5 Pro 的档案互不通用。连接时先发 4 帧握手（`01 27` → `01 3A` → `01 3E` → `01 07`），缺任何一帧耳机都会静默忽略后续 `2B xx` 命令。电量来自 `01 27` 包络的周期推送（`2B 39` 查询在此固件不应答），固件版本来自 `01 07` 的 tag 7。降噪档位、EQ、LDAC、空间环绕声和手势走 `01 39` / `01 3A` 属性通道，写入都会读回确认；切换 LDAC 时耳机重启蓝牙，此时写入值直接采信、由连接恢复后的首次读取校正，空间环绕声随之自动关闭（两者互斥）。

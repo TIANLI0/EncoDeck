@@ -747,6 +747,17 @@
   <data name="Toggle_AptXLossless" xml:space="preserve"><value>aptX Lossless</value></data>
   <data name="Toggle_AptXLossless_Description" xml:space="preserve"><value>耳机端 aptX Lossless 开关。此开关不会为 Windows 安装 aptX 编码器，作用于支持该编码的手机等音源。</value></data>
   <data name="Toggle_Ldac_EarFun_Description" xml:space="preserve"><value>耳机端 LDAC 开关，与双设备连接不能同时开启，开启任一项会关闭另一项。此开关不会为 Windows 安装 LDAC 编码器。</value></data>
+  <data name="Toggle_Ldac_Wingcloud_Description" xml:space="preserve"><value>耳机端 LDAC 开关。切换时耳机会短暂重启蓝牙，连接会自行恢复；开启后空间环绕声自动关闭。此开关不会为 Windows 安装 LDAC 编码器。</value></data>
+  <data name="Toggle_SpatialAudio" xml:space="preserve"><value>空间环绕声</value></data>
+  <data name="Toggle_SpatialAudio_Description" xml:space="preserve"><value>耳机端空间环绕声开关，与 LDAC 不能同时开启（开启 LDAC 会自动关闭它）。</value></data>
+  <data name="Wingcloud_Eq_Standard" xml:space="preserve"><value>标准</value></data>
+  <data name="Wingcloud_Eq_Bass" xml:space="preserve"><value>低音增强</value></data>
+  <data name="Wingcloud_Eq_Treble" xml:space="preserve"><value>高音增强</value></data>
+  <data name="Wingcloud_Cycle_All" xml:space="preserve"><value>关闭、降噪、通透</value></data>
+  <data name="Wingcloud_Cycle_AncOff" xml:space="preserve"><value>关闭、降噪</value></data>
+  <data name="Wingcloud_Cycle_AncTransparency" xml:space="preserve"><value>降噪、通透</value></data>
+  <data name="Wingcloud_Cycle_OffTransparency" xml:space="preserve"><value>关闭、通透</value></data>
+  <data name="Error_Reconnecting" xml:space="preserve"><value>耳机正在重启蓝牙以应用该设置，连接恢复后会自动同步。</value></data>
   <data name="Toggle_Lc3" xml:space="preserve"><value>LC3</value></data>
   <data name="Toggle_Lc3_Description" xml:space="preserve"><value>耳机端 LC3 编码开关，不改变 Windows 蓝牙传输方式。</value></data>
   <data name="Toggle_ChannelSwap" xml:space="preserve"><value>交换左右声道</value></data>

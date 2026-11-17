@@ -119,6 +119,12 @@ public sealed record DeviceState
 
     public bool IsFindingEarbuds { get; init; }
 
+    /// <summary>
+    /// The earbuds restart their radio for this change (the X5s Pro on LDAC), so the control link drops by
+    /// design: the session reconnects and no failure is reported.
+    /// </summary>
+    public bool LinkRestarting { get; init; }
+
     public ImmutableList<PendingCommand> PendingCommands { get; init; } = [];
 
     /// <summary>When the device last sent us anything on the control channel.</summary>
