@@ -12,7 +12,7 @@
 #>
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)][ValidateSet('lhdc', 'a2dpwb')][string] $Id,
+    [Parameter(Mandatory)][ValidateSet('lhdc')][string] $Id,
     [Parameter(Mandatory)][string] $OutputDirectory,
     [string] $Archive,
     [switch] $Upload

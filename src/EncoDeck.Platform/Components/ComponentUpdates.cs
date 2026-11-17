@@ -59,41 +59,11 @@ public sealed class ComponentUpdateClient(HttpClient http, SemanticVersion app, 
     }
 
     /// <summary>
-    /// Finds the newest official release of <paramref name="pinned"/>'s upstream project (betas included, alphas not:
-    /// upstream offers those only to who opts in) later than <paramref name="newerThan"/>, whatever its major version,
-    /// and describes it as a component release downloaded from upstream only. Every package of the pin must have its
-    /// counterpart there (the same architecture and kind, with the new version, under the project's current name) that
-    /// GitHub reports a SHA-256 digest for; the installer holds the download to it and to the tag's commit. A later
-    /// major version whose pipe protocol differs is refused by the core's handshake and shown as incompatible.
-    /// </summary>
-    public async Task<ComponentUpdateResult> CheckUpstreamAsync(ComponentRelease pinned, string? newerThan, CancellationToken ct = default)
-    {
-        if (UpstreamRepository(pinned.Source.Repository) is not { } repository
-            || !ComponentVersion.TryParse(pinned.Version, out var current)) return new(ComponentUpdateOutcome.Failed);
-        var (failure, releases) = await ListAsync(new Uri($"https://api.github.com/repos/{repository}/releases?per_page=30"), ct).ConfigureAwait(false);
-        if (failure is { } outcome) return new(outcome);
-
-        var candidates = releases.OfType<JsonObject>()
-            .Select(r => (Release: r, Tag: Str(r["tag_name"])))
-            .Where(x => x.Tag is { Length: > 1 } tag && tag[0] == 'v' && !Bool(x.Release["draft"]))
-            .Select(x => (x.Release, x.Tag, Version: ComponentVersion.TryParse(x.Tag![1..] + "-r0", out var v) ? v : null))
-            .Where(x => x.Version is not null && !IsAlpha(x.Version) && ComponentVersion.IsNewer(x.Version.ToString(), newerThan))
-            .OrderByDescending(x => x.Version)
-            .Take(3);
-        foreach (var (release, tag, version) in candidates)
-        {
-            ct.ThrowIfCancellationRequested();
-            if (DescribeUpstream(pinned, current, version!, tag!, release) is not { } offer) continue;
-            if (await TagCommitAsync(repository, tag!, ct).ConfigureAwait(false) is not { } commit) continue;
-            return new(ComponentUpdateOutcome.Available, offer with { Source = offer.Source with { Commit = commit } });
-        }
-        return new(ComponentUpdateOutcome.UpToDate);
-    }
-
-    /// <summary>
-    /// The installer of the newest official release of <paramref name="repositoryUrl"/> (betas included, alphas not,
-    /// as for <see cref="CheckUpstreamAsync"/>): the asset "&lt;Name&gt;-&lt;version&gt;-&lt;arch&gt;-setup.exe" that GitHub
-    /// reports a SHA-256 digest for. The installed program then updates and uninstalls itself.
+    /// The installer of the newest official release of <paramref name="repositoryUrl"/>, looked up when asked: nothing
+    /// about it (version, file, size, digest) is built into the app. Any major version and betas count; alphas (offered
+    /// upstream only to who opts in) and drafts do not. It is the asset "&lt;Name&gt;-&lt;version&gt;-&lt;arch&gt;-setup.exe"
+    /// that GitHub reports a SHA-256 digest for; a newer release without one for this architecture is passed over. The
+    /// installed program then updates and uninstalls itself.
     /// </summary>
     /// <param name="architecture">The asset's architecture tag ("win64", "arm64").</param>
     public async Task<UpstreamSetupResult> FindUpstreamSetupAsync(string repositoryUrl, string architecture, CancellationToken ct = default)
@@ -140,71 +110,6 @@ public sealed class ComponentUpdateClient(HttpClient http, SemanticVersion app, 
     /// <summary>A product name in an asset's file name ("BlueCaster", "A2DPWB"): ASCII letters and digits, starting with a letter.</summary>
     private static bool IsProductName(string name) =>
         name.Length is > 0 and <= 64 && char.IsAsciiLetter(name[0]) && name.All(char.IsAsciiLetterOrDigit);
-
-    /// <summary>
-    /// The pin's packages as assets of <paramref name="release"/>, or null when one is missing or has no SHA-256 digest.
-    /// A package "&lt;Name&gt;-&lt;version&gt;&lt;kind&gt;" ("A2DPWB-2.0.2-beta.11-win64-portable.zip") is matched by the
-    /// asset "&lt;AnyName&gt;-&lt;new version&gt;&lt;kind&gt;" ("BlueCaster-3.0.0-beta.3-win64-portable.zip"): the project may
-    /// have been renamed since the pin; its archive's folder follows the asset's name.
-    /// </summary>
-    internal static ComponentRelease? DescribeUpstream(ComponentRelease pinned, ComponentVersion current, ComponentVersion version, string tag, JsonObject release)
-    {
-        string from = current.Upstream.ToString(), to = version.Upstream.ToString();
-        var assets = (release["assets"] as JsonArray ?? []).OfType<JsonObject>().ToList();
-        var packages = new List<ComponentPackage>();
-        foreach (var package in pinned.Packages)
-        {
-            int at = package.File.IndexOf("-" + from, StringComparison.Ordinal);
-            if (at <= 0) return null;
-            string kind = package.File[(at + 1 + from.Length)..];
-            string ending = "-" + to + kind;
-            var matches = assets.Where(a => Str(a["name"]) is { } n && n.EndsWith(ending, StringComparison.Ordinal) && IsProductName(n[..^ending.Length])).ToList();
-            if (matches is not [var asset]) return null;
-            string file = Str(asset["name"])!;
-            string root = package.Root == package.File[..^kind.Length] ? file[..^kind.Length] : package.Root.Replace(from, to, StringComparison.Ordinal);
-            long size = asset["size"] is JsonValue s && s.TryGetValue(out long reported) ? reported : 0;
-            string sha = Str(asset["digest"]) is { } digest && digest.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase) ? digest[7..] : "";
-            if (size is <= 0 or > 2L * 1024 * 1024 * 1024 || sha.Length != 64 || !sha.All(Uri.IsHexDigit)
-                || !Uri.TryCreate(Str(asset["browser_download_url"]), UriKind.Absolute, out var url) || url.Scheme != Uri.UriSchemeHttps || url.Host != "github.com") return null;
-            packages.Add(package with
-            {
-                File = file,
-                Size = size,
-                Sha256 = sha.ToLowerInvariant(),
-                Root = root,
-                Mirrors = [url],
-            });
-        }
-        string componentVersion = version.ToString();
-        return pinned with
-        {
-            Version = componentVersion,
-            Tag = $"{pinned.Id}-v{componentVersion}",
-            Source = pinned.Source with { Release = tag },
-            MinApp = null,
-            Packages = packages,
-            UpstreamDownloads = true,
-        };
-    }
-
-    /// <summary>The commit a tag points at (the installer checks the package's source note names it).</summary>
-    private async Task<string?> TagCommitAsync(string repository, string tag, CancellationToken ct)
-    {
-        try
-        {
-            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            timeout.CancelAfter(TimeSpan.FromSeconds(30));
-            using var request = Request(new Uri($"https://api.github.com/repos/{repository}/commits/{Uri.EscapeDataString(tag)}"));
-            request.Headers.Accept.ParseAdd("application/vnd.github.sha");
-            request.Headers.TryAddWithoutValidation("X-GitHub-Api-Version", "2022-11-28");
-            using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false);
-            if (!response.IsSuccessStatusCode) return null;
-            string sha = System.Text.Encoding.ASCII.GetString(await ReadLimitedAsync(response, 256, timeout.Token).ConfigureAwait(false)).Trim();
-            return sha.Length == 40 && sha.All(Uri.IsHexDigit) ? sha.ToLowerInvariant() : null;
-        }
-        catch (OperationCanceledException) when (!ct.IsCancellationRequested) { return null; }
-        catch (Exception ex) when (ex is HttpRequestException or InvalidDataException or IOException) { return null; }
-    }
 
     /// <summary>A GitHub release list; a failure outcome instead when it could not be read.</summary>
     private async Task<(ComponentUpdateOutcome? Failure, JsonArray Releases)> ListAsync(Uri api, CancellationToken ct)

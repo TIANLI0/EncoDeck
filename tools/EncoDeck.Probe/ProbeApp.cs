@@ -153,10 +153,10 @@ internal static class ProbeApp
                      [--quit]             Ask the core to exit afterwards.
 
             Components:
-              components                  List the component pins of this build (LHDC, A2DP Bridge).
-                         [--install lhdc|a2dpwb --root <folder> [--upstream]]  Download and unpack one as the app does
-                                     (--upstream: the newest official BlueCaster build instead of the pin).
-                         [--check [--floor <x.y.z-rN>]]  Look for updates online as the Labs page does (BlueCaster: its official releases).
+              components                  List the component pins of this build (LHDC; BlueCaster is not pinned).
+                         [--install lhdc --root <folder>]  Download and unpack it as the app does.
+                         [--check [--floor <x.y.z-rN>]]  Look for LHDC updates online as the Labs page does, and show the
+                                     BlueCaster installer "Install BlueCaster" would fetch now (newest official release).
 
             Diagnostics:
               render-model --file <x.vfxms> --out <dir>  Render a HeyMelody 3D model off screen to PNG

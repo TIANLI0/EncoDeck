@@ -8,7 +8,8 @@ namespace EncoDeck.Probe;
 
 /// <summary>
 /// Lists the component pins of this build; with --install &lt;id&gt; --root &lt;dir&gt; downloads and unpacks one into a
-/// folder of your choice exactly as the app does (pinned digest, mirrors, resume). Never installs drivers.
+/// folder of your choice exactly as the app does (pinned digest, mirrors, resume). Never installs drivers. BlueCaster is
+/// not pinned: --check shows the installer the Labs page would fetch now.
 /// </summary>
 internal static class ComponentsCommand
 {
@@ -26,18 +27,13 @@ internal static class ComponentsCommand
             using var client = new HttpClient();
             var updates = new ComponentUpdateClient(client, SemanticVersion.FromAssembly(typeof(ComponentsCommand).Assembly));
             string floor = options.Get("floor") ?? "0.0.0-r0";
-            var results = new[]
-            {
-                (ComponentCatalog.LhdcId, await updates.CheckAsync(ComponentCatalog.LhdcId, LhdcComponent.Interface, floor, options.Has("prerelease"), ct).ConfigureAwait(false)),
-                // The official BlueCaster releases, as the Labs page does: the newest build, betas included.
-                (ComponentCatalog.A2dpBridgeId, await updates.CheckUpstreamAsync(ComponentCatalog.A2dpBridge, floor, ct).ConfigureAwait(false)),
-            };
-            foreach (var (name, result) in results)
-            {
-                Console.WriteLine($"{name}: {result.Outcome} {result.Release?.Version} {(result.Release is { } r ? $"{r.Source.Release} @ {r.Source.Commit[..Math.Min(12, r.Source.Commit.Length)]}" : "")}");
-                foreach (var package in result.Release?.Packages ?? [])
-                    Console.WriteLine($"  {package.Architecture}: {package.File} {package.Size} bytes sha256 {package.Sha256} <- {string.Join(", ", result.Release!.Sources(package))}");
-            }
+            var lhdc = await updates.CheckAsync(ComponentCatalog.LhdcId, LhdcComponent.Interface, floor, options.Has("prerelease"), ct).ConfigureAwait(false);
+            Console.WriteLine($"{ComponentCatalog.LhdcId}: {lhdc.Outcome} {lhdc.Release?.Version} {(lhdc.Release is { } r ? $"{r.Source.Release} @ {r.Source.Commit[..Math.Min(12, r.Source.Commit.Length)]}" : "")}");
+            foreach (var package in lhdc.Release?.Packages ?? [])
+                Console.WriteLine($"  {package.Architecture}: {package.File} {package.Size} bytes sha256 {package.Sha256} <- {string.Join(", ", lhdc.Release!.Sources(package))}");
+            // BlueCaster is not pinned: "Install BlueCaster" looks up the newest official installer, as shown here.
+            var setup = await updates.FindUpstreamSetupAsync(A2dpBridgeComponent.Repository, A2dpBridgeComponent.SetupArchitecture, ct).ConfigureAwait(false);
+            Console.WriteLine($"BlueCaster installer: {setup.Outcome} {(setup.Setup is { } s ? $"{s.Version} {s.File} {s.Size} bytes sha256 {s.Sha256} <- {s.Url}" : "")}");
         }
         if (options.Get("install") is not { } id) return 0;
         if (options.Get("root") is not { } root)
@@ -46,23 +42,9 @@ internal static class ComponentsCommand
             return 2;
         }
         using var http = new HttpClient();
-        // --upstream: the newest official BlueCaster build instead of the pin, as the Labs page's update installs it.
-        ComponentRelease? bridge = null;
-        if (id == ComponentCatalog.A2dpBridgeId && options.Has("upstream"))
-        {
-            var found = await new ComponentUpdateClient(http, SemanticVersion.FromAssembly(typeof(ComponentsCommand).Assembly))
-                .CheckUpstreamAsync(ComponentCatalog.A2dpBridge, "0.0.0-r0", ct).ConfigureAwait(false);
-            if (found.Release is null)
-            {
-                Console.Error.WriteLine($"No official BlueCaster build found: {found.Outcome}.");
-                return 3;
-            }
-            bridge = found.Release;
-        }
         var installer = id switch
         {
             ComponentCatalog.LhdcId => LhdcComponent.CreateInstaller(http, Path.GetFullPath(root)),
-            ComponentCatalog.A2dpBridgeId => A2dpBridgeComponent.CreateInstaller(http, Path.GetFullPath(root), bridge),
             _ => null,
         };
         if (installer is null)

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 using System.Net;
 using System.Text.Json.Nodes;
+using EncoDeck.Platform.A2dpBridge;
 using EncoDeck.Platform.Components;
 using EncoDeck.Platform.Updates;
 
@@ -138,80 +139,20 @@ public sealed class ComponentUpdateTests
         return new JsonObject { ["tag_name"] = tag, ["draft"] = draft, ["prerelease"] = prerelease, ["assets"] = assets };
     }
 
-    /// <summary>The upstream API under the pin's repository name, current or old (GitHub redirects the old one).</summary>
+    /// <summary>BlueCaster's release list, as the GitHub API returns it.</summary>
     private static ComponentUpdateClient UpstreamClient(JsonArray releases) =>
         new(new HttpClient(new Handler(request => request.RequestUri!.AbsolutePath switch
         {
-            "/repos/SeiyaFunaokaJP/BlueCaster/releases" or "/repos/SeiyaFunaokaJP/A2DP-Windows-Bridge/releases"
-                => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(releases.ToJsonString()) },
-            var path when path.StartsWith("/repos/SeiyaFunaokaJP/BlueCaster/commits/", StringComparison.Ordinal)
-                || path.StartsWith("/repos/SeiyaFunaokaJP/A2DP-Windows-Bridge/commits/", StringComparison.Ordinal)
-                => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(Commit) },
+            "/repos/SeiyaFunaokaJP/BlueCaster/releases" => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(releases.ToJsonString()) },
             _ => new HttpResponseMessage(HttpStatusCode.NotFound),
         })), SemanticVersion.Parse("1.11.0"));
-
-    [Fact]
-    public async Task OffersTheNewestOfficialBuildOfAnyMajorVersion()
-    {
-        var pinned = ComponentCatalog.A2dpBridge;
-        var releases = new JsonArray(Upstream("v4.0.0-beta.1.alpha.1"), Upstream("v4.0.0-beta.2", draft: true), Upstream("v4.0.0-beta.1.x", arm64: false),
-            Upstream("v4.0.0-beta.1"), Upstream("v3.0.0-beta.9"), Upstream("v2.0.2-beta.18", product: "A2DPWB"), Upstream("v1.9.0", prerelease: false));
-        var result = await UpstreamClient(releases).CheckUpstreamAsync(pinned, pinned.Version, TestContext.Current.CancellationToken);
-
-        // The alpha is offered upstream only on request, the draft is not published, and beta.1.x lacks the arm64
-        // package; a new major version is taken (a protocol it changed is refused at the handshake).
-        Assert.Equal(ComponentUpdateOutcome.Available, result.Outcome);
-        var offer = result.Release!;
-        Assert.Equal("4.0.0-beta.1-r0", offer.Version);
-        Assert.Equal("a2dpwb-v4.0.0-beta.1-r0", offer.Tag);
-        Assert.Equal("v4.0.0-beta.1", offer.Source.Release);
-        Assert.Equal(Commit, offer.Source.Commit);
-        Assert.True(offer.UpstreamDownloads);
-        var x64 = offer.PackageFor(System.Runtime.InteropServices.Architecture.X64)!;
-        Assert.Equal(("BlueCaster-4.0.0-beta.1-win64-portable.zip", "BlueCaster-4.0.0-beta.1", 2000L, new string('c', 64)), (x64.File, x64.Root, x64.Size, x64.Sha256));
-        Assert.Equal([new Uri("https://github.com/SeiyaFunaokaJP/BlueCaster/releases/download/v4.0.0-beta.1/BlueCaster-4.0.0-beta.1-win64-portable.zip")], offer.Sources(x64));
-
-        var none = await UpstreamClient(releases).CheckUpstreamAsync(pinned, "4.0.0-beta.1-r0", TestContext.Current.CancellationToken);
-        Assert.Equal(ComponentUpdateOutcome.UpToDate, none.Outcome);
-    }
-
-    [Fact]
-    public async Task APinFromBeforeTheRenameFindsTheRenamedBuilds()
-    {
-        // A pin as apps up to 1.15 carry it: A2DPWB 2.0.x under the project's old name.
-        var legacy = ComponentCatalog.A2dpBridge with
-        {
-            Version = "2.0.2-beta.11-r1",
-            Tag = "a2dpwb-v2.0.2-beta.11-r1",
-            Source = new("https://github.com/SeiyaFunaokaJP/A2DP-Windows-Bridge", Commit, "v2.0.2-beta.11"),
-            Packages = [.. ComponentCatalog.A2dpBridge.Packages.Select(p => p with
-            {
-                File = $"A2DPWB-2.0.2-beta.11-{(p.Architecture == "x64" ? "win64" : "arm64")}-portable.zip",
-                Root = "A2DPWB-2.0.2-beta.11",
-            })],
-        };
-        var releases = new JsonArray(Upstream("v3.0.0-beta.3"), Upstream("v2.0.2-beta.18", product: "A2DPWB"));
-        var offer = (await UpstreamClient(releases).CheckUpstreamAsync(legacy, legacy.Version, TestContext.Current.CancellationToken)).Release!;
-
-        Assert.Equal("3.0.0-beta.3-r0", offer.Version);
-        var arm64 = offer.PackageFor(System.Runtime.InteropServices.Architecture.Arm64)!;
-        Assert.Equal(("BlueCaster-3.0.0-beta.3-arm64-portable.zip", "BlueCaster-3.0.0-beta.3"), (arm64.File, arm64.Root));
-    }
-
-    [Fact]
-    public async Task OfficialBuildsWithoutADigestAreNotOffered()
-    {
-        var pinned = ComponentCatalog.A2dpBridge;
-        var result = await UpstreamClient(new JsonArray(Upstream("v3.0.0", digest: false))).CheckUpstreamAsync(pinned, pinned.Version, TestContext.Current.CancellationToken);
-        Assert.Equal(ComponentUpdateOutcome.UpToDate, result.Outcome);
-    }
 
     [Fact]
     public async Task FindsTheNewestOfficialInstallerForThisArchitecture()
     {
         var releases = new JsonArray(Upstream("v4.0.0-beta.1.alpha.1"), Upstream("v4.0.0-beta.2", draft: true), Upstream("v4.0.0-beta.1.x", arm64: false),
             Upstream("v4.0.0-beta.1"), Upstream("v3.0.1", prerelease: false));
-        string repository = ComponentCatalog.A2dpBridge.Source.Repository;
+        string repository = A2dpBridgeComponent.Repository;
 
         // Neither the alpha nor the draft; beta.1.x has an installer for win64 only.
         var x64 = await UpstreamClient(releases).FindUpstreamSetupAsync(repository, "win64", TestContext.Current.CancellationToken);
@@ -226,7 +167,7 @@ public sealed class ComponentUpdateTests
     [Fact]
     public async Task InstallersWithoutADigestOrFromElsewhereAreNotRun()
     {
-        string repository = ComponentCatalog.A2dpBridge.Source.Repository;
+        string repository = A2dpBridgeComponent.Repository;
         var unsigned = await UpstreamClient(new JsonArray(Upstream("v3.0.1", digest: false))).FindUpstreamSetupAsync(repository, "win64", TestContext.Current.CancellationToken);
         Assert.Null(unsigned.Setup);
 

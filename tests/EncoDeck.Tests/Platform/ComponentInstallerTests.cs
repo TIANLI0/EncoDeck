@@ -23,16 +23,8 @@ public sealed class ComponentInstallerTests : IDisposable
         Assert.Equal("https://github.com/Wayne-u/LHDC-Win", lhdc.Source.Repository);
         Assert.StartsWith("lhdc-v", lhdc.Tag);
         Assert.NotNull(lhdc.PackageFor(System.Runtime.InteropServices.Architecture.X64));
-        var bridge = ComponentCatalog.A2dpBridge;
-        Assert.StartsWith("a2dpwb-v", bridge.Tag);
-        Assert.True(bridge.UpstreamDownloads);
-        foreach (var package in bridge.Packages)
-        {
-            Assert.True(package.IsPublished);
-            // Downloaded from the upstream release only, held to the same pin.
-            Assert.NotEmpty(package.Mirrors);
-            Assert.All(bridge.Sources(package), m => Assert.StartsWith("https://github.com/SeiyaFunaokaJP/BlueCaster/releases/download/", m.AbsoluteUri));
-        }
+        // BlueCaster is not pinned: "Install BlueCaster" looks up its newest official installer when asked.
+        Assert.Equal([ComponentCatalog.LhdcId], ComponentCatalog.Components.Select(c => c.Id));
         Assert.Equal(new Uri($"https://github.com/TIANLI0/EncoDeck/releases/download/{lhdc.Tag}/{lhdc.Packages[0].File}"), lhdc.Sources(lhdc.Packages[0])[0]);
         // Component tags never parse as app versions, so the app's update check cannot pick them.
         Assert.All(ComponentCatalog.Components, c => Assert.False(SemanticVersion.TryParse(c.Tag, out _)));
@@ -285,51 +277,30 @@ public sealed class ComponentInstallerTests : IDisposable
     }
 
     [Theory]
-    [InlineData("BlueCaster-3.0.0-beta.3", "3.0.0-beta.3", false)]
-    [InlineData("A2DPWB-2.0.1", "2.0.1", true)]
-    public async Task BridgePackageInstallsFromItsRootFolder(string root, string version, bool legacy)
+    [InlineData("BlueCaster-3.0.0-beta.3", false)]
+    [InlineData("A2DPWB-2.0.1", true)]
+    public void APortableCopyFromAnEarlierEncoDeckIsStillFound(string packageRoot, bool legacy)
     {
-        string bridgeCommit = "3a094af733c830a2f4f5bd7418e6c7ba1db94749";
-        string file = $"{root}-win64-portable.zip";
-        byte[] zip = BridgePackage(root, bridgeCommit, legacy);
-        var release = new ComponentRelease
-        {
-            Id = ComponentCatalog.A2dpBridgeId, Version = version + "-r0", Tag = $"a2dpwb-v{version}-r0",
-            Source = new("https://github.com/SeiyaFunaokaJP/BlueCaster", bridgeCommit, "v" + version),
-            Packages = [Package(zip, file) with { Root = root }],
-        };
-        var installer = new ComponentInstaller(new HttpClient(new FakeHttp(zip)), _root, release, release.Packages[0], A2dpBridgeComponent.Layout);
-        var installed = await installer.InstallAsync(ct: TestContext.Current.CancellationToken);
-        Assert.True(A2dpBridgeComponent.IsBridgeFolder(installed.Directory));
-        Assert.EndsWith(root, installed.Directory);
-        Assert.Equal(legacy ? A2dpBridgeComponent.Legacy : A2dpBridgeComponent.Current, A2dpBridgeComponent.NamesIn(installed.Directory));
-        var copy = new BridgeInstallation(installed.Directory, BridgeOrigin.Managed, version);
-        Assert.Equal(legacy ? "a2dpwb-core.exe" : "bluecaster-core.exe", Path.GetFileName(copy.CorePath));
-        Assert.Equal(legacy ? "a2dpwb-driver.exe" : "bluecaster-driver.exe", Path.GetFileName(copy.DriverPath));
-        Assert.NotNull(installer.Installed);
+        // EncoDeck up to 1.15 unpacked BlueCaster into <root>\<folder>\<package root> and named it in current.json.
+        var names = legacy ? A2dpBridgeComponent.Legacy : A2dpBridgeComponent.Current;
+        string directory = Path.Combine(_root, "3.0.0-beta.3-r0", packageRoot);
+        Directory.CreateDirectory(directory);
+        foreach (string file in new[] { names.Core, names.Window }) File.WriteAllText(Path.Combine(directory, file), "fixture");
+        File.WriteAllText(Path.Combine(_root, "current.json"),
+            $$"""{ "version": "3.0.0-beta.3-r0", "sha256": "{{new string('a', 64)}}", "folder": "3.0.0-beta.3-r0", "root": "{{packageRoot}}" }""");
 
-        // Another build than the pinned one (its source note names another commit) is refused.
-        byte[] other = BridgePackage(root, new string('d', 40), legacy);
-        var rogue = new ComponentInstaller(new HttpClient(new FakeHttp(other)), _root + "-rogue", release with { Packages = [Package(other, file) with { Root = root }] },
-            Package(other, file) with { Root = root }, A2dpBridgeComponent.Layout);
-        await Assert.ThrowsAsync<InvalidDataException>(() => rogue.InstallAsync(ct: TestContext.Current.CancellationToken));
-        if (Directory.Exists(_root + "-rogue")) Directory.Delete(_root + "-rogue", recursive: true);
+        var copy = A2dpBridgeComponent.FindDownloaded(_root);
+        Assert.NotNull(copy);
+        Assert.Equal(BridgeOrigin.Managed, copy.Origin);
+        Assert.Equal(Path.GetFullPath(directory), Path.GetFullPath(copy.Directory));
+        Assert.Equal(names.Core, Path.GetFileName(copy.CorePath));
+
+        // A pointer that leaves the folder, or none at all, finds nothing.
+        File.WriteAllText(Path.Combine(_root, "current.json"), """{ "folder": "..", "root": "" }""");
+        Assert.Null(A2dpBridgeComponent.FindDownloaded(_root));
+        File.Delete(Path.Combine(_root, "current.json"));
+        Assert.Null(A2dpBridgeComponent.FindDownloaded(_root));
     }
-
-    [Fact]
-    public async Task ABridgePackageWithoutItsLicencesIsRefused()
-    {
-        byte[] zip = BridgePackage("BlueCaster-3.0.0", Commit, legacy: false, licences: false);
-        var release = new ComponentRelease
-        {
-            Id = ComponentCatalog.A2dpBridgeId, Version = "3.0.0-r0", Tag = "a2dpwb-v3.0.0-r0",
-            Source = new("https://github.com/SeiyaFunaokaJP/BlueCaster", Commit, "v3.0.0"),
-            Packages = [Package(zip, "BlueCaster-3.0.0-win64-portable.zip") with { Root = "BlueCaster-3.0.0" }],
-        };
-        var installer = new ComponentInstaller(new HttpClient(new FakeHttp(zip)), _root, release, release.Packages[0], A2dpBridgeComponent.Layout);
-        await Assert.ThrowsAsync<InvalidDataException>(() => installer.InstallAsync(ct: TestContext.Current.CancellationToken));
-    }
-
     [Theory]
     [InlineData("\"C:\\Users\\me\\AppData\\Local\\BlueCaster\\bluecaster-core.exe\" --background", "C:\\Users\\me\\AppData\\Local\\BlueCaster\\bluecaster-core.exe")]
     [InlineData("\"C:\\Users\\me\\AppData\\Local\\A2DP Windows Bridge\\a2dpwb-core.exe\" --background", "C:\\Users\\me\\AppData\\Local\\A2DP Windows Bridge\\a2dpwb-core.exe")]
@@ -377,27 +348,6 @@ public sealed class ComponentInstallerTests : IDisposable
         return memory.ToArray();
     }
 
-    /// <summary>
-    /// The official portable layout: BlueCaster's (licenses/README.txt names the source) or 2.0.x's (SOURCE.txt).
-    /// </summary>
-    private static byte[] BridgePackage(string root, string commit, bool legacy = false, bool licences = true)
-    {
-        var names = legacy ? A2dpBridgeComponent.Legacy : A2dpBridgeComponent.Current;
-        using var memory = new MemoryStream();
-        using (var archive = new ZipArchive(memory, ZipArchiveMode.Create, leaveOpen: true))
-        {
-            foreach (string file in licences ? new[] { names.Core, names.Window, names.Driver, names.License, names.ThirdParty } : [names.Core, names.Window, names.Driver])
-            {
-                using var writer = new StreamWriter(archive.CreateEntry($"{root}/{file}").Open());
-                writer.Write("fixture");
-            }
-            using var source = new StreamWriter(archive.CreateEntry($"{root}/{names.SourceInfo}").Open());
-            source.Write(legacy
-                ? $"A2DP Windows Bridge (A2DPWB) 2.0.1 (x64)\nRepository: https://github.com/SeiyaFunaokaJP/A2DP-Windows-Bridge\nCommit:     {commit}\n"
-                : $"BlueCaster 3.0.0 (x64)\n\nSource code\n-----------\nRepository: https://github.com/SeiyaFunaokaJP/BlueCaster\nCommit:     {commit}\n");
-        }
-        return memory.ToArray();
-    }
 
     /// <summary>Serves the package; can corrupt it, answer an error, or drop the connection half way (once).</summary>
     private sealed class FakeHttp(byte[] body) : HttpMessageHandler

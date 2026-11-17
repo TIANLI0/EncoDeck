@@ -85,6 +85,7 @@ BlueCaster 通过它自己的适配器连接耳机，这条连接对 Windows 蓝
 ## 安装程序的来源与校验
 
 - **直接取自官方 Release**：安装程序从 [BlueCaster 的 Release](https://github.com/SeiyaFunaokaJP/BlueCaster/releases) 原样下载，不经 EncoDeck 转发，不重新编译、不修改。
+- **不在 EncoDeck 中固定版本**：EncoDeck 只知道 BlueCaster 的仓库地址，不内置任何版本号、文件名或校验值。每次点击“安装 BlueCaster”时才去查询，所以总是安装当时最新的官方版本，不需要等 EncoDeck 更新。
 - **最新的官方版本**：读取 BlueCaster 官方的 Release 列表，取其中最新的一个（不限主版本，测试版也包括在内；只向主动开启的用户推送的 alpha 版本和草稿不包括）中与本机架构对应的 `setup.exe`。它必须有 GitHub 给出的 SHA-256 摘要，下载按这个摘要和大小校验后才会运行。中断的下载会续传。
 - 如果以后的主版本改变了通信协议，后台会在握手时拒绝连接，卡片显示“通信协议不兼容”。
 

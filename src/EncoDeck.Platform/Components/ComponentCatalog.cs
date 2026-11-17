@@ -115,7 +115,6 @@ public static class ComponentCatalog
 {
     public const string Repository = "TIANLI0/EncoDeck";
     public const string LhdcId = "lhdc";
-    public const string A2dpBridgeId = "a2dpwb";
 
     /// <summary>The asset of every component release that describes it (the same shape as an entry of components.json).</summary>
     public const string ManifestAsset = "component.json";
@@ -131,8 +130,6 @@ public static class ComponentCatalog
     public static IReadOnlyList<ComponentRelease> Components => All.Value;
 
     public static ComponentRelease Lhdc => Get(LhdcId);
-
-    public static ComponentRelease A2dpBridge => Get(A2dpBridgeId);
 
     public static ComponentRelease Get(string id) => Components.FirstOrDefault(c => c.Id == id)
         ?? throw new KeyNotFoundException($"No component '{id}'.");

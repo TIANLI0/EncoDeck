@@ -26,7 +26,8 @@ public sealed class A2dpBridgeCompanion : IAsyncDisposable
     private readonly string? _instance;
     private BridgeInstallation? _installed;
     // Read from disk when installations may have changed, not on every core event.
-    private InstalledComponent? _managed;
+    private BridgeInstallation? _managed;
+    private readonly string _componentsRoot;
     private string? _runningDirectory;
     private bool _wasConnected;
     private bool _started;
@@ -39,17 +40,20 @@ public sealed class A2dpBridgeCompanion : IAsyncDisposable
         _store = store;
         _settings = settings;
         _logger = logger;
-        Component = A2dpBridgeComponent.CreateInstaller(_http, Path.Combine(componentsRoot, "A2DPWB"));
+        _componentsRoot = componentsRoot;
         Monitor = new A2dpBridgeMonitor(logger, instance);
         Monitor.Changed += (_, _) => OnMonitorChanged();
         _store.StateChanged += OnStateChanged;
     }
 
-    /// <summary>The installed EncoDeck-managed copy, as of the last <see cref="RefreshInstallations"/>.</summary>
-    public InstalledComponent? Managed => _managed;
+    /// <summary>
+    /// The portable copy EncoDeck up to 1.15 downloaded (still started, never updated), as of the last
+    /// <see cref="RefreshInstallations"/>.
+    /// </summary>
+    public BridgeInstallation? Managed => _managed;
 
-    /// <summary>The portable copy EncoDeck downloaded before it ran BlueCaster's own installer instead.</summary>
-    public ComponentInstaller Component { get; }
+    /// <summary>Where EncoDeck up to 1.15 kept its portable copy (the folder name is A2DP Windows Bridge's).</summary>
+    private string DownloadedRoot => Path.Combine(_componentsRoot, "A2DPWB");
 
     public A2dpBridgeMonitor Monitor { get; }
 
@@ -63,7 +67,7 @@ public sealed class A2dpBridgeCompanion : IAsyncDisposable
 
     /// <summary>
     /// The copy to start: a running core's folder, then BlueCaster's own installation (it updates itself), then the
-    /// EncoDeck-managed copy.
+    /// portable copy an earlier EncoDeck downloaded.
     /// </summary>
     public BridgeInstallation? Installation
     {
@@ -77,8 +81,7 @@ public sealed class A2dpBridgeCompanion : IAsyncDisposable
                 return new BridgeInstallation(running, origin, A2dpBridgeComponent.FileVersion(Path.Combine(running, (A2dpBridgeComponent.NamesIn(running) ?? A2dpBridgeComponent.Current).Core)));
             }
             if (_installed is { } own && A2dpBridgeComponent.IsBridgeFolder(own.Directory)) return own;
-            return _managed is { } m && A2dpBridgeComponent.IsBridgeFolder(m.Directory)
-                ? new BridgeInstallation(m.Directory, BridgeOrigin.Managed, ManagedVersion(m.Version)) : null;
+            return _managed is { } m && A2dpBridgeComponent.IsBridgeFolder(m.Directory) ? m : null;
         }
     }
 
@@ -101,9 +104,6 @@ public sealed class A2dpBridgeCompanion : IAsyncDisposable
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>Upstream version of a component version ("3.0.0-beta.3-r0" → "3.0.0-beta.3").</summary>
-    private static string ManagedVersion(string version) => version.Split("-r", 2)[0];
-
     public void Start()
     {
         if (_started) return;
@@ -112,8 +112,6 @@ public sealed class A2dpBridgeCompanion : IAsyncDisposable
         Monitor.Start();
         _ = Task.Run(async () =>
         {
-            // Old versions and unfinished downloads; a copy whose core is running is kept.
-            Component.CleanUp();
             if (_settings.Current.A2dpBridgeAutoStart && CanManage && !A2dpBridgeMonitor.IsCoreRunning(_instance) && Installation is { } installation)
             {
                 try
@@ -133,8 +131,8 @@ public sealed class A2dpBridgeCompanion : IAsyncDisposable
     /// <summary>Looks again for BlueCaster's own installation (after installing it, or when the Labs page opens).</summary>
     public void RefreshInstallations()
     {
-        _installed = A2dpBridgeComponent.FindInstalled(Component.Root);
-        _managed = Component.Installed;
+        _installed = A2dpBridgeComponent.FindInstalled(DownloadedRoot);
+        _managed = A2dpBridgeComponent.FindDownloaded(DownloadedRoot);
         // A core started anywhere (its own window, the tray, Windows' startup, here) is found within this interval, and
         // the earbuds it streams to are then followed. Without an installation found, a portable copy may still start.
         Monitor.IdleInterval = _installed is not null || _managed is not null ? TimeSpan.FromSeconds(3) : TimeSpan.FromSeconds(15);
@@ -145,14 +143,15 @@ public sealed class A2dpBridgeCompanion : IAsyncDisposable
     public bool CanInstall => CanManage && _installed is null;
 
     /// <summary>
-    /// Downloads the installer of the newest official BlueCaster release (betas included) from the project's own
-    /// releases, held to GitHub's SHA-256 digest, and runs it unattended. BlueCaster then updates and uninstalls itself;
+    /// Looks up the newest official BlueCaster release (betas included) on the project's own releases at this moment
+    /// (nothing about it is built into EncoDeck), downloads its installer held to GitHub's SHA-256 digest, and runs it
+    /// unattended. BlueCaster then updates and uninstalls itself;
     /// its window opens for the first-run setup (adapter, firmware, earbuds).
     /// </summary>
     public async Task InstallAsync(IProgress<UpdateDownloadProgress>? progress, CancellationToken ct)
     {
         var app = SemanticVersion.FromAssembly(typeof(A2dpBridgeCompanion).Assembly);
-        var found = await new ComponentUpdateClient(_http, app).FindUpstreamSetupAsync(Component.Release.Source.Repository, A2dpBridgeComponent.SetupArchitecture, ct).ConfigureAwait(false);
+        var found = await new ComponentUpdateClient(_http, app).FindUpstreamSetupAsync(A2dpBridgeComponent.Repository, A2dpBridgeComponent.SetupArchitecture, ct).ConfigureAwait(false);
         if (found.Setup is not { } setup)
         {
             throw new IOException(Loc.Get(found.Outcome switch
@@ -162,13 +161,13 @@ public sealed class A2dpBridgeCompanion : IAsyncDisposable
                 _ => "Bridge_SetupNotFound",
             }));
         }
-        string folder = Path.Combine(Component.Root, "setup");
+        string folder = Path.Combine(_componentsRoot, "BlueCaster-setup");
         Directory.CreateDirectory(folder);
         string path = Path.Combine(folder, setup.File);
         await A2dpBridgeComponent.DownloadSetupAsync(_http, setup, path, progress, ct).ConfigureAwait(false);
-        _logger.LogInformation("Running BlueCaster's installer {Version}", setup.Version);
+        _logger.LogInformation("Running BlueCaster's installer {Version} ({File})", setup.Version, setup.File);
         int exit = await A2dpBridgeComponent.RunSetupAsync(path).ConfigureAwait(false);
-        try { File.Delete(path); }
+        try { Directory.Delete(folder, recursive: true); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         RefreshInstallations();
         if (exit != 0 || _installed is not { } installed)

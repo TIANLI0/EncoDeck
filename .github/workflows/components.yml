@@ -1,19 +1,19 @@
 # SPDX-License-Identifier: GPL-3.0-only
-# Component releases, separate from app releases: lhdc-v<version> is compiled from the pinned LHDC-Win commit,
-# a2dpwb-v<version> mirrors the official BlueCaster (formerly A2DP Windows Bridge) builds byte for byte. Each runs once per component
-# version (push its tag); an app release only checks that its pins are published (build/verify-components.ps1).
+# Component releases, separate from app releases: lhdc-v<version> is compiled from the pinned LHDC-Win commit. It runs once per
+# component version (push its tag); an app release only checks that its pins are published (build/verify-components.ps1).
+# BlueCaster is not a component release any more: the app installs the newest official BlueCaster installer from upstream.
 # The app accepts exactly the sizes and SHA-256 digests pinned in src/EncoDeck.Platform/Components/components.json.
 name: Components
 
 on:
   push:
-    tags: ["lhdc-v*", "a2dpwb-v*"]
+    tags: ["lhdc-v*"]
   workflow_dispatch:
     inputs:
       component:
         description: Build or check a component without publishing it
         type: choice
-        options: [lhdc, a2dpwb]
+        options: [lhdc]
 
 permissions:
   contents: read
@@ -78,26 +78,3 @@ jobs:
             artifacts/lhdc-release/EncoDeck-LHDC-*.zip
             artifacts/lhdc-release/EncoDeck-LHDC-*.zip.sha256
             artifacts/lhdc-release/component-pin.json
-
-  a2dpwb:
-    if: startsWith(github.ref, 'refs/tags/a2dpwb-v') || inputs.component == 'a2dpwb'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Check the tag against the pin
-        if: startsWith(github.ref, 'refs/tags/')
-        shell: pwsh
-        run: |
-          $pin = (Get-Content src/EncoDeck.Platform/Components/components.json -Raw | ConvertFrom-Json).components | Where-Object id -eq 'a2dpwb'
-          if ($pin.tag -ne $env:GITHUB_REF_NAME) { throw "Tag $env:GITHUB_REF_NAME does not match the pinned $($pin.tag)." }
-
-      - name: Mirror the pinned official builds (and publish them for a tag)
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          $publish = $env:GITHUB_REF_TYPE -eq 'tag'
-          ./build/mirror-a2dpwb.ps1 -OutputDirectory artifacts/a2dpwb-mirror -Publish:$publish
