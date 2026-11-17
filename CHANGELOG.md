@@ -4,6 +4,32 @@
 
 This file records the user-visible changes of every EncoDeck version (Keep a Changelog, Semantic Versioning). Since 1.15.0 each version lists the Chinese notes first and the English ones below the divider.
 
+## [1.15.2] - 2026-11-18 · 已签名的安装包，W830NB 与 BlueCaster 修复 / Signed installer, W830NB and BlueCaster fixes
+
+### 修复
+
+- EDIFIER W830NB：切换降噪模式和音效时也会等耳机的提示音播完再发送下一次设置，连续切换不再失败；同时修改的几项设置依次发送，没有应答时自动重发一次（[#18](https://github.com/TIANLI0/EncoDeck/issues/18)）。
+- 在 EncoDeck 里断开的耳机由 BlueCaster 播放时，EncoDeck 会通过 BlueCaster 接管控制（降噪、音效等），播放停止后回到“已在 EncoDeck 中断开”；不会改动 Windows 的蓝牙连接（[#16](https://github.com/TIANLI0/EncoDeck/issues/16)）。
+
+### 改进
+
+- 安装包、卸载程序和 EncoDeck 自己的程序文件带有 Authenticode 数字签名和时间戳，Windows 不再显示“未知发布者”。
+- 安装程序的第一页和安装完成页提供“发行说明”和“帮助与支持”链接，许可条款改为在第一页内联确认，安装少一步；“应用和功能”里也能找到这两个链接。
+- 卸载时一并清理 LE Audio 设置留下的系统级数据。
+
+---
+
+### Fixed
+
+- EDIFIER W830NB: changing the noise mode or the sound effect also waits for the headphones' voice prompt before the next setting, so switching several times in a row no longer fails; settings changed together are sent one after another, and an unanswered one is sent once more ([#18](https://github.com/TIANLI0/EncoDeck/issues/18)).
+- Headphones disconnected in EncoDeck that play through BlueCaster are now controlled through BlueCaster (noise mode, sound effects, …) while it plays, and return to "Disconnected in EncoDeck" when it stops; the Windows Bluetooth connection is left alone ([#16](https://github.com/TIANLI0/EncoDeck/issues/16)).
+
+### Improved
+
+- The installer, the uninstaller and EncoDeck's own program files carry an Authenticode signature with a timestamp, so Windows no longer shows "Unknown publisher".
+- The installer's first and last pages link to the release notes and to help and support, and the license is accepted inline on the first page, one step less; Settings > Apps shows both links too.
+- Uninstalling also removes the system-wide data left by the LE Audio settings.
+
 ## [1.15.1] - 2026-11-13 · 漫步者 W830NB 场景模式修复与新安装程序 / W830NB scene fixes and a new installer
 
 ### 修复

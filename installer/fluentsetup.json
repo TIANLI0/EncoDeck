@@ -26,6 +26,8 @@
     "version": "$(Version)",
     "description": "Windows 原生的多品牌耳机控制中心 · Native multi-brand earbuds control center",
     "website": "https://github.com/TIANLI0/EncoDeck",
+    "supportUrl": "https://github.com/TIANLI0/EncoDeck/issues",
+    "releaseNotesUrl": "https://github.com/TIANLI0/EncoDeck/releases",
     "icon": "../src/EncoDeck.App/Assets/EncoDeck.ico",
     "mainExecutable": "EncoDeck.exe"
   },
@@ -83,6 +85,7 @@
   },
   "ui": {
     "license": "../LICENSE",
+    "licenseStyle": "inline",
     "localization": "locales",
     "defaultLanguage": "auto"
   },
