@@ -4,29 +4,41 @@
 
 This file records the user-visible changes of every EncoDeck version (Keep a Changelog, Semantic Versioning). Since 1.15.0 each version lists the Chinese notes first and the English ones below the divider.
 
-## [Unreleased]
+## [1.17.0] - 2026-11-19 · BlueCaster 连接控制与精简安装 / BlueCaster connection control and a compact install
 
 ### 新增
 
 - 经 BlueCaster 连接的耳机也可以在快捷面板、首页和“设备”页“断开此电脑”（停止 BlueCaster 到耳机的推流，EncoDeck 随后不再控制它）和“连接此电脑”（启动 BlueCaster 中这副耳机的连接配置，后台未运行时先启动后台）。只在 BlueCaster 中配对过、上次经 BlueCaster 连接，或 Windows 已没有蓝牙适配器（BlueCaster 接管了电脑自带的那一个）的耳机，连接走 BlueCaster（[#16](https://github.com/TIANLI0/EncoDeck/issues/16)）。
+- 安装包会按电脑自动选择版本：已装有 .NET 10 运行时和 Windows App Runtime 2.5.1 及以上的电脑安装共享运行时的精简版（安装后约 50 MB，原来约 185 MB），其他电脑仍安装自带运行时的版本，不会额外安装任何东西。每次安装和应用内更新都会重新选择。
 
 ### 改进
 
 - 界面中的“A2DP Bridge”统一改称 BlueCaster（实验室卡片、首页和快捷面板徽标、提示文字）。
 - BlueCaster 卡片和说明不再假定必须使用“独立 USB 适配器”：BlueCaster 也可以接管许多笔记本自带的蓝牙适配器（此时 Windows 自己没有蓝牙）。
 - BlueCaster 卡片的编码列表按 BlueCaster 3.0 更新：补上 aptX Adaptive、FastStream，aptX HD、aptX LL、Opus 改为正式支持；Opus 05 与 LC3（LE Audio）标为仅开发者模式（[#16](https://github.com/TIANLI0/EncoDeck/issues/16)）。
+- LE Audio 左右声道校准：有其他声音（如音乐、视频）在播放时也能重新建立链路。EncoDeck 会暂时停掉静音流再恢复，播放中的声音会短暂中断；只有正在播放的本身就是游戏音频时才等它停止。
+
+### 修复
+
+- LE Audio 码率与延迟：网络较慢时，下载所需的调试符号不再因总耗时过长而失败，只在长时间没有数据时才超时；再次尝试时从已下载的部分继续。
 
 ---
 
 ### Added
 
 - Earbuds connected through BlueCaster can now be disconnected from this PC in the tray panel, on the home page and on the Devices page (this stops BlueCaster's stream to them, and EncoDeck stops controlling them), and connected again (this starts BlueCaster's connection profile for them, starting its background process first if needed). Connecting goes through BlueCaster for earbuds paired only in BlueCaster, last connected through it, or when Windows has no Bluetooth adapter left because BlueCaster took over the built-in one ([#16](https://github.com/TIANLI0/EncoDeck/issues/16)).
+- The installer picks the build for the PC: where the .NET 10 runtime and the Windows App Runtime 2.5.1 or later are already installed, it installs the compact shared-runtime build (about 50 MB installed instead of about 185 MB); elsewhere it installs the build with the runtimes included, and never installs anything extra. The choice is made again on every install and in-app update.
 
 ### Improved
 
 - "A2DP Bridge" is now called BlueCaster throughout the app (Labs card, home page and tray panel badge, messages).
 - The BlueCaster card and guide no longer assume a dedicated USB adapter: BlueCaster can also take over the adapter built into many laptops (Windows then has no Bluetooth of its own).
 - The BlueCaster card lists the codecs of BlueCaster 3.0: aptX Adaptive and FastStream were added, aptX HD, aptX LL and Opus are no longer marked experimental, and Opus 05 and LC3 (LE Audio) are marked developer-mode only ([#16](https://github.com/TIANLI0/EncoDeck/issues/16)).
+- LE Audio left/right calibration: the link can now be rebuilt while other sound (music, video) plays. EncoDeck briefly drops the silence and brings it back, so what plays cuts out for a moment; it only waits when what plays is game audio itself.
+
+### Fixed
+
+- LE Audio bitrate and latency: on a slow connection, downloading the debug symbols it needs no longer fails for taking too long; it only times out when no data arrives for a while, and the next attempt resumes the part already downloaded.
 
 ---
 
