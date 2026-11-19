@@ -48,6 +48,7 @@ public sealed class AppHost : IAsyncDisposable
             manager.BridgeConnector = new A2dpBridgeChannelConnector(() => Bridge.Monitor, loggers.CreateLogger<A2dpBridgeChannelConnector>());
             // Earbuds paired with the bridge's adapter alone are unknown to Windows: list them from the bridge's profiles.
             var bridge = Bridge;
+            manager.BridgeLinks = bridge;
             bridge.Changed += (_, _) => manager.SetBridgeDevices(BridgeDeviceMatch.Devices(bridge.Status)
                 .Select(d => new PairedDevice(d.Identity, d.IsStreaming, PairedDevice.AudioVideoMajorClass)).ToArray());
         }

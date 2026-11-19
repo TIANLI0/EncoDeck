@@ -595,15 +595,15 @@
   <data name="Lhdc_Update" xml:space="preserve"><value>更新 LHDC 组件（{0:F0} MB）</value></data>
   <data name="Lhdc_Unpublished" xml:space="preserve"><value>此版本 EncoDeck 对应的 LHDC 组件尚未发布，请稍后更新 EncoDeck。</value></data>
   <data name="Connection_Bridge" xml:space="preserve"><value>已连接（仅音频）</value></data>
-  <data name="Connection_BridgeConnecting" xml:space="preserve"><value>A2DP Bridge 正在连接…</value></data>
-  <data name="Home_Bridge.Title" xml:space="preserve"><value>通过 A2DP Bridge 连接</value></data>
+  <data name="Connection_BridgeConnecting" xml:space="preserve"><value>BlueCaster 正在连接…</value></data>
+  <data name="Home_Bridge.Title" xml:space="preserve"><value>通过 BlueCaster 连接</value></data>
   <data name="Home_Bridge_Open.Content" xml:space="preserve"><value>打开实验室</value></data>
-  <data name="Home_Bridge_Only" xml:space="preserve"><value>耳机经 A2DP Bridge 播放（{0}），但控制通道不可用：读取电量和更改耳机设置需要 BlueCaster（或 A2DPWB 2.0.2 及以上），并使用经典蓝牙连接。</value></data>
-  <data name="Badge_Bridge_AudioOnly" xml:space="preserve"><value>声音经 A2DP Bridge 的独立 USB 适配器播放（{0}）。Windows 看不到这条连接。</value></data>
-  <data name="Badge_Bridge_Windows" xml:space="preserve"><value>声音经 A2DP Bridge 的独立 USB 适配器播放（{0}），耳机设置仍通过 Windows 蓝牙控制。</value></data>
-  <data name="Badge_Bridge_Control" xml:space="preserve"><value>声音经 A2DP Bridge 的独立 USB 适配器播放（{0}），电量读取和耳机设置也经 A2DP Bridge 进行。</value></data>
-  <data name="Bridge_Title.Text" xml:space="preserve"><value>A2DP Bridge（独立 USB 蓝牙适配器，实验性）</value></data>
-  <data name="Bridge_Summary.Text" xml:space="preserve"><value>BlueCaster（原 A2DP Windows Bridge）接管一个独立的 USB 蓝牙适配器，用自己的蓝牙协议栈以 LDAC、LHDC V5、aptX HD 等编码向耳机发送声音，不需要测试签名驱动。EncoDeck 只负责连接它：可以一键安装、启动它，并在首页识别、控制通过它连接的耳机；更新、卸载、适配器和耳机都由 BlueCaster 自己管理。</value></data>
+  <data name="Home_Bridge_Only" xml:space="preserve"><value>耳机经 BlueCaster 播放（{0}），但控制通道不可用：读取电量和更改耳机设置需要 BlueCaster 2.0.2 及以上（2.0 及以前名为 A2DP Windows Bridge），并使用经典蓝牙连接。</value></data>
+  <data name="Badge_Bridge_AudioOnly" xml:space="preserve"><value>声音经 BlueCaster 使用的蓝牙适配器播放（{0}）。Windows 看不到这条连接。</value></data>
+  <data name="Badge_Bridge_Windows" xml:space="preserve"><value>声音经 BlueCaster 使用的蓝牙适配器播放（{0}），耳机设置仍通过 Windows 蓝牙控制。</value></data>
+  <data name="Badge_Bridge_Control" xml:space="preserve"><value>声音经 BlueCaster 使用的蓝牙适配器播放（{0}），电量读取和耳机设置也经 BlueCaster 进行。</value></data>
+  <data name="Bridge_Title.Text" xml:space="preserve"><value>BlueCaster（高品质蓝牙音频，实验性）</value></data>
+  <data name="Bridge_Summary.Text" xml:space="preserve"><value>BlueCaster（原 A2DP Windows Bridge）接管一个 USB 蓝牙适配器，用自己的蓝牙协议栈以上面这些编码向耳机发送声音，不需要测试签名驱动。EncoDeck 只负责连接它：可以一键安装、启动它，在首页识别、控制通过它连接的耳机，并可连接、断开耳机；更新、卸载、适配器、配对和编码都由 BlueCaster 自己管理。</value></data>
   <data name="Bridge_Running" xml:space="preserve"><value>后台运行中：BlueCaster {0}（{1}）</value></data>
   <data name="Bridge_Incompatible" xml:space="preserve"><value>正在运行的 BlueCaster 与此版本 EncoDeck 的通信协议不兼容（{0}）。请更新 EncoDeck 或 BlueCaster。</value></data>
   <data name="Bridge_Connecting" xml:space="preserve"><value>正在连接 BlueCaster 后台…</value></data>
@@ -614,13 +614,13 @@
   <data name="Bridge_StandaloneLink.Content" xml:space="preserve"><value>下载非商店版本</value></data>
   <data name="Bridge_Start" xml:space="preserve"><value>启动后台</value></data>
   <data name="Bridge_OpenWindow" xml:space="preserve"><value>打开 BlueCaster</value></data>
-  <data name="Bridge_ManageInWindow.Text" xml:space="preserve"><value>适配器、耳机的配对与连接、编码和音量请在 BlueCaster 窗口中管理（“打开 BlueCaster”）。BlueCaster 连接耳机后，EncoDeck 会自动通过它控制耳机。</value></data>
+  <data name="Bridge_ManageInWindow.Text" xml:space="preserve"><value>适配器、耳机配对、编码和音量请在 BlueCaster 窗口中管理（“打开 BlueCaster”）。BlueCaster 连接耳机后，EncoDeck 会自动通过它控制耳机；EncoDeck 中的“连接”“断开”会开始、停止这条连接。</value></data>
   <data name="Bridge_AutoStart.Header" xml:space="preserve"><value>EncoDeck 启动时同时启动 BlueCaster 后台</value></data>
   <data name="Bridge_Disclaimer.Text" xml:space="preserve"><value>免责声明：BlueCaster（原 A2DP Windows Bridge）是 Seiya Funaoka 的第三方开源项目（Apache-2.0 / MIT），EncoDeck 原样运行其官方安装程序；其中静态链接的 BTstack 仅许可个人、非商业用途。耳机兼容性、无线质量和适配器固件不在 EncoDeck 控制范围内，请自行评估并承担使用风险。</value></data>
-  <data name="Bridge_Help.Header" xml:space="preserve"><value>A2DP Bridge 使用说明</value></data>
-  <data name="Bridge_HelpRequirements.Text" xml:space="preserve"><value>需要一个独立的 USB 蓝牙适配器（与电脑自带蓝牙分开，上游验证过 TP-Link UB500 / Realtek RTL8761BU），以及 Windows 10 22H2 或 Windows 11。不要把 WinUSB 分配给电脑自带的蓝牙。</value></data>
-  <data name="Bridge_HelpSetup.Text" xml:space="preserve"><value>1. 安装并启动 BlueCaster 后，点击“打开 BlueCaster”，在它的窗口中完成首次设置：为独立适配器分配驱动、放入固件，然后添加耳机、选择编码并连接。之后连接、断开耳机和更新都在 BlueCaster 中进行；关闭 EncoDeck 不会中断播放。</value></data>
-  <data name="Bridge_HelpControls.Text" xml:space="preserve"><value>2. 通过独立适配器连接时，Windows 看不到耳机。BlueCaster 一连上耳机，EncoDeck 就会自动切换到这副耳机，并通过 BlueCaster 打开控制通道：首页照常显示电量和耳机设置，并带有 A2DP Bridge 徽标；只在 BlueCaster 中配对过的耳机也会出现在 EncoDeck 中。支持双设备连接的耳机也可以同时连接电脑自带蓝牙；此时请把 Windows 的默认输出设为其他设备，避免两路声音同时发往耳机。</value></data>
+  <data name="Bridge_Help.Header" xml:space="preserve"><value>BlueCaster 使用说明</value></data>
+  <data name="Bridge_HelpRequirements.Text" xml:space="preserve"><value>BlueCaster 需要一个可以由它接管的 USB 蓝牙适配器，以及 Windows 10 22H2 或 Windows 11。推荐使用单独的蓝牙适配器（上游列有验证过的型号）；许多笔记本自带的适配器也可以用，但 BlueCaster 使用期间 Windows 自己没有蓝牙可用，可在 BlueCaster 的“适配器”页还给 Windows。</value></data>
+  <data name="Bridge_HelpSetup.Text" xml:space="preserve"><value>1. 安装并启动 BlueCaster 后，点击“打开 BlueCaster”，在它的窗口中完成首次设置：设置适配器，然后添加耳机、选择编码并连接。之后，EncoDeck 中的“连接”“断开”（快捷面板、首页、设备页）会开始、停止 BlueCaster 到耳机的连接；配对、编码和更新仍在 BlueCaster 中进行。关闭 EncoDeck 不会中断播放。</value></data>
+  <data name="Bridge_HelpControls.Text" xml:space="preserve"><value>2. 通过 BlueCaster 的适配器连接时，Windows 看不到耳机。BlueCaster 一连上耳机，EncoDeck 就会自动切换到这副耳机，并通过 BlueCaster 打开控制通道：首页照常显示电量和耳机设置，并带有 BlueCaster 徽标；只在 BlueCaster 中配对过的耳机也会出现在 EncoDeck 中。如果另有一个适配器留给 Windows，支持双设备连接的耳机可以同时连接两边；此时请把 Windows 的默认输出设为其他设备，避免两路声音同时发往耳机。</value></data>
   <data name="Bridge_Guide.Content" xml:space="preserve"><value>查看详细教程</value></data>
   <data name="Bridge_Upstream.Content" xml:space="preserve"><value>BlueCaster 项目主页</value></data>
   <data name="Bridge_Stream_Idle" xml:space="preserve"><value>未连接</value></data>
@@ -646,9 +646,9 @@
   <data name="Bridge_OriginManaged" xml:space="preserve"><value>EncoDeck 管理</value></data>
   <data name="Bridge_OriginInstalled" xml:space="preserve"><value>BlueCaster 安装版</value></data>
   <data name="Bridge_OriginRunning" xml:space="preserve"><value>正在运行的副本</value></data>
-  <data name="Codec_Experimental.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>实验性：上游已通过编码器和虚拟接收端测试，尚未经真实耳机确认</value></data>
-  <data name="Codec_Experimental.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.HelpText" xml:space="preserve"><value>实验性编码</value></data>
-  <data name="Bridge_Codecs.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>A2DP Bridge 支持的编码</value></data>
+  <data name="Bridge_DeveloperMode.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>仅在 BlueCaster 的开发者模式中可用</value></data>
+  <data name="Bridge_DeveloperMode.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.HelpText" xml:space="preserve"><value>仅开发者模式</value></data>
+  <data name="Bridge_Codecs.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>BlueCaster 支持的编码</value></data>
   <data name="Lhdc_Codecs.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>LHDC 组件支持的编码</value></data>
   <data name="LeAudio_Codecs.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>LE Audio 使用的编码</value></data>
   <data name="Component_CheckUpdates" xml:space="preserve"><value>检查更新</value></data>
@@ -950,7 +950,7 @@
   <data name="About_ThanksIntro.Text" xml:space="preserve"><value>EncoDeck 建立在这些开源项目的成果之上，感谢它们的作者和贡献者。</value></data>
   <data name="About_ThanksUsb.Text" xml:space="preserve"><value>USB 与 2.4 GHz 游戏耳机</value></data>
   <data name="About_ThanksComponents.Text" xml:space="preserve"><value>组件与开源库</value></data>
-  <data name="About_ThanksBridge.Text" xml:space="preserve"><value>A2DP Bridge 组件</value></data>
+  <data name="About_ThanksBridge.Text" xml:space="preserve"><value>BlueCaster 集成</value></data>
   <data name="About_ThanksLibraries.Text" xml:space="preserve"><value>开源库</value></data>
   <data name="About_ThanksAll.Text" xml:space="preserve"><value>第三方声明中列出了每个项目所用的修订版本及其许可证。</value></data>
   <data name="About_PrivacyText.Text" xml:space="preserve"><value>EncoDeck 没有账户、广告、统计或遥测，只在检查更新、获取设备图片和下载你选择的可选组件时联网。</value></data>
@@ -1099,7 +1099,7 @@
   <data name="UsbEq_Custom" xml:space="preserve"><value>自定义</value></data>
   <data name="AutoOff_Minutes" xml:space="preserve"><value>{0} 分钟后</value></data>
   <data name="AutoOff_IdleDescription" xml:space="preserve"><value>耳机闲置达到所选时长后自动关机</value></data>
-  <data name="Codec_BridgeDescription" xml:space="preserve"><value>A2DP Bridge 正在向这台耳机发送 {0} 音频。</value></data>
+  <data name="Codec_BridgeDescription" xml:space="preserve"><value>BlueCaster 正在向这台耳机发送 {0} 音频。</value></data>
   <data name="Codec_LeAudioDescription" xml:space="preserve"><value>通过 LE Audio 播放，编码为 LC3。</value></data>
   <data name="EarFun_Wind" xml:space="preserve"><value>抗风噪</value></data>
   <data name="EarFun_Anc1" xml:space="preserve"><value>降噪 1</value></data>

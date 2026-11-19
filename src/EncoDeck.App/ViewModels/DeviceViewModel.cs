@@ -134,13 +134,13 @@ public sealed partial class DeviceViewModel : ObservableObject
     [ObservableProperty] public partial bool IsSwitchingAudioTransport { get; set; }
     /// <summary>
     /// BlueCaster streams to these earbuds but neither it nor Windows carries their control channel. The
-    /// "A2DP Bridge" tag already names the bridge in every other case, so only this one takes room above the page.
+    /// BlueCaster tag already names the bridge in every other case, so only this one takes room above the page.
     /// </summary>
     [ObservableProperty] public partial bool HasBridgeNotice { get; set; }
     /// <summary>Connected only through the bridge: Windows does not see the earbuds, so their controls are unavailable.</summary>
     [ObservableProperty] public partial bool IsBridgeOnly { get; set; }
     [ObservableProperty] public partial string BridgeMessage { get; set; } = string.Empty;
-    /// <summary>BlueCaster streams to these earbuds: an "A2DP Bridge" tag next to the status.</summary>
+    /// <summary>BlueCaster streams to these earbuds: an BlueCaster tag next to the status.</summary>
     [ObservableProperty] public partial bool HasBridgeBadge { get; set; }
     [ObservableProperty] public partial string BridgeBadgeDescription { get; set; } = string.Empty;
     /// <summary>Audio codec or link evidence, with its source visible in the label.</summary>
@@ -472,10 +472,10 @@ public sealed partial class DeviceViewModel : ObservableObject
             IsLeAudio = false;
         }
         IsClassicAudio = !IsLeAudio && !IsLinkDown && !IsBridgeOnly && state.Connection.IsLinkUp();
-        // Earbuds BlueCaster carries (audio, or control through it too) are connected and disconnected in BlueCaster.
-        bool windowsBluetooth = state.Device is { Transport: DeviceTransport.Bluetooth } && !IsBridgeOnly && !state.LinkViaBridge;
-        CanDisconnect = windowsBluetooth && state.Connection.IsLinkUp();
-        CanConnect = windowsBluetooth && IsLinkDown;
+        // Earbuds BlueCaster carries are disconnected by stopping its stream, and connected by starting it (DeviceManager).
+        bool bluetooth = state.Device is { Transport: DeviceTransport.Bluetooth };
+        CanDisconnect = bluetooth && (state.Connection.IsLinkUp() || state.Bridge is not null);
+        CanConnect = bluetooth && IsLinkDown;
         BatteryOpacity = IsLinkDown ? 0.35 : 1;
         CanSwitchAudioTransport = _settings.Current.ShowAudioTransportSwitch != false
             && profile is OppoDeviceProfile { Definition.SupportsLeAudioPairing: true }
@@ -487,7 +487,7 @@ public sealed partial class DeviceViewModel : ObservableObject
         var codecDisplay = CodecDisplay.Resolve(state);
         CodecLabel = codecDisplay.Kind switch
         {
-            // The "A2DP Bridge" tag beside a bridge stream already names its source.
+            // The BlueCaster tag beside a bridge stream already names its source.
             CodecDisplayKind.BridgeStream or CodecDisplayKind.WindowsStream or CodecDisplayKind.LhdcStream => codecDisplay.Codec!,
             // Windows' LE Audio output is active, and LE Audio on Windows is always LC3.
             CodecDisplayKind.LeLink => "LC3",
@@ -812,7 +812,7 @@ public sealed partial class DeviceViewModel : ObservableObject
     private string BuildToolTip()
     {
         if (!HasDevice) return "EncoDeck";
-        var parts = new List<string> { $"{DeviceName} · {ConnectionText}" + (HasBridgeBadge ? " · A2DP Bridge" : string.Empty) };
+        var parts = new List<string> { $"{DeviceName} · {ConnectionText}" + (HasBridgeBadge ? " · BlueCaster" : string.Empty) };
         if (IsHeadphones)
         {
             if (Left.HasValue) parts.Add($"{Left.Label} {Left.LevelText}");

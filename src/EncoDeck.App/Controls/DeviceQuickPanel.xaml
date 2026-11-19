@@ -25,7 +25,7 @@
                     <Border Style="{StaticResource CodecBadgeSubtleStyle}" Visibility="{x:Bind ViewModel.HasBridgeBadge, Mode=OneWay}"
                             ToolTipService.ToolTip="{x:Bind ViewModel.BridgeBadgeDescription, Mode=OneWay}"
                             AutomationProperties.Name="{x:Bind ViewModel.BridgeBadgeDescription, Mode=OneWay}">
-                        <TextBlock Text="A2DP Bridge" Style="{StaticResource CodecBadgeSubtleTextStyle}" />
+                        <TextBlock Text="BlueCaster" Style="{StaticResource CodecBadgeSubtleTextStyle}" />
                     </Border>
                     <controls:CodecBadge Visibility="{x:Bind ViewModel.HasCodec, Mode=OneWay}" Label="{x:Bind ViewModel.CodecLabel, Mode=OneWay}"
                                       Description="{x:Bind ViewModel.CodecDescription, Mode=OneWay}" IsDetailed="{x:Bind ViewModel.CodecIsDetailed, Mode=OneWay}"

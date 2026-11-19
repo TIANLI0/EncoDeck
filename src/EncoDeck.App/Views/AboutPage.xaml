@@ -285,7 +285,7 @@
                         <HyperlinkButton Content="LHDC-Win" NavigateUri="https://github.com/Wayne-u/LHDC-Win" />
                     </StackPanel>
                     <StackPanel Spacing="2">
-                        <TextBlock x:Uid="About_ThanksBridge" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" Text="A2DP Bridge component" />
+                        <TextBlock x:Uid="About_ThanksBridge" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" Text="BlueCaster integration" />
                         <controls:WrapPanel Style="{StaticResource LinkRowStyle}">
                             <HyperlinkButton Content="BlueCaster" NavigateUri="https://github.com/SeiyaFunaokaJP/BlueCaster" />
                             <HyperlinkButton Content="BTstack" NavigateUri="https://github.com/bluekitchen/btstack" />

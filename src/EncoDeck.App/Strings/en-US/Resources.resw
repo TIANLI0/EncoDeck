@@ -595,15 +595,15 @@
   <data name="Lhdc_Update" xml:space="preserve"><value>Update LHDC component ({0:F0} MB)</value></data>
   <data name="Lhdc_Unpublished" xml:space="preserve"><value>The LHDC component for this EncoDeck version is not published yet. Please update EncoDeck later.</value></data>
   <data name="Connection_Bridge" xml:space="preserve"><value>Connected (audio only)</value></data>
-  <data name="Connection_BridgeConnecting" xml:space="preserve"><value>A2DP Bridge is connecting…</value></data>
-  <data name="Home_Bridge.Title" xml:space="preserve"><value>Connected through A2DP Bridge</value></data>
+  <data name="Connection_BridgeConnecting" xml:space="preserve"><value>BlueCaster is connecting…</value></data>
+  <data name="Home_Bridge.Title" xml:space="preserve"><value>Connected through BlueCaster</value></data>
   <data name="Home_Bridge_Open.Content" xml:space="preserve"><value>Open Labs</value></data>
-  <data name="Home_Bridge_Only" xml:space="preserve"><value>The earbuds play through A2DP Bridge ({0}), but their controls are unreachable: the battery and earbud settings need BlueCaster (or A2DPWB 2.0.2 and later) on a Classic connection.</value></data>
-  <data name="Badge_Bridge_AudioOnly" xml:space="preserve"><value>Audio plays through A2DP Bridge's dedicated USB adapter ({0}). Windows cannot see that link.</value></data>
-  <data name="Badge_Bridge_Windows" xml:space="preserve"><value>Audio plays through A2DP Bridge's dedicated USB adapter ({0}); the earbud settings are still controlled over Windows Bluetooth.</value></data>
-  <data name="Badge_Bridge_Control" xml:space="preserve"><value>Audio plays through A2DP Bridge's dedicated USB adapter ({0}); EncoDeck reads the battery and changes earbud settings through A2DP Bridge too.</value></data>
-  <data name="Bridge_Title.Text" xml:space="preserve"><value>A2DP Bridge (dedicated USB Bluetooth adapter, experimental)</value></data>
-  <data name="Bridge_Summary.Text" xml:space="preserve"><value>BlueCaster (formerly A2DP Windows Bridge) takes over a dedicated USB Bluetooth adapter and sends audio to your earbuds with its own Bluetooth stack in LDAC, LHDC V5, aptX HD and more, without test-signed drivers. EncoDeck only connects to it: it can install and start it, and recognizes and controls earbuds connected through it on the home page. Updates, uninstalling, adapters and earbuds are managed by BlueCaster itself.</value></data>
+  <data name="Home_Bridge_Only" xml:space="preserve"><value>The earbuds play through BlueCaster ({0}), but their controls are unreachable: the battery and earbud settings need BlueCaster 2.0.2 or later (A2DP Windows Bridge up to 2.0) on a Classic connection.</value></data>
+  <data name="Badge_Bridge_AudioOnly" xml:space="preserve"><value>Audio plays through BlueCaster's Bluetooth adapter ({0}). Windows cannot see that link.</value></data>
+  <data name="Badge_Bridge_Windows" xml:space="preserve"><value>Audio plays through BlueCaster's Bluetooth adapter ({0}); the earbud settings are still controlled over Windows Bluetooth.</value></data>
+  <data name="Badge_Bridge_Control" xml:space="preserve"><value>Audio plays through BlueCaster's Bluetooth adapter ({0}); EncoDeck reads the battery and changes earbud settings through BlueCaster too.</value></data>
+  <data name="Bridge_Title.Text" xml:space="preserve"><value>BlueCaster (Hi-Fi Bluetooth audio, experimental)</value></data>
+  <data name="Bridge_Summary.Text" xml:space="preserve"><value>BlueCaster (formerly A2DP Windows Bridge) takes over a USB Bluetooth adapter and sends audio to your earbuds with its own Bluetooth stack in the codecs above, without test-signed drivers. EncoDeck only connects to it: it can install and start it, recognizes and controls earbuds connected through it on the home page, and connects or disconnects them. Updates, uninstalling, adapters, pairing and codecs are managed by BlueCaster itself.</value></data>
   <data name="Bridge_Running" xml:space="preserve"><value>Running in the background: BlueCaster {0} ({1})</value></data>
   <data name="Bridge_Incompatible" xml:space="preserve"><value>The running BlueCaster speaks a different protocol than this EncoDeck version ({0}). Update EncoDeck or BlueCaster.</value></data>
   <data name="Bridge_Connecting" xml:space="preserve"><value>Connecting to the BlueCaster background process…</value></data>
@@ -614,13 +614,13 @@
   <data name="Bridge_StandaloneLink.Content" xml:space="preserve"><value>Download the non-Store version</value></data>
   <data name="Bridge_Start" xml:space="preserve"><value>Start</value></data>
   <data name="Bridge_OpenWindow" xml:space="preserve"><value>Open BlueCaster</value></data>
-  <data name="Bridge_ManageInWindow.Text" xml:space="preserve"><value>Manage the adapter, pairing and connecting earbuds, codecs and volume in the BlueCaster window ("Open BlueCaster"). Once BlueCaster connects your earbuds, EncoDeck controls them through it.</value></data>
+  <data name="Bridge_ManageInWindow.Text" xml:space="preserve"><value>Manage the adapter, pairing, codecs and volume in the BlueCaster window ("Open BlueCaster"). Once BlueCaster connects your earbuds, EncoDeck controls them through it; Connect and Disconnect in EncoDeck start and stop that connection.</value></data>
   <data name="Bridge_AutoStart.Header" xml:space="preserve"><value>Start the BlueCaster background process with EncoDeck</value></data>
   <data name="Bridge_Disclaimer.Text" xml:space="preserve"><value>Disclaimer: BlueCaster (formerly A2DP Windows Bridge) is a third-party open-source project by Seiya Funaoka (Apache-2.0 / MIT); EncoDeck runs its official installer unmodified. The BTstack library it links statically is licensed for personal, non-commercial use only. Earbud compatibility, radio quality and adapter firmware are outside EncoDeck's control; use it at your own risk.</value></data>
-  <data name="Bridge_Help.Header" xml:space="preserve"><value>How to use A2DP Bridge</value></data>
-  <data name="Bridge_HelpRequirements.Text" xml:space="preserve"><value>You need a dedicated USB Bluetooth adapter, separate from the PC's built-in Bluetooth (upstream verified the TP-Link UB500 / Realtek RTL8761BU), and Windows 10 22H2 or Windows 11. Never assign WinUSB to the built-in Bluetooth.</value></data>
-  <data name="Bridge_HelpSetup.Text" xml:space="preserve"><value>1. After installing and starting BlueCaster, click "Open BlueCaster" and finish the first-run setup in its window: assign the driver to the dedicated adapter, add firmware, then add your earbuds, choose a codec and connect. From then on, connect and disconnect earbuds and update BlueCaster there; closing EncoDeck does not stop playback.</value></data>
-  <data name="Bridge_HelpControls.Text" xml:space="preserve"><value>2. Over the dedicated adapter Windows cannot see the earbuds. As soon as BlueCaster connects them, EncoDeck turns to those earbuds and opens the control channel through BlueCaster: the home page shows battery and earbud settings as usual, with an A2DP Bridge badge, and earbuds paired only in BlueCaster appear in EncoDeck too. Earbuds with dual-device connection can also connect to the built-in Bluetooth; then set Windows' default output to another device so that two streams do not reach the earbuds.</value></data>
+  <data name="Bridge_Help.Header" xml:space="preserve"><value>How to use BlueCaster</value></data>
+  <data name="Bridge_HelpRequirements.Text" xml:space="preserve"><value>BlueCaster needs a USB Bluetooth adapter it can take over, and Windows 10 22H2 or Windows 11. A separate dongle is recommended (upstream lists verified ones). The adapter built into many laptops also works, but while BlueCaster uses it Windows has no Bluetooth of its own; BlueCaster's Adapters page gives it back.</value></data>
+  <data name="Bridge_HelpSetup.Text" xml:space="preserve"><value>1. After installing and starting BlueCaster, click "Open BlueCaster" and finish the first-run setup in its window: set up the adapter, then add your earbuds, choose a codec and connect. From then on, Connect and Disconnect in EncoDeck (tray panel, home page, Devices page) start and stop BlueCaster's connection to the earbuds; pairing, codecs and updates stay in BlueCaster. Closing EncoDeck does not stop playback.</value></data>
+  <data name="Bridge_HelpControls.Text" xml:space="preserve"><value>2. Windows cannot see earbuds connected through BlueCaster's adapter. As soon as BlueCaster connects them, EncoDeck turns to those earbuds and opens the control channel through BlueCaster: the home page shows battery and earbud settings as usual, with a BlueCaster badge, and earbuds paired only in BlueCaster appear in EncoDeck too. With a second adapter left to Windows, earbuds with dual-device connection can connect to both; then set Windows' default output to another device so that two streams do not reach the earbuds.</value></data>
   <data name="Bridge_Guide.Content" xml:space="preserve"><value>Read the full guide</value></data>
   <data name="Bridge_Upstream.Content" xml:space="preserve"><value>BlueCaster project page</value></data>
   <data name="Bridge_Stream_Idle" xml:space="preserve"><value>Not connected</value></data>
@@ -646,9 +646,9 @@
   <data name="Bridge_OriginManaged" xml:space="preserve"><value>managed by EncoDeck</value></data>
   <data name="Bridge_OriginInstalled" xml:space="preserve"><value>BlueCaster's own installation</value></data>
   <data name="Bridge_OriginRunning" xml:space="preserve"><value>running copy</value></data>
-  <data name="Codec_Experimental.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>Experimental upstream: passes the encoder tests and a virtual receiver, not yet confirmed with real headphones</value></data>
-  <data name="Codec_Experimental.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.HelpText" xml:space="preserve"><value>Experimental codec</value></data>
-  <data name="Bridge_Codecs.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Codecs A2DP Bridge supports</value></data>
+  <data name="Bridge_DeveloperMode.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>Only in BlueCaster's developer mode</value></data>
+  <data name="Bridge_DeveloperMode.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.HelpText" xml:space="preserve"><value>Developer mode only</value></data>
+  <data name="Bridge_Codecs.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Codecs BlueCaster supports</value></data>
   <data name="Lhdc_Codecs.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Codec the LHDC component supports</value></data>
   <data name="LeAudio_Codecs.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Codec LE Audio uses</value></data>
   <data name="Component_CheckUpdates" xml:space="preserve"><value>Check for updates</value></data>
@@ -950,7 +950,7 @@ Afterwards Windows lists two entries with the same name (one is the other earbud
   <data name="About_ThanksIntro.Text" xml:space="preserve"><value>EncoDeck builds on the work of these open-source projects. Thanks to their authors and contributors.</value></data>
   <data name="About_ThanksUsb.Text" xml:space="preserve"><value>USB and 2.4 GHz gaming headsets</value></data>
   <data name="About_ThanksComponents.Text" xml:space="preserve"><value>Components and libraries</value></data>
-  <data name="About_ThanksBridge.Text" xml:space="preserve"><value>A2DP Bridge component</value></data>
+  <data name="About_ThanksBridge.Text" xml:space="preserve"><value>BlueCaster integration</value></data>
   <data name="About_ThanksLibraries.Text" xml:space="preserve"><value>Libraries</value></data>
   <data name="About_ThanksAll.Text" xml:space="preserve"><value>The third-party notices list every project with the revision used and its license.</value></data>
   <data name="About_PrivacyText.Text" xml:space="preserve"><value>EncoDeck has no accounts, ads, analytics or telemetry. It goes online only to check for updates, fetch device artwork and download the optional components you choose.</value></data>
@@ -1099,7 +1099,7 @@ Afterwards Windows lists two entries with the same name (one is the other earbud
   <data name="UsbEq_Custom" xml:space="preserve"><value>Custom</value></data>
   <data name="AutoOff_Minutes" xml:space="preserve"><value>After {0} minutes</value></data>
   <data name="AutoOff_IdleDescription" xml:space="preserve"><value>Turn the headset off after it has been idle for the selected time</value></data>
-  <data name="Codec_BridgeDescription" xml:space="preserve"><value>A2DP Bridge is sending {0} audio to these earbuds.</value></data>
+  <data name="Codec_BridgeDescription" xml:space="preserve"><value>BlueCaster is sending {0} audio to these earbuds.</value></data>
   <data name="Codec_LeAudioDescription" xml:space="preserve"><value>Playing over LE Audio with the LC3 codec.</value></data>
   <data name="EarFun_Wind" xml:space="preserve"><value>Wind reduction</value></data>
   <data name="EarFun_Anc1" xml:space="preserve"><value>ANC 1</value></data>

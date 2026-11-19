@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 using System.Text.Json.Nodes;
+using EncoDeck.Core.Commands;
 using EncoDeck.Core.Devices;
+using EncoDeck.Core.Privacy;
 using EncoDeck.Core.State;
 using EncoDeck.Platform.A2dpBridge;
 using EncoDeck.Platform.Components;
@@ -18,7 +20,7 @@ namespace EncoDeck.App.Services;
 /// earbuds and streams in its own window; EncoDeck only connects. Costs nothing while no BlueCaster exists beyond a
 /// mutex check per interval.
 /// </summary>
-public sealed class A2dpBridgeCompanion : IAsyncDisposable
+public sealed class A2dpBridgeCompanion : IAsyncDisposable, EncoDeck.Bluetooth.IBridgeLinkControl
 {
     private readonly IDeviceStateStore _store;
     private readonly ISettingsStore _settings;
@@ -187,6 +189,57 @@ public sealed class A2dpBridgeCompanion : IAsyncDisposable
             A2dpBridgeComponent.StartCore(installation);
         }
         return await Monitor.WaitForConnectionAsync(TimeSpan.FromSeconds(15), ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Connect in EncoDeck for earbuds BlueCaster carries: starts its connection profile for them (the active one when it
+    /// is theirs), starting the core first when it is installed but not running.
+    /// </summary>
+    public async Task<CommandResult> ConnectAsync(BluetoothAddress address, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (!Status.IsConnected && !(CanManage && Installation is not null && await StartCoreAsync(cancellationToken).ConfigureAwait(false)))
+                return new CommandResult(CommandStatus.NotConnected, "BlueCaster is not running.");
+            var snapshot = Status.Snapshot!;
+            if (snapshot.ActiveStreamProfile is { } streaming && BridgeDeviceMatch.ParseAddress(streaming.DeviceAddress) == address.Value)
+                return CommandResult.Ok;
+            var theirs = snapshot.Profiles.Where(p => BridgeDeviceMatch.ParseAddress(p.DeviceAddress) == address.Value).ToArray();
+            if ((theirs.FirstOrDefault(p => p.Name == snapshot.ActiveProfile) ?? theirs.FirstOrDefault()) is not { } profile)
+                return CommandResult.Unsupported("BlueCaster has no connection profile for these earbuds.");
+            _logger.LogInformation("Starting BlueCaster's connection profile for the earbuds");
+            await Monitor.RequestAsync("stream.start", new JsonObject { ["profile"] = profile.Name }, TimeSpan.FromSeconds(60), cancellationToken).ConfigureAwait(false);
+            return CommandResult.Ok;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException and not OutOfMemoryException) { return Failure(ex); }
+    }
+
+    /// <summary>Disconnect in EncoDeck for earbuds BlueCaster streams to: stops that stream.</summary>
+    public async Task<CommandResult> DisconnectAsync(BluetoothAddress address, CancellationToken cancellationToken = default)
+    {
+        if (Status is not { IsConnected: true, Snapshot: { } snapshot }
+            || snapshot.ActiveStreamProfile is not { } profile || BridgeDeviceMatch.ParseAddress(profile.DeviceAddress) != address.Value)
+            return CommandResult.Ok;
+        try
+        {
+            _logger.LogInformation("Stopping BlueCaster's stream to the earbuds");
+            await Monitor.RequestAsync("stream.stop", timeout: TimeSpan.FromSeconds(20), ct: cancellationToken).ConfigureAwait(false);
+            return CommandResult.Ok;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException and not OutOfMemoryException) { return Failure(ex); }
+    }
+
+    private CommandResult Failure(Exception ex)
+    {
+        _logger.LogWarning("BlueCaster request failed: {Error}", ex.Message);
+        return ex switch
+        {
+            BridgeRequestException request => new CommandResult(CommandStatus.Rejected,
+                request.BridgeMessage.IsEmpty ? request.Code : A2dpBridgeText.Format(request.BridgeMessage)),
+            BridgeUnavailableException => new CommandResult(CommandStatus.NotConnected, "BlueCaster is not running."),
+            TimeoutException => new CommandResult(CommandStatus.Timeout, ex.Message),
+            _ => new CommandResult(CommandStatus.TransportError, ex.Message),
+        };
     }
 
     /// <summary>BlueCaster's diagnostic text with Bluetooth addresses masked, for EncoDeck's diagnostics package.</summary>

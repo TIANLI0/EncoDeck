@@ -38,7 +38,7 @@
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="FontSize" Value="11" />
     </Style>
-    <!-- The same tag, outlined: a codec a component offers only experimentally, or the A2DP Bridge link. -->
+    <!-- The same tag, outlined: a codec a component offers only experimentally, or the BlueCaster link. -->
     <Style x:Key="CodecBadgeSubtleStyle" TargetType="Border">
         <Setter Property="BorderBrush" Value="{ThemeResource AccentFillColorDefaultBrush}" />
         <Setter Property="BorderThickness" Value="1" />

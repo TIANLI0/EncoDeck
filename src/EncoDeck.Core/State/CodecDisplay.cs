@@ -23,7 +23,7 @@ public enum CodecDisplayKind
 }
 
 /// <summary>
-/// One source for the audio badge on every surface. Codecs come only from the PC side (A2DP Bridge, the driver carrying
+/// One source for the audio badge on every surface. Codecs come only from the PC side (BlueCaster, the driver carrying
 /// A2DP, or Windows' own log), never from the earbuds' report, which does not prove what the PC streams.
 /// </summary>
 public sealed record CodecDisplay(CodecDisplayKind Kind, string? Codec = null)

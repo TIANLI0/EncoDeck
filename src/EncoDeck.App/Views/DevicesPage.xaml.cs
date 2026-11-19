@@ -205,16 +205,10 @@ public sealed partial class DevicesPage : Page
 
         var action = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
         bool bluetooth = device.Identity.Transport == EncoDeck.Core.Devices.DeviceTransport.Bluetooth;
-        // Connected through BlueCaster: connecting and disconnecting them is done in BlueCaster.
-        if (device.IsViaBridge)
+        if (bluetooth && (device.IsDisconnectedByUser || !device.IsConnected))
         {
-            action.Children.Add(device.IsActive
-                ? new TextBlock { Text = Loc.Get("Devices_Active"), VerticalAlignment = VerticalAlignment.Center, Style = (Style)Application.Current.Resources["SecondaryTextStyle"] }
-                : UseThisButton(device));
-        }
-        else if (bluetooth && (device.IsDisconnectedByUser || !device.IsConnected))
-        {
-            // Pages the earbuds and has Windows' audio drivers connect; the supervisor attaches control once the link is up.
+            // Pages the earbuds and has Windows' audio drivers connect (or starts BlueCaster's connection profile for
+            // earbuds it carries); the supervisor attaches control once the link is up.
             action.Children.Add(ConnectionButton("link", Loc.Get("Device_ConnectThisPc"), devices =>
             {
                 App.Instance.Host.Settings.Update(s => s with { PreferredDeviceId = device.Identity.DeviceId });
