@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 using System.Globalization;
+using System.Net;
+using System.Net.Http.Headers;
 using System.Reflection.PortableExecutable;
 using System.Runtime.InteropServices;
 
@@ -43,6 +45,79 @@ public static partial class LeAudioHookTargets
 
     private const string SymbolServer = "https://msdl.microsoft.com/download/symbols";
     private static readonly SemaphoreSlim DbgHelpGate = new(1, 1);
+    private static readonly SemaphoreSlim DownloadGate = new(1, 1);
+
+    /// <summary>
+    /// A download only fails when no data arrives for this long, never for taking long: the symbol server can be as slow
+    /// as 20 KB/s, ten minutes for the 12 MB.
+    /// </summary>
+    private static readonly TimeSpan StallTimeout = TimeSpan.FromSeconds(30);
+
+    /// <summary>Stalls in a row (no new data in between) before the download gives up; the part fetched is kept.</summary>
+    private const int MaxStalls = 4;
+
+    /// <summary>
+    /// Fetches <paramref name="url"/> to <paramref name="path"/> through a <c>.partial</c> file that is kept when the
+    /// download stalls or the caller gives up, and resumed (HTTP range) on the next attempt, in this call or a later one.
+    /// False when the server refuses it or it keeps stalling; throws only when cancelled.
+    /// </summary>
+    internal static async Task<bool> DownloadAsync(HttpClient http, string url, string path, TimeSpan stallTimeout, CancellationToken ct)
+    {
+        string partial = path + ".partial";
+        int stalls = 0;
+        while (true)
+        {
+            long have = File.Exists(partial) ? new FileInfo(partial).Length : 0;
+            long start = have;
+            using var stall = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            stall.CancelAfter(stallTimeout);
+            try
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Get, url);
+                if (have > 0) request.Headers.Range = new RangeHeaderValue(have, null);
+                using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, stall.Token).ConfigureAwait(false);
+                if (response.StatusCode == HttpStatusCode.RequestedRangeNotSatisfiable)
+                {
+                    // The kept part is not a prefix of this file any more: start over.
+                    File.Delete(partial);
+                    if (++stalls >= MaxStalls) return false;
+                    continue;
+                }
+                if (!response.IsSuccessStatusCode) return false;
+                bool append = have > 0 && response.StatusCode == HttpStatusCode.PartialContent;
+                if (!append) have = start = 0;
+                long? total = append ? response.Content.Headers.ContentRange?.Length : response.Content.Headers.ContentLength;
+                await using (var source = await response.Content.ReadAsStreamAsync(stall.Token).ConfigureAwait(false))
+                await using (var file = new FileStream(partial, append ? FileMode.Append : FileMode.Create, FileAccess.Write, FileShare.None))
+                {
+                    var buffer = new byte[81920];
+                    int read;
+                    while ((read = await source.ReadAsync(buffer, stall.Token).ConfigureAwait(false)) > 0)
+                    {
+                        await file.WriteAsync(buffer.AsMemory(0, read), ct).ConfigureAwait(false);
+                        have += read;
+                        stall.CancelAfter(stallTimeout);
+                    }
+                }
+                if (total is null || have == total)
+                {
+                    File.Move(partial, path, overwrite: true);
+                    return true;
+                }
+                if (have > total)
+                {
+                    File.Delete(partial);
+                    return false;
+                }
+                // The connection closed early: resume below.
+            }
+            catch (Exception ex) when (!ct.IsCancellationRequested && ex is OperationCanceledException or HttpRequestException or IOException)
+            {
+            }
+            if (have > start) stalls = 0;
+            if (++stalls >= MaxStalls) return false;
+        }
+    }
 
     public static async Task<(IReadOnlyList<LeAudioHookTarget>? Targets, LeAudioHookResolveError Error)> ResolveAsync(
         string dllPath, string cacheDirectory, CancellationToken ct = default)
@@ -68,20 +143,25 @@ public static partial class LeAudioHookTargets
         string pdbPath = Path.Combine(pdbDirectory, pdbName);
         if (!File.Exists(pdbPath))
         {
+            await DownloadGate.WaitAsync(ct).ConfigureAwait(false);
             try
             {
-                Directory.CreateDirectory(pdbDirectory);
-                using var http = new HttpClient { Timeout = TimeSpan.FromMinutes(2) };
-                using var response = await http.GetAsync($"{SymbolServer}/{pdbName}/{key}/{pdbName}", ct).ConfigureAwait(false);
-                if (!response.IsSuccessStatusCode) return (null, LeAudioHookResolveError.SymbolsUnavailable);
-                string partial = pdbPath + ".partial";
-                await using (var file = File.Create(partial))
-                    await response.Content.CopyToAsync(file, ct).ConfigureAwait(false);
-                File.Move(partial, pdbPath, overwrite: true);
+                // Another caller may have fetched it while this one waited.
+                if (!File.Exists(pdbPath))
+                {
+                    Directory.CreateDirectory(pdbDirectory);
+                    using var http = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
+                    if (!await DownloadAsync(http, $"{SymbolServer}/{pdbName}/{key}/{pdbName}", pdbPath, StallTimeout, ct).ConfigureAwait(false))
+                        return (null, LeAudioHookResolveError.SymbolsUnavailable);
+                }
             }
-            catch (Exception ex) when (ex is HttpRequestException or IOException or UnauthorizedAccessException or TaskCanceledException)
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
                 return (null, LeAudioHookResolveError.SymbolsUnavailable);
+            }
+            finally
+            {
+                DownloadGate.Release();
             }
         }
 
