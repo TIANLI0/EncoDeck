@@ -19,7 +19,7 @@ public enum LeAudioSyncState
     Aligned,
     /// <summary>Closing and reopening the link (<see cref="LeAudioSyncStatus.Rebuilds"/>).</summary>
     Rebuilding,
-    /// <summary>A rebuild was asked for but other programs are playing; it runs once they stop.</summary>
+    /// <summary>A rebuild was asked for but what other programs play (game audio) kept the link up; it runs once they stop.</summary>
     WaitingForIdle,
     /// <summary>A program records from the earbuds; Windows runs a different link until it stops.</summary>
     MicrophoneInUse,
@@ -44,12 +44,23 @@ public interface ILeAudioSyncPlatform
     bool HasOtherActiveSessions(string renderEndpointId);
 
     bool HasActiveCapture(string captureEndpointId);
+
+    /// <summary>
+    /// When Windows last built an LE Audio link, while something records each one (the LE Audio bitrate hook in the
+    /// running service; <see cref="DateTimeOffset.MinValue"/> before its first); null when nothing does.
+    /// </summary>
+    DateTimeOffset? LastLinkBuilt();
 }
 
-public sealed record LeAudioSyncTimings(TimeSpan Teardown, TimeSpan CheckDuration, TimeSpan Poll)
+/// <param name="Teardown">Windows tears the CIS down about 0.5 s after the last stream closes; a switch between media
+/// and game mode while others play takes about as long.</param>
+/// <param name="CheckDuration">How long the check clicks play.</param>
+/// <param name="Poll">How often the microphone and other players are looked at.</param>
+/// <param name="LinkConfirm">How long to wait for a recorded rebuild after the held stream reopens.</param>
+public sealed record LeAudioSyncTimings(TimeSpan Teardown, TimeSpan CheckDuration, TimeSpan Poll, TimeSpan LinkConfirm)
 {
-    /// <summary>Windows tears the CIS down about 0.5 s after the last stream closes.</summary>
-    public static LeAudioSyncTimings Default { get; } = new(TimeSpan.FromSeconds(1.5), TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(2));
+    public static LeAudioSyncTimings Default { get; } =
+        new(TimeSpan.FromSeconds(1.5), TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(3));
 }
 
 /// <summary>
@@ -236,6 +247,14 @@ public sealed class LeAudioSyncGuard : IAsyncDisposable
         }), TaskContinuationOptions.OnlyOnRanToCompletion);
     }
 
+    /// <summary>
+    /// Closes the held stream and opens it again. With nothing else playing, Windows tears the link down in between and
+    /// the reopen builds a new one. While other programs play, the link stays up, but the held stream is the game audio
+    /// that keeps it in game mode: without it Windows switches the link to the media mode of what still plays, and the
+    /// reopen switches it back, a rebuild each time. That fails only when what plays is itself game audio; when the
+    /// links Windows builds are recorded (<see cref="ILeAudioSyncPlatform.LastLinkBuilt"/>) that is noticed, and the
+    /// rebuild waits for the others to stop (<see cref="LeAudioSyncState.WaitingForIdle"/>).
+    /// </summary>
     private async Task RebuildAsync(bool checkAfter)
     {
         if (_keepAlive is null || _endpoints is not { } endpoints) return;
@@ -248,20 +267,23 @@ public sealed class LeAudioSyncGuard : IAsyncDisposable
             _logger.LogDebug(ex, "Could not list audio sessions");
             busy = true;
         }
-        if (busy)
-        {
-            // While another program plays, closing this stream leaves the link up: nothing would change.
-            _pendingCheckAfter = checkAfter;
-            SetState(LeAudioSyncState.WaitingForIdle);
-            return;
-        }
         _rebuilds++;
         SetState(LeAudioSyncState.Rebuilding);
         CloseKeepAlive();
         await Task.Delay(_timings.Teardown, _cts.Token).ConfigureAwait(false);
         if (!_enabled || _endpoints != endpoints) return;
+        // Taken after the switch to media mode, so only the switch back to game mode counts.
+        DateTimeOffset? mark = busy ? LastLinkBuilt() : null;
         if (!OpenKeepAlive()) return;
-        _logger.LogInformation("LE Audio link rebuilt ({Rebuilds})", _rebuilds);
+        if (mark is { } since && !await LinkBuiltSinceAsync(since).ConfigureAwait(false))
+        {
+            _rebuilds--;
+            _logger.LogInformation("LE Audio link not rebuilt while other programs play; waiting for them to stop");
+            _pendingCheckAfter = checkAfter;
+            SetState(LeAudioSyncState.WaitingForIdle);
+            return;
+        }
+        _logger.LogInformation("LE Audio link rebuilt ({Rebuilds}{While})", _rebuilds, busy ? ", while other programs play" : "");
         if (checkAfter)
         {
             SetState(LeAudioSyncState.NeedsCheck);
@@ -270,6 +292,27 @@ public sealed class LeAudioSyncGuard : IAsyncDisposable
         else
         {
             SetState(LeAudioSyncState.NeedsCheck);
+        }
+    }
+
+    private DateTimeOffset? LastLinkBuilt()
+    {
+        try { return _platform.LastLinkBuilt(); }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogDebug(ex, "Could not read the last LE Audio link");
+            return null;
+        }
+    }
+
+    private async Task<bool> LinkBuiltSinceAsync(DateTimeOffset since)
+    {
+        var deadline = DateTime.UtcNow + _timings.LinkConfirm;
+        while (true)
+        {
+            if (LastLinkBuilt() is not { } built || built > since) return true;
+            if (DateTime.UtcNow >= deadline) return false;
+            await Task.Delay(TimeSpan.FromMilliseconds(100), _cts.Token).ConfigureAwait(false);
         }
     }
 

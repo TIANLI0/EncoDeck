@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
+using EncoDeck.Platform.LeAudioCodec;
+
 namespace EncoDeck.Platform.LeAudioSync;
 
 /// <summary>The production <see cref="ILeAudioSyncPlatform"/>: WASAPI streams and session lists, no elevation.</summary>
@@ -11,4 +13,7 @@ public sealed class WindowsLeAudioSyncPlatform : ILeAudioSyncPlatform
     public bool HasOtherActiveSessions(string renderEndpointId) => AudioKeepAlive.HasOtherActiveSessions(renderEndpointId);
 
     public bool HasActiveCapture(string captureEndpointId) => AudioKeepAlive.HasActiveCapture(captureEndpointId);
+
+    public DateTimeOffset? LastLinkBuilt() =>
+        LeAudioCodecHook.IsRecordingLinks ? LeAudioCodecHook.ReadLink()?.At ?? DateTimeOffset.MinValue : null;
 }

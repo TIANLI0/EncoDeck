@@ -9,7 +9,7 @@ public sealed class LeAudioSyncGuardTests
     private const string Render = "{0.0.0.00000000}.{7900dd66-6f67-49c5-aa6e-2f71567cce16}";
     private const string Capture = "{0.0.1.00000000}.{c3c25e91-651b-47d6-a41e-51f4bb05dbba}";
     private static readonly LeAudioEndpoints Endpoints = new(Render, Capture);
-    private static readonly LeAudioSyncTimings Fast = new(TimeSpan.FromMilliseconds(10), TimeSpan.FromMilliseconds(300), TimeSpan.FromMilliseconds(20));
+    private static readonly LeAudioSyncTimings Fast = new(TimeSpan.FromMilliseconds(10), TimeSpan.FromMilliseconds(300), TimeSpan.FromMilliseconds(20), TimeSpan.FromMilliseconds(200));
 
     [Fact]
     public async Task UnsupportedPcHoldsNothing()
@@ -70,19 +70,48 @@ public sealed class LeAudioSyncGuardTests
     }
 
     [Fact]
-    public async Task RebuildWaitsForOtherPrograms()
+    public async Task RebuildsWhileOtherProgramsPlay()
     {
+        // Nothing records the links: the switch to media mode and back is trusted to rebuild.
         var platform = new FakePlatform { OtherSessions = true };
         await using var guard = await HeldAsync(platform);
         guard.StartCheck();
         await WaitForAsync(guard, LeAudioSyncState.Checking);
+        var first = platform.Last!;
         guard.ReportOffset();
-        await WaitForAsync(guard, LeAudioSyncState.WaitingForIdle);
-        await Task.Delay(100, TestContext.Current.CancellationToken);
-        Assert.Equal(0, platform.Closes);
-        platform.OtherSessions = false;
         await WaitUntilAsync(() => platform.Opens == 2);
-        await WaitForAsync(guard, LeAudioSyncState.Checking);
+        var status = await WaitForAsync(guard, LeAudioSyncState.Checking);
+        Assert.Equal(1, status.Rebuilds);
+        Assert.True(first.Disposed);
+        Assert.True(platform.Last!.CheckPlaying);
+    }
+
+    [Fact]
+    public async Task RecordedRebuildWhileOtherProgramsPlayIsConfirmed()
+    {
+        var platform = new FakePlatform { OtherSessions = true, Recording = true, ModeSwitchRebuilds = true };
+        await using var guard = await HeldAsync(platform);
+        guard.ReportOffset();
+        var status = await WaitForAsync(guard, LeAudioSyncState.Checking);
+        Assert.Equal(1, status.Rebuilds);
+        Assert.Equal(2, platform.Opens);
+    }
+
+    [Fact]
+    public async Task OtherGameAudioKeepsTheLinkSoTheRebuildWaits()
+    {
+        // What plays is game audio itself: dropping the held stream changes no mode, so no link is built.
+        var platform = new FakePlatform { OtherSessions = true, Recording = true, ModeSwitchRebuilds = false };
+        await using var guard = await HeldAsync(platform);
+        guard.ReportOffset();
+        var status = await WaitForAsync(guard, LeAudioSyncState.WaitingForIdle);
+        Assert.Equal(0, status.Rebuilds);
+        Assert.Equal(2, platform.Opens);
+        Assert.False(platform.Last!.Disposed);
+        platform.OtherSessions = false;
+        await WaitUntilAsync(() => platform.Opens == 3);
+        status = await WaitForAsync(guard, LeAudioSyncState.Checking);
+        Assert.Equal(1, status.Rebuilds);
     }
 
     [Fact]
@@ -211,8 +240,12 @@ public sealed class LeAudioSyncGuardTests
         public volatile bool OtherSessions;
         public volatile bool Capturing;
         public volatile bool FailOpen;
+        public volatile bool Recording;
+        // Whether dropping or adding the held game stream while others play switches the link's mode (a rebuild).
+        public volatile bool ModeSwitchRebuilds;
         public int Opens;
         public int Closes;
+        private long _linkTicks = 1;
         public FakeStream? Last { get; private set; }
 
         public LeAudioSyncSupport CheckSupport() => Support;
@@ -222,9 +255,21 @@ public sealed class LeAudioSyncGuardTests
             Assert.Equal(Render, renderEndpointId);
             if (FailOpen) throw new InvalidOperationException("endpoint gone");
             Interlocked.Increment(ref Opens);
-            Last = new FakeStream(() => Interlocked.Increment(ref Closes));
+            Last = new FakeStream(() =>
+            {
+                Interlocked.Increment(ref Closes);
+                OnModeSwitch();
+            });
+            OnModeSwitch();
             return Last;
         }
+
+        private void OnModeSwitch()
+        {
+            if (!OtherSessions || ModeSwitchRebuilds) Interlocked.Increment(ref _linkTicks);
+        }
+
+        public DateTimeOffset? LastLinkBuilt() => Recording ? new DateTimeOffset(Interlocked.Read(ref _linkTicks), TimeSpan.Zero) : null;
 
         public bool HasOtherActiveSessions(string renderEndpointId) => OtherSessions;
 

@@ -167,6 +167,12 @@ public static class LeAudioCodecHook
             (int)GetNumber(values, "latencyMs"), (int)GetNumber(values, "retransmissions"));
     }
 
+    /// <summary>
+    /// Whether the hook is in the running service, so every link Windows builds lands in <see cref="ReadLink"/> (it
+    /// records them with any choice, Windows' own too). No elevation.
+    /// </summary>
+    public static bool IsRecordingLinks => ReadState() is { ServicePid: not 0 } state && state.ServicePid == ServicePid;
+
     /// <summary>The transport of the latest LE Audio stream, as the hook recorded it; null before the first. No elevation.</summary>
     public static LeAudioLinkConfig? ReadLink()
     {
