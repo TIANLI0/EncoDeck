@@ -31,10 +31,36 @@
     "icon": "../src/EncoDeck.App/Assets/EncoDeck.ico",
     "mainExecutable": "EncoDeck.exe"
   },
+  // One package, two builds; setup picks (variantSelection "auto", no choice shown): the shared-runtime build (about
+  // 50 MB installed) when this PC already has the .NET 10 runtime and the Windows App Runtime 2.5.1+ ("requirements"),
+  // else the self-contained one (about 185 MB). Nothing extra is ever installed. Picked again on every install and
+  // in-app update, so a PC that gains or loses the runtimes gets the matching build. Files identical in both are
+  // stored once. The labels only show in logs and with /variant.
   "files": {
-    "source": "../artifacts/EncoDeck-win-x64",
     "include": ["**/*"],
-    "exclude": ["**/*.pdb"]
+    "exclude": ["**/*.pdb"],
+    "variantSelection": "auto",
+    "variants": [
+      {
+        "id": "selfContained",
+        "label": { "en-US": "Standard (runtimes included)" },
+        "description": { "en-US": "Includes .NET and the Windows App SDK. Works on any PC without installing anything else." },
+        "default": true,
+        "source": "../artifacts/EncoDeck-win-x64"
+      },
+      {
+        "id": "shared",
+        "label": { "en-US": "Compact (shared runtimes)" },
+        "description": { "en-US": "Uses the .NET 10 runtime and the Windows App Runtime installed on this PC; smaller." },
+        "source": "../artifacts/EncoDeck-win-x64-shared"
+      }
+    ]
+  },
+  // What the shared-runtime build needs: the .NET runtime it targets and the Windows App SDK version it references
+  // (Directory.Packages.props; keep in step). Only decides which build is installed: no installer is attached.
+  "requirements": {
+    "dotNet": [{ "runtime": "core", "version": "10.0.0", "variants": ["shared"] }],
+    "windowsAppRuntime": { "required": true, "version": "2.5.1", "variants": ["shared"] }
   },
   "install": {
     "scope": "userOrMachine",

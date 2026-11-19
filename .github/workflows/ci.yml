@@ -108,8 +108,12 @@ jobs:
           # A pre-release (1.11.0-beta.1) keeps its suffix; a CI build is ci.<run>.
           $suffix = if (-not $env:RELEASE_VERSION) { "ci.$env:GITHUB_RUN_NUMBER" } elseif ($env:RELEASE_VERSION -match '-(.+)$') { $Matches[1] } else { '' }
           dotnet publish src/EncoDeck.App -c Release -r win-x64 -p:Platform=x64 -p:VersionSuffix=$suffix -o artifacts/EncoDeck-win-x64
+          # The installer's shared-runtime variant (installer/fluentsetup.json): setup installs it where .NET 10 and the
+          # Windows App Runtime are already present.
+          dotnet publish src/EncoDeck.App -c Release -r win-x64 -p:Platform=x64 -p:VersionSuffix=$suffix -p:SelfContained=false -p:WindowsAppSDKSelfContained=false -o artifacts/EncoDeck-win-x64-shared
           dotnet publish tools/EncoDeck.Probe -c Release -r win-x64 --self-contained -p:VersionSuffix=$suffix -o artifacts/EncoDeck.Probe-win-x64
           Copy-Item LICENSE, THIRD_PARTY_NOTICES.md, README.md, README_EN.md artifacts/EncoDeck-win-x64/
+          Copy-Item LICENSE, THIRD_PARTY_NOTICES.md, README.md, README_EN.md artifacts/EncoDeck-win-x64-shared/
           Copy-Item LICENSE artifacts/EncoDeck.Probe-win-x64/
           foreach ($f in 'EncoDeck.exe', 'EncoDeck.pri', 'Microsoft.WindowsAppRuntime.dll', 'Microsoft.ui.xaml.dll', 'EncoDeck.LeHook.dll') {
             if (-not (Test-Path "artifacts/EncoDeck-win-x64/$f")) { throw "Missing $f in publish output" }
@@ -133,6 +137,7 @@ jobs:
         run: |
           # Own code only (app, libraries, LE Audio hook, Probe); .NET / Windows App SDK / NuGet files are not ours.
           & $env:CODESIGN_SIGN -Root artifacts/EncoDeck-win-x64 -Path 'EncoDeck*.exe', 'EncoDeck*.dll' -Description 'EncoDeck' -DescriptionUrl 'https://github.com/TIANLI0/EncoDeck'
+          & $env:CODESIGN_SIGN -Root artifacts/EncoDeck-win-x64-shared -Path 'EncoDeck*.exe', 'EncoDeck*.dll' -Description 'EncoDeck' -DescriptionUrl 'https://github.com/TIANLI0/EncoDeck'
           & $env:CODESIGN_SIGN -Root artifacts/EncoDeck.Probe-win-x64 -Path 'EncoDeck*.exe', 'EncoDeck*.dll' -Description 'EncoDeck Probe' -DescriptionUrl 'https://github.com/TIANLI0/EncoDeck'
 
       - name: Zip

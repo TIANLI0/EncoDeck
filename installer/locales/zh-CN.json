@@ -1,5 +1,15 @@
 {
   "options": {
     "autostart": "开机时在后台启动 EncoDeck"
+  },
+  "variants": {
+    "selfContained": {
+      "label": "标准版（包含运行时）",
+      "description": "自带 .NET 和 Windows App SDK，任何电脑都能直接运行，无需另外安装。"
+    },
+    "shared": {
+      "label": "精简版（使用系统运行时）",
+      "description": "使用这台电脑已安装的 .NET 10 运行时和 Windows App Runtime，占用空间更小。"
+    }
   }
 }

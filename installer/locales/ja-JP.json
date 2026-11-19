@@ -1,5 +1,15 @@
 {
   "options": {
     "autostart": "Windows の起動時に EncoDeck をバックグラウンドで開始する"
+  },
+  "variants": {
+    "selfContained": {
+      "label": "標準（ランタイムを含む）",
+      "description": ".NET と Windows App SDK を含みます。ほかに何もインストールせず、どの PC でも動作します。"
+    },
+    "shared": {
+      "label": "コンパクト（共有ランタイム）",
+      "description": "この PC にインストール済みの .NET 10 ランタイムと Windows App Runtime を使うため、サイズが小さくなります。"
+    }
   }
 }
