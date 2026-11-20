@@ -4,7 +4,7 @@
 
 This file records the user-visible changes of every EncoDeck version (Keep a Changelog, Semantic Versioning). Since 1.15.0 each version lists the Chinese notes first and the English ones below the divider.
 
-## [Unreleased]
+## [1.18.0-beta.1] - 2026-11-20 · 分段式降噪控件 / Segmented noise controls
 
 ### 改进
 
