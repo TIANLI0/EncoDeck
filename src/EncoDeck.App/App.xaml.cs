@@ -146,6 +146,22 @@ public partial class App : Application
             return;
         }
 
+        int noiseAnimation = Array.FindIndex(commandLine, a => string.Equals(a, NoiseAnimationPreview.Argument, StringComparison.OrdinalIgnoreCase));
+        if (noiseAnimation >= 0)
+        {
+            string outDir = noiseAnimation + 1 < commandLine.Length ? commandLine[noiseAnimation + 1] : Path.Combine(Path.GetTempPath(), "EncoDeck-noise-animation");
+            int languageArg = Array.FindIndex(commandLine, a => string.Equals(a, "--language", StringComparison.OrdinalIgnoreCase));
+            if (languageArg >= 0 && languageArg + 1 < commandLine.Length) ApplyLanguage(commandLine[languageArg + 1]);
+            _ = NoiseAnimationPreview.RunAsync(this, outDir, _dispatcher).ContinueWith(
+                t =>
+                {
+                    if (t.Exception is { } ex) File.WriteAllText(Path.Combine(outDir, "fatal.txt"), ex.ToString());
+                    _dispatcher.TryEnqueue(() => { Host?.Loggers.Dispose(); Host?.FileLog.Dispose(); Exit(); });
+                },
+                TaskScheduler.FromCurrentSynchronizationContext());
+            return;
+        }
+
         int snapshot = Array.FindIndex(commandLine, a => string.Equals(a, UiSnapshot.Argument, StringComparison.OrdinalIgnoreCase));
         if (snapshot >= 0)
         {

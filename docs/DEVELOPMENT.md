@@ -82,6 +82,7 @@ tests/EncoDeck.Tests     单元测试（含 X4 实测抓包回归）
 | `--exit` | 让已运行的实例干净退出（移除托盘图标、关闭控制通道） |
 | `--popup-preview <boot.mp4> <输出目录> [--theme light\|dark] [--name 名称] [--levels 80,75,60] [--at 0.3,1,2.5,4] [--offscreen]` | 诊断：不连耳机，用任意资源包视频（自动找上级 `config.json`）和示例电量显示连接弹窗，在指定秒数截图（屏幕 + PrintWindow）并写 `<前缀>.json` 后退出；不启动蓝牙、不写设置、不抢焦点，有全屏应用时自动改为屏幕外 |
 | `--brand-demo <models.json> [--demo-brand 品牌] [--demo-check [--demo-exit]]` | 手动演示：不启动蓝牙，按清单（`brand`、`name`、`directory`，可选 `profileId`、`popup`、`model`、`motion`）逐型号模拟一次成功会话（`DemoDiscovery` 补齐需设备应答的功能），所有写入命令只改演示状态。`--demo-check` 在屏幕外截取每个型号的首页、音效、控制、弹窗、托盘，并把各页实际显示的功能区写入 `session/previews/results.json`；加 `--demo-exit` 则检查完直接退出、不弹出选择窗口 |
+| `--noise-animation <输出目录> [--language en-US]` | 诊断：在屏幕外打开首页，用模拟的 EarFun Air Pro 4+（约 0.7 秒后应答，其中一次拒绝）逐一点击降噪模式、子模式和档位，把降噪卡片逐帧写成 BGRA 原始帧和 `frames.json`（用于合成动图）后退出；不启动蓝牙、不抢焦点 |
 | `--updated` | 由安装程序在应用内更新完成后传入：无全屏应用时打开“关于”页，否则只发托盘通知 |
 | 再次启动 | 唤醒已运行实例的主窗口（单实例） |
 

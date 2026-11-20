@@ -4,6 +4,22 @@
 
 This file records the user-visible changes of every EncoDeck version (Keep a Changelog, Semantic Versioning). Since 1.15.0 each version lists the Chinese notes first and the English ones below the divider.
 
+## [Unreleased]
+
+### 改进
+
+- 降噪档位、子模式（如 EarFun 的降噪子模式和手动档位）改为分段按钮：同一组选项放在一条底槽里，选中标记会滑到新选项（[#16](https://github.com/TIANLI0/EncoDeck/issues/16)）。
+- 切换降噪模式、档位或子模式时立即显示新选择，并转圈直到耳机确认；耳机未采用时回到它实际所处的选项。
+- 切换降噪模式时，下面的档位和子模式行立即换成新模式的（显示上次在该模式下的选择），出现和收起时平滑过渡，卡片高度不再跳动。
+
+---
+
+### Improved
+
+- Noise levels and sub-modes (such as EarFun's noise cancelling sub-modes and manual levels) are now segmented buttons: the options share one track and the selection slides to the new one ([#16](https://github.com/TIANLI0/EncoDeck/issues/16)).
+- Changing the noise mode, level or sub-mode shows the new choice at once, with a spinner until the earbuds confirm it; if they keep another setting, the selection returns to it.
+- When the noise mode changes, the level and sub-mode rows below switch to the new mode's at once (showing the choice last used in it), and they appear and disappear smoothly instead of making the card jump.
+
 ## [1.17.0] - 2026-11-19 · BlueCaster 连接控制与精简安装 / BlueCaster connection control and a compact install
 
 ### 新增

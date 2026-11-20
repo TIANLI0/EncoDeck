@@ -1,6 +1,4 @@
 // SPDX-License-Identifier: GPL-3.0-only
-using System.Collections.ObjectModel;
-using System.Collections.Specialized;
 using System.ComponentModel;
 using EncoDeck.App.Services;
 using EncoDeck.App.ViewModels;
@@ -14,8 +12,9 @@ namespace EncoDeck.App.Controls;
 
 /// <summary>
 /// Noise control as on HeyMelody's device page: one round button per mode (noise cancelling,
-/// adaptive, transparency, off) with its label underneath, and the level chips of the selected
-/// mode below. Checked states always mirror the device-confirmed state.
+/// adaptive, transparency, off) with its label underneath, and the level rows of the selected
+/// mode below. A click shows the choice at once with a ring turning around it until the earbuds
+/// answer; afterwards the buttons mirror the device-confirmed state again.
 /// </summary>
 public sealed partial class NoiseModeCircles : UserControl
 {
@@ -31,19 +30,14 @@ public sealed partial class NoiseModeCircles : UserControl
         (NoiseControlMode.Off, "prohibited", "NoiseMode_Off"),
     ];
 
-    private readonly List<(NoiseControlMode Mode, ToggleButton Button, FrameworkElement Cell)> _modes = [];
-    private readonly List<(NoiseLevelViewModel Level, ToggleButton Button)> _levelButtons = [];
-    private ObservableCollection<NoiseLevelViewModel>? _shownLevels;
-    private const int SubModesPerRow = 4;
-    private readonly List<(NoiseLevelViewModel Level, ToggleButton Button)> _subModeButtons = [];
-    private bool _subModesStale = true;
-    private readonly List<(NoiseLevelViewModel Level, ToggleButton Button)> _manualLevelButtons = [];
-    private bool _manualLevelsStale = true;
+    private readonly List<(NoiseControlMode Mode, ToggleButton Button, ProgressRing Ring, FrameworkElement Cell)> _modes = [];
+    private readonly NoiseRows _rows;
+    private NoiseControlMode? _pendingMode;
 
     public NoiseModeCircles()
     {
         InitializeComponent();
-        ManualLevelsTitle.Text = Loc.Get("NoiseSelector_ManualLevel");
+        _rows = new NoiseRows(RowsHost, ModeGrid, LevelsRow, SubModesRow, ManualLevelsRow, () => _pendingMode is not null) { Changed = Sync };
         foreach (var (mode, symbol, labelKey) in Modes)
         {
             string label = Loc.Get(labelKey);
@@ -55,10 +49,17 @@ public sealed partial class NoiseModeCircles : UserControl
             };
             AutomationProperties.SetName(button, label);
             button.Click += OnModeClick;
+            // Turns around the circle while the mode waits for the earbuds' answer.
+            var ring = new ProgressRing { Width = 74, Height = 74, MinWidth = 0, MinHeight = 0, IsActive = false, Visibility = Visibility.Collapsed, IsHitTestVisible = false };
+            var circle = new Grid { Width = 74, Height = 74, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, -5, 0, -5) };
+            circle.Children.Add(button);
+            circle.Children.Add(ring);
+            button.HorizontalAlignment = HorizontalAlignment.Center;
+            button.VerticalAlignment = VerticalAlignment.Center;
             var cell = new StackPanel { Spacing = 8, HorizontalAlignment = HorizontalAlignment.Center };
-            cell.Children.Add(button);
+            cell.Children.Add(circle);
             cell.Children.Add(FitLabel.Create(label));
-            _modes.Add((mode, button, cell));
+            _modes.Add((mode, button, ring, cell));
             ModeGrid.Children.Add(cell);
         }
         // Moving the control to another parent (HomePage on wide windows) can raise Unloaded after the
@@ -85,14 +86,7 @@ public sealed partial class NoiseModeCircles : UserControl
         if (vm is null) return;
         Detach(vm);
         vm.PropertyChanged += OnViewModelPropertyChanged;
-        vm.NoiseLevels.CollectionChanged += OnLevelsChanged;
-        vm.AdaptiveLevels.CollectionChanged += OnLevelsChanged;
-        vm.TransparencyLevels.CollectionChanged += OnLevelsChanged;
-        vm.NoiseSubModes.CollectionChanged += OnSubModesChanged;
-        vm.NoiseManualLevels.CollectionChanged += OnManualLevelsChanged;
-        _shownLevels = null;
-        _subModesStale = true;
-        _manualLevelsStale = true;
+        _rows.Attach(vm);
         Sync();
     }
 
@@ -100,202 +94,49 @@ public sealed partial class NoiseModeCircles : UserControl
     {
         if (vm is null) return;
         vm.PropertyChanged -= OnViewModelPropertyChanged;
-        vm.NoiseLevels.CollectionChanged -= OnLevelsChanged;
-        vm.AdaptiveLevels.CollectionChanged -= OnLevelsChanged;
-        vm.TransparencyLevels.CollectionChanged -= OnLevelsChanged;
-        vm.NoiseSubModes.CollectionChanged -= OnSubModesChanged;
-        vm.NoiseManualLevels.CollectionChanged -= OnManualLevelsChanged;
-        foreach (var (level, _) in _levelButtons.Concat(_subModeButtons).Concat(_manualLevelButtons)) level.PropertyChanged -= OnLevelPropertyChanged;
-    }
-
-    private void OnSubModesChanged(object? sender, NotifyCollectionChangedEventArgs e)
-    {
-        _subModesStale = true;
-        Sync();
-    }
-
-    private void OnManualLevelsChanged(object? sender, NotifyCollectionChangedEventArgs e)
-    {
-        _manualLevelsStale = true;
-        Sync();
+        _rows.Detach();
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e) => Sync();
 
-    private void OnLevelsChanged(object? sender, NotifyCollectionChangedEventArgs e)
-    {
-        _shownLevels = null;
-        Sync();
-    }
-
-    private void OnLevelPropertyChanged(object? sender, PropertyChangedEventArgs e) => SyncLevels();
-
     private void Sync()
     {
         if (ViewModel is not { } vm) return;
-        bool enabled = vm.CanSetNoise && !vm.IsNoisePending;
         int visible = 0;
-        foreach (var (mode, button, cell) in _modes)
+        foreach (var (mode, button, ring, cell) in _modes)
         {
-            bool show = mode switch
-            {
-                NoiseControlMode.NoiseCancellation => vm.HasAncMode,
-                NoiseControlMode.Adaptive => vm.HasAdaptiveMode,
-                NoiseControlMode.Transparency => vm.HasTransparencyMode,
-                _ => vm.HasOffMode,
-            };
+            bool show = NoiseModes.IsAvailable(vm, mode);
             cell.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
             if (show) Grid.SetColumn(cell, visible++);
-            button.IsChecked = mode switch
-            {
-                NoiseControlMode.NoiseCancellation => vm.IsAncSelected,
-                NoiseControlMode.Adaptive => vm.IsAdaptiveSelected,
-                NoiseControlMode.Transparency => vm.IsTransparencySelected,
-                _ => vm.IsOffSelected,
-            };
-            button.IsEnabled = enabled;
+            button.IsChecked = _pendingMode is { } pending ? mode == pending : NoiseModes.IsSelected(vm, mode);
+            button.IsEnabled = vm.CanSetNoise;
+            bool waiting = mode == _pendingMode;
+            ring.IsActive = waiting;
+            ring.Visibility = waiting ? Visibility.Visible : Visibility.Collapsed;
         }
         if (ModeGrid.ColumnDefinitions.Count != visible)
         {
             ModeGrid.ColumnDefinitions.Clear();
             for (int i = 0; i < visible; i++) ModeGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         }
-
-        var levels = vm.ShowNoiseLevels ? vm.NoiseLevels : vm.ShowAdaptiveLevels ? vm.AdaptiveLevels
-            : vm.ShowTransparencyLevels ? vm.TransparencyLevels : null;
-        if (!ReferenceEquals(levels, _shownLevels)) RebuildLevels(levels,
-            vm.ShowNoiseLevels ? "NoiseSelector_Level" : vm.ShowAdaptiveLevels ? "NoiseSelector_AdaptiveLevel" : "NoiseSelector_TransparencyLevel");
-        LevelsPanel.Visibility = levels is null ? Visibility.Collapsed : Visibility.Visible;
-        if (_subModesStale) RebuildSubModes(vm);
-        SubModesTitle.Text = vm.NoiseSubModesTitle;
-        SubModesPanel.Visibility = vm.ShowNoiseSubModes ? Visibility.Visible : Visibility.Collapsed;
-        if (_manualLevelsStale)
-        {
-            _manualLevelsStale = false;
-            RebuildRow(ManualLevelsHost, vm.NoiseManualLevels, _manualLevelButtons, OnSubModeClick);
-        }
-        ManualLevelsPanel.Visibility = vm.ShowNoiseManualLevels ? Visibility.Visible : Visibility.Collapsed;
-        SyncLevels();
+        _rows.Sync();
     }
 
-    private void RebuildRow(Grid host, IEnumerable<NoiseLevelViewModel> levels, List<(NoiseLevelViewModel Level, ToggleButton Button)> buttons, RoutedEventHandler click)
+    private async void OnModeClick(object sender, RoutedEventArgs e)
     {
-        foreach (var (level, _) in buttons) level.PropertyChanged -= OnLevelPropertyChanged;
-        buttons.Clear();
-        host.Children.Clear();
-        host.ColumnDefinitions.Clear();
-        foreach (var level in levels)
+        if (sender is not ToggleButton { Tag: NoiseControlMode mode } || ViewModel is not { } vm) return;
+        if (_rows.IsPending || vm.IsNoisePending || NoiseModes.IsSelected(vm, mode))
         {
-            host.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            var button = CreateLevelButton(level, click);
-            Grid.SetColumn(button, buttons.Count);
-            buttons.Add((level, button));
-            host.Children.Add(button);
+            Sync(); // undo the local toggle
+            return;
         }
+        await NoiseModes.ChooseAsync(vm, mode, pending => { _pendingMode = pending; Sync(); });
     }
 
-    private void RebuildSubModes(DeviceViewModel vm)
-    {
-        _subModesStale = false;
-        foreach (var (level, _) in _subModeButtons) level.PropertyChanged -= OnLevelPropertyChanged;
-        _subModeButtons.Clear();
-        SubModesHost.Children.Clear();
-        SubModesHost.ColumnDefinitions.Clear();
-        SubModesHost.RowDefinitions.Clear();
-        int count = vm.NoiseSubModes.Count;
-        for (int i = 0; i < Math.Min(count, SubModesPerRow); i++) SubModesHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        for (int i = 0; i < (count + SubModesPerRow - 1) / SubModesPerRow; i++) SubModesHost.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        int index = 0;
-        foreach (var mode in vm.NoiseSubModes)
-        {
-            var button = CreateLevelButton(mode, OnSubModeClick);
-            Grid.SetColumn(button, index % SubModesPerRow);
-            Grid.SetRow(button, index / SubModesPerRow);
-            index++;
-            _subModeButtons.Add((mode, button));
-            SubModesHost.Children.Add(button);
-        }
-    }
+    /// <summary>Off-screen preview: a mode click answered by <paramref name="command"/> instead of the earbuds.</summary>
+    internal Task PreviewChooseAsync(NoiseControlMode mode, Func<Task> command) =>
+        ViewModel is { } vm ? NoiseModes.ChooseAsync(vm, mode, pending => { _pendingMode = pending; Sync(); }, command) : Task.CompletedTask;
 
-    private void RebuildLevels(ObservableCollection<NoiseLevelViewModel>? levels, string titleKey)
-    {
-        foreach (var (level, _) in _levelButtons) level.PropertyChanged -= OnLevelPropertyChanged;
-        _levelButtons.Clear();
-        LevelsHost.Children.Clear();
-        LevelsHost.ColumnDefinitions.Clear();
-        _shownLevels = levels;
-        if (levels is null) return;
-
-        LevelsTitle.Text = Loc.Get(titleKey);
-        int column = 0;
-        foreach (var level in levels)
-        {
-            LevelsHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            var button = CreateLevelButton(level, OnLevelClick);
-            Grid.SetColumn(button, column++);
-            _levelButtons.Add((level, button));
-            LevelsHost.Children.Add(button);
-        }
-    }
-
-    private ToggleButton CreateLevelButton(NoiseLevelViewModel level, RoutedEventHandler click)
-    {
-        var button = new ToggleButton
-        {
-            Content = FitLabel.Create(level.Label),
-            Tag = level.Id,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            VerticalAlignment = VerticalAlignment.Stretch,
-            MinHeight = 36,
-            Padding = new Thickness(4, 6, 4, 6),
-            CornerRadius = new CornerRadius(18),
-        };
-        AutomationProperties.SetName(button, level.Label);
-        button.Click += click;
-        level.PropertyChanged += OnLevelPropertyChanged;
-        return button;
-    }
-
-    private void SyncLevels()
-    {
-        if (ViewModel is not { } vm) return;
-        bool enabled = vm.CanSetNoise && !vm.IsNoisePending;
-        foreach (var (level, button) in _levelButtons)
-        {
-            button.IsChecked = level.IsSelected;
-            button.IsEnabled = enabled;
-        }
-        foreach (var (mode, button) in _subModeButtons.Concat(_manualLevelButtons))
-        {
-            button.IsChecked = mode.IsSelected;
-            button.IsEnabled = enabled && !vm.IsNoiseSubModePending;
-        }
-    }
-
-    private void OnModeClick(object sender, RoutedEventArgs e)
-    {
-        if (sender is ToggleButton { Tag: NoiseControlMode mode } && ViewModel is { } vm)
-        {
-            Sync(); // the device decides; snap back until it confirms
-            vm.SetNoiseModeCommand.Execute(mode.ToString());
-        }
-    }
-
-    private void OnLevelClick(object sender, RoutedEventArgs e)
-    {
-        if (sender is ToggleButton { Tag: string id } && ViewModel is { } vm)
-        {
-            SyncLevels();
-            vm.SetNoiseLevelCommand.Execute(id);
-        }
-    }
-
-    private void OnSubModeClick(object sender, RoutedEventArgs e)
-    {
-        if (sender is ToggleButton { Tag: string value } && ViewModel is { } vm)
-        {
-            SyncLevels();
-            vm.SetNoiseSubModeCommand.Execute(value);
-        }
-    }
+    internal SegmentedRow SubModes => SubModesRow;
+    internal SegmentedRow ManualLevels => ManualLevelsRow;
 }

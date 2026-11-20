@@ -259,6 +259,25 @@ public sealed partial class DeviceViewModel : ObservableObject
         finally { IsNoiseSubModePending = false; }
     }
 
+    private readonly Dictionary<NoiseControlMode, string> _lastNoiseLevels = [];
+
+    /// <summary>
+    /// The mode a noise control shows as chosen while the earbuds have not answered yet: the level and
+    /// sub-mode rows follow it at once. Null when nothing waits.
+    /// </summary>
+    public NoiseControlMode? NoiseModePreview
+    {
+        get => _noiseModePreview;
+        set
+        {
+            if (_noiseModePreview == value) return;
+            _noiseModePreview = value;
+            ApplyNoise(_store.Current, Profile);
+            OnPropertyChanged();
+        }
+    }
+    private NoiseControlMode? _noiseModePreview;
+
     private string? _noiseSubModeOption;
     private string? _noiseSubModeSignature;
     private int? _manualLevel;
@@ -699,13 +718,19 @@ public sealed partial class DeviceViewModel : ObservableObject
         IsAncSelected = noise?.Mode == NoiseControlMode.NoiseCancellation;
         IsAdaptiveSelected = noise?.Mode == NoiseControlMode.Adaptive;
         IsTransparencySelected = noise?.Mode == NoiseControlMode.Transparency;
-        ShowNoiseLevels = IsAncSelected && NoiseLevels.Count > 0 && IsNoiseAvailable;
-        ShowAdaptiveLevels = IsAdaptiveSelected && AdaptiveLevels.Count > 1 && IsNoiseAvailable;
-        ShowTransparencyLevels = IsTransparencySelected && TransparencyLevels.Count > 1 && IsNoiseAvailable;
-        foreach (var level in NoiseLevels) level.IsSelected = IsAncSelected && level.Id == noise?.LevelId;
-        foreach (var level in AdaptiveLevels) level.IsSelected = IsAdaptiveSelected && level.Id == noise?.LevelId;
-        foreach (var level in TransparencyLevels) level.IsSelected = IsTransparencySelected && level.Id == noise?.LevelId;
-        ApplyNoiseSubModes(state, profile, noise);
+        if (noise is { LevelId: { } seen }) _lastNoiseLevels[noise.Mode] = seen;
+        // While a mode click waits for the earbuds, the rows below already belong to that mode,
+        // showing the level last seen in it; the confirmed state takes over once they answer.
+        var shown = NoiseModePreview is { } preview && preview != noise?.Mode
+            ? new NoiseControlState(preview, _lastNoiseLevels.GetValueOrDefault(preview))
+            : noise;
+        ShowNoiseLevels = shown?.Mode == NoiseControlMode.NoiseCancellation && NoiseLevels.Count > 0 && IsNoiseAvailable;
+        ShowAdaptiveLevels = shown?.Mode == NoiseControlMode.Adaptive && AdaptiveLevels.Count > 1 && IsNoiseAvailable;
+        ShowTransparencyLevels = shown?.Mode == NoiseControlMode.Transparency && TransparencyLevels.Count > 1 && IsNoiseAvailable;
+        foreach (var level in NoiseLevels) level.IsSelected = ShowNoiseLevels && level.Id == shown?.LevelId;
+        foreach (var level in AdaptiveLevels) level.IsSelected = ShowAdaptiveLevels && level.Id == shown?.LevelId;
+        foreach (var level in TransparencyLevels) level.IsSelected = ShowTransparencyLevels && level.Id == shown?.LevelId;
+        ApplyNoiseSubModes(state, profile, shown);
 
         if (noise is null)
         {

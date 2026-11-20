@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="EncoDeck.App.Controls.SegmentedRow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel x:Name="Root" Spacing="8">
+        <StackPanel Orientation="Horizontal" Spacing="6">
+            <TextBlock x:Name="TitleText" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
+            <!-- Turns while a choice waits for the earbuds' answer. -->
+            <ProgressRing x:Name="Spinner" Width="16" Height="16" MinWidth="0" MinHeight="0" IsActive="False" Visibility="Collapsed" VerticalAlignment="Center" />
+        </StackPanel>
+        <Border x:Name="Track" Style="{StaticResource SegmentedTrackStyle}">
+            <Grid>
+                <Canvas x:Name="Layer">
+                    <Border x:Name="Indicator" Background="{ThemeResource AccentFillColorDefaultBrush}" CornerRadius="6" Opacity="0">
+                        <Border.RenderTransform>
+                            <TranslateTransform x:Name="Move" />
+                        </Border.RenderTransform>
+                    </Border>
+                </Canvas>
+                <Grid x:Name="Host" ColumnSpacing="2" RowSpacing="2" />
+            </Grid>
+        </Border>
+    </StackPanel>
+</UserControl>

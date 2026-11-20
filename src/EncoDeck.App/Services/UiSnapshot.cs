@@ -251,6 +251,15 @@ internal static class UiSnapshot
             await File.WriteAllLinesAsync(Path.Combine(outDir, "tw4-controls.txt"), diagnostics);
             host.Store.Reset(sample);
         }
+        // EarFun: the home noise card with its segmented sub-mode and manual level rows.
+        foreach (var (name, state) in TrayScenarios(sample).Where(s => s.Name.StartsWith("Anc", StringComparison.Ordinal)))
+        {
+            host.Store.Reset(state);
+            main.Navigate("Home");
+            await Task.Delay(900);
+            await CaptureAsync(main, Path.Combine(outDir, $"Home-{name}.png"));
+        }
+        host.Store.Reset(sample);
         main.Close();
 
         try
@@ -329,6 +338,10 @@ internal static class UiSnapshot
                 : state;
         var anc = With(sample, new NoiseControlState(NoiseControlMode.NoiseCancellation), EncoDeck.Protocol.Brands.EarFun.EarFunSetting.Sub, 4);
         yield return ("Anc", anc);
+        var manual = EncoDeck.Protocol.Brands.EarFun.EarFunSettings.Option(earfun.Model, EncoDeck.Protocol.Brands.EarFun.EarFunSetting.Sub, 0) is { } sub
+            ? EncoDeck.Protocol.Brands.EarFun.EarFunSettings.ManualLevels(sub.Choices) : [];
+        if (manual.Count > 1)
+            yield return ("AncManual", With(sample, new NoiseControlState(NoiseControlMode.NoiseCancellation), EncoDeck.Protocol.Brands.EarFun.EarFunSetting.Sub, (byte)manual[^1].Value));
         yield return ("Transparency", With(anc, new NoiseControlState(NoiseControlMode.Transparency), EncoDeck.Protocol.Brands.EarFun.EarFunSetting.Ambient, earfun.Model.Gaia ? (byte)1 : (byte)2));
         yield return ("Disconnected", anc with { Connection = DeviceConnectionState.Disconnected });
         yield return ("DisconnectedByUser", anc with { Connection = DeviceConnectionState.DisconnectedByUser });
