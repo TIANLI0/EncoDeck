@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="EncoDeck.App.Views.ConnectionsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:EncoDeck.App.Controls">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <!-- Not the max-width element itself: a ScrollViewer centres its child by the child's desired width, which shifts it off-screen once the viewport is wider than the max width. -->
+        <Grid>
+        <StackPanel MaxWidth="{StaticResource PageMaxWidth}" Padding="32,8,32,32" Spacing="16">
+            <InfoBar
+                IsOpen="{x:Bind ViewModel.HasError, Mode=OneWay}"
+                Severity="Error"
+                Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
+                CloseButtonCommand="{x:Bind ViewModel.DismissErrorCommand}" />
+            <InfoBar x:Name="NotReadyBar" x:Uid="Controls_NotReady" IsClosable="False" Severity="Informational"
+                     Message="Connect your earbuds to change these settings." />
+
+            <!-- Connected earbuds with none of the cards below, instead of a blank page. -->
+            <Border x:Name="EmptyCard" Style="{StaticResource CardStyle}" Visibility="Collapsed">
+                <StackPanel Spacing="4">
+                    <TextBlock x:Uid="Connections_Empty_Title" Text="No connection settings available" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                    <TextBlock x:Uid="Connections_Empty_Body" Text="These earbuds don't report dual connection or other connection settings to EncoDeck." TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" />
+                </StackPanel>
+            </Border>
+
+            <!-- Dual connection (official MultipleDevicesConnectionFragmentV2) -->
+            <Border x:Name="DualCard" Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="10">
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Spacing="2">
+                            <TextBlock x:Uid="Dual_Title" Text="Dual connection" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                            <TextBlock x:Uid="Dual_Summary" Text="Simultaneously connect to 2 devices through Bluetooth and switch between them freely." Style="{StaticResource SecondaryTextStyle}" />
+                        </StackPanel>
+                        <ToggleSwitch x:Name="DualSwitch" Grid.Column="1" Style="{StaticResource TrailingSwitchStyle}" Toggled="OnDualToggled" />
+                    </Grid>
+                    <TextBlock x:Uid="Dual_Paired" Text="Paired devices" Style="{StaticResource SecondaryTextStyle}" />
+                    <StackPanel x:Name="SourceHost" Spacing="6" />
+                    <controls:SettingRow x:Name="PreferredSection" x:Uid="Dual_Preferred" Header="Preferred device"
+                                         Description="When the preferred device is within the connection range, the earbuds connect to it first.">
+                        <ComboBox x:Name="PreferredBox" MinWidth="200" SelectionChanged="OnPreferredChanged" />
+                    </controls:SettingRow>
+                </StackPanel>
+            </Border>
+
+            <!-- Swift Pair, do not disturb on the 2.4 GHz link. -->
+            <controls:SettingsGroupView x:Name="ConnectionGroup" Group="Connection" />
+        </StackPanel>
+        </Grid>
+    </ScrollViewer>
+</Page>

@@ -11,8 +11,9 @@ namespace EncoDeck.App.Controls;
 
 /// <summary>
 /// A titled single-choice row (noise levels, sub-modes): the options share one track and an accent
-/// pill slides to the chosen one. A click moves the pill at once and turns a spinner by the title
-/// until the earbuds answer; if they keep another choice, the pill slides to what they report.
+/// pill slides to the chosen one. A click moves the pill at once; a spinner by the title appears only
+/// if the earbuds are slow to answer (<see cref="PendingSpinner"/>); if they keep another choice, the
+/// pill slides to what they report.
 /// </summary>
 public sealed partial class SegmentedRow : UserControl
 {
@@ -24,15 +25,16 @@ public sealed partial class SegmentedRow : UserControl
     private readonly Storyboard _slide = new();
     private readonly DoubleAnimation _slideX;
     private readonly DoubleAnimation _slideY;
+    private readonly PendingSpinner _spinner;
     private string? _pendingId;
     private bool _placed;
     private double _x, _y;
     private bool _interactive = true;
-    private CornerRadius _itemRadius = new(6);
 
     public SegmentedRow()
     {
         InitializeComponent();
+        _spinner = new PendingSpinner(Spinner);
         var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
         _slideX = new DoubleAnimation { Duration = SlideDuration, EasingFunction = ease };
         _slideY = new DoubleAnimation { Duration = SlideDuration, EasingFunction = ease };
@@ -61,19 +63,6 @@ public sealed partial class SegmentedRow : UserControl
     {
         get => Root.Spacing;
         set => Root.Spacing = value;
-    }
-
-    /// <summary>Rounds the track into a pill, matching the round mode buttons.</summary>
-    public bool Pill
-    {
-        get => Track.CornerRadius.TopLeft > 8;
-        set
-        {
-            Track.CornerRadius = new CornerRadius(value ? 20 : 8);
-            _itemRadius = new CornerRadius(value ? 17 : 6);
-            Indicator.CornerRadius = _itemRadius;
-            foreach (var (_, button) in _items) button.CornerRadius = _itemRadius;
-        }
     }
 
     public bool IsPending => _pendingId is not null;
@@ -110,7 +99,6 @@ public sealed partial class SegmentedRow : UserControl
                 Style = (Style)Application.Current.Resources["SegmentedItemStyle"],
                 Content = FitLabel.Create(item.Label),
                 Tag = item.Id,
-                CornerRadius = _itemRadius,
             };
             AutomationProperties.SetName(button, item.Label);
             Grid.SetColumn(button, _items.Count % columns);
@@ -142,8 +130,7 @@ public sealed partial class SegmentedRow : UserControl
             button.IsChecked = item.Id == shown;
             button.IsEnabled = _interactive;
         }
-        Spinner.IsActive = _pendingId is not null;
-        Spinner.Visibility = _pendingId is not null ? Visibility.Visible : Visibility.Collapsed;
+        _spinner.Waiting = _pendingId is not null;
         Place(animate);
     }
 

@@ -270,7 +270,7 @@ public partial class App : Application
 
     /// <summary>
     /// Command line of this launch, or one forwarded by a second instance. Besides --background and
-    /// --exit, diagnostic switches open a specific surface: --page &lt;Home|Sound|Controls|Devices|Settings&gt;,
+    /// --exit, diagnostic switches open a specific surface: --page &lt;Home|Sound|Controls|Connections|Devices|Settings&gt;,
     /// --show-panel (tray quick panel) and --show-popup (connection popup preview).
     /// </summary>
     private void HandleCommandLine(string[] args, bool isLaunch)

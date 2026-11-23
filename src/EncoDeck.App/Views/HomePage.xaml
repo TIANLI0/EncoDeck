@@ -232,12 +232,12 @@
                     <StackPanel Spacing="16">
                         <Grid>
                             <TextBlock x:Uid="Home_NoiseControl" Text="Noise control" Style="{StaticResource BodyStrongTextBlockStyle}" />
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-                                <ProgressRing Width="14" Height="14" IsActive="{x:Bind ViewModel.IsNoisePending, Mode=OneWay}" Visibility="{x:Bind ViewModel.IsNoisePending, Mode=OneWay}" />
-                                <TextBlock Text="{x:Bind ViewModel.NoiseText, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" VerticalAlignment="Center" />
-                            </StackPanel>
+                            <!-- The mode circles show a slow answer themselves (PendingSpinner). -->
+                            <TextBlock Text="{x:Bind ViewModel.NoiseText, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                         </Grid>
                         <controls:NoiseModeCircles ViewModel="{x:Bind ViewModel}" />
+                        <!-- Levels of the selected mode that are not segmented rows (Sony's ambient sound level). -->
+                        <controls:SettingsGroupView Group="NoiseControl" Bare="True" />
                     </StackPanel>
                 </Border>
 
@@ -245,7 +245,7 @@
                     <StackPanel Spacing="14">
                         <Grid>
                             <TextBlock x:Uid="Home_Devices" Text="Device management" Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" />
-                            <HyperlinkButton x:Uid="Home_DevicesMore" Content="More" HorizontalAlignment="Right" Padding="4,2" Click="OnOpenControls" />
+                            <HyperlinkButton x:Uid="Home_DevicesMore" Content="More" HorizontalAlignment="Right" Padding="4,2" Click="OnOpenConnections" />
                         </Grid>
                         <controls:SettingRow x:Name="DualRow" x:Uid="Home_Dual" Header="Dual connection">
                             <ToggleSwitch x:Name="DualSwitch" Style="{StaticResource TrailingSwitchStyle}" Toggled="OnDualToggled" />

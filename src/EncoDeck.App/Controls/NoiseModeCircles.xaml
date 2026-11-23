@@ -22,11 +22,11 @@
         <Grid x:Name="RowsHost" Visibility="Collapsed">
             <StackPanel Spacing="16" Padding="0,16,0,0">
                 <!-- Level row of the selected mode. -->
-                <controls:SegmentedRow x:Name="LevelsRow" Pill="True" Visibility="Collapsed" />
+                <controls:SegmentedRow x:Name="LevelsRow" Visibility="Collapsed" />
                 <!-- The earbuds' own sub-modes of the selected mode (e.g. EarFun's ANC sub-mode); up to four per row. -->
-                <controls:SegmentedRow x:Name="SubModesRow" Pill="True" Visibility="Collapsed" />
+                <controls:SegmentedRow x:Name="SubModesRow" Visibility="Collapsed" />
                 <!-- EarFun's manual levels, shown while the "Manual" sub-mode is selected. -->
-                <controls:SegmentedRow x:Name="ManualLevelsRow" Pill="True" Visibility="Collapsed" />
+                <controls:SegmentedRow x:Name="ManualLevelsRow" Visibility="Collapsed" />
             </StackPanel>
         </Grid>
     </StackPanel>

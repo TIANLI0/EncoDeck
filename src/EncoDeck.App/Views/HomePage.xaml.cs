@@ -376,5 +376,5 @@ public sealed partial class HomePage : Page
 
     private void OnOpenLabs(object sender, RoutedEventArgs e) => App.Instance.Windows.ShowMain("Labs");
 
-    private void OnOpenControls(object sender, RoutedEventArgs e) => App.Instance.Windows.ShowMain("Controls");
+    private void OnOpenConnections(object sender, RoutedEventArgs e) => App.Instance.Windows.ShowMain("Connections");
 }

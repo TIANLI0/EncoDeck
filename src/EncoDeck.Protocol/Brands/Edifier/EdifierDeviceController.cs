@@ -478,7 +478,7 @@ public sealed class EdifierDeviceController : BrandControllerBase
         if (!result.IsSuccess && result.Status != CommandStatus.Cancelled && Volatile.Read(ref _notices) != notices)
         {
             // A notice instead of the echo and the scene unchanged: refused in the current state (spatial audio
-            // through BlueCaster, issue #18). Sending it again would not help.
+            // while streaming LHDC through BlueCaster; it switches on SBC, issue #18). Sending it again would not help.
             result = new CommandResult(CommandStatus.Rejected, SceneUnavailableDetail);
             Store.TryUpdate(DeviceId, s => s with { LastError = new DeviceError(SceneUnavailableDetail, CommandStatus.Rejected, Now) });
             Logger.LogInformation("Command scene-mode -> refused by the headset ({Notice:X2} notice)", EdifierConstants.StateNotice);

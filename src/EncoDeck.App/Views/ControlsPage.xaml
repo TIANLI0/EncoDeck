@@ -17,6 +17,32 @@
             <InfoBar x:Name="NotReadyBar" x:Uid="Controls_NotReady" IsClosable="False" Severity="Informational"
                      Message="Connect your earbuds to change these settings." />
 
+            <!-- Connected earbuds with none of the cards below, instead of a blank page. -->
+            <Border x:Name="EmptyCard" Style="{StaticResource CardStyle}" Visibility="Collapsed">
+                <StackPanel Spacing="4">
+                    <TextBlock x:Uid="Controls_Empty_Title" Text="No control settings available" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                    <TextBlock x:Uid="Controls_Empty_Body" Text="EncoDeck can't change the controls or other settings of these earbuds yet." TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" />
+                </StackPanel>
+            </Border>
+
+            <!-- Earbud gestures (official control / callControl) -->
+            <Border x:Name="GestureCard" Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="10">
+                    <TextBlock x:Uid="Gesture_Title" Text="Earbud controls" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                    <RadioButtons x:Name="EarSelector" MaxColumns="2" SelectionChanged="OnEarChanged" />
+                    <StackPanel x:Name="GestureHost" Spacing="8" />
+                    <StackPanel x:Name="CycleSection" Spacing="4">
+                        <TextBlock x:Name="CycleTitle" TextWrapping="Wrap" />
+                        <StackPanel x:Name="CycleHost" Orientation="Horizontal" Spacing="12" />
+                        <TextBlock x:Name="CycleNote" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" />
+                    </StackPanel>
+                    <TextBlock x:Name="CallGestureTitle" x:Uid="Gesture_CallTitle" Text="When on a call" Margin="0,6,0,0" />
+                    <StackPanel x:Name="CallGestureHost" Spacing="8" />
+                    <!-- Touch lock, button assignments and voice commands, under the gestures. -->
+                    <controls:SettingsGroupView x:Name="OperationRows" Group="Operation" Bare="True" />
+                </StackPanel>
+            </Border>
+
             <!-- Game mode (official GameSetFragment) -->
             <Border x:Name="GameCard" Style="{StaticResource CardStyle}">
                 <StackPanel Spacing="10">
@@ -51,44 +77,8 @@
                 </StackPanel>
             </Border>
 
-            <!-- Dual connection (official MultipleDevicesConnectionFragmentV2) -->
-            <Border x:Name="DualCard" Style="{StaticResource CardStyle}">
-                <StackPanel Spacing="10">
-                    <Grid ColumnSpacing="12">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Spacing="2">
-                            <TextBlock x:Uid="Dual_Title" Text="Dual connection" Style="{StaticResource BodyStrongTextBlockStyle}" />
-                            <TextBlock x:Uid="Dual_Summary" Text="Simultaneously connect to 2 devices through Bluetooth and switch between them freely." Style="{StaticResource SecondaryTextStyle}" />
-                        </StackPanel>
-                        <ToggleSwitch x:Name="DualSwitch" Grid.Column="1" Style="{StaticResource TrailingSwitchStyle}" Toggled="OnDualToggled" />
-                    </Grid>
-                    <TextBlock x:Uid="Dual_Paired" Text="Paired devices" Style="{StaticResource SecondaryTextStyle}" />
-                    <StackPanel x:Name="SourceHost" Spacing="6" />
-                    <controls:SettingRow x:Name="PreferredSection" x:Uid="Dual_Preferred" Header="Preferred device"
-                                         Description="When the preferred device is within the connection range, the earbuds connect to it first.">
-                        <ComboBox x:Name="PreferredBox" MinWidth="200" SelectionChanged="OnPreferredChanged" />
-                    </controls:SettingRow>
-                </StackPanel>
-            </Border>
-
-            <!-- Earbud gestures (official control / callControl) -->
-            <Border x:Name="GestureCard" Style="{StaticResource CardStyle}">
-                <StackPanel Spacing="10">
-                    <TextBlock x:Uid="Gesture_Title" Text="Earbud controls" Style="{StaticResource BodyStrongTextBlockStyle}" />
-                    <RadioButtons x:Name="EarSelector" MaxColumns="2" SelectionChanged="OnEarChanged" />
-                    <StackPanel x:Name="GestureHost" Spacing="8" />
-                    <StackPanel x:Name="CycleSection" Spacing="4">
-                        <TextBlock x:Name="CycleTitle" TextWrapping="Wrap" />
-                        <StackPanel x:Name="CycleHost" Orientation="Horizontal" Spacing="12" />
-                        <TextBlock x:Name="CycleNote" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" />
-                    </StackPanel>
-                    <TextBlock x:Name="CallGestureTitle" x:Uid="Gesture_CallTitle" Text="When on a call" Margin="0,6,0,0" />
-                    <StackPanel x:Name="CallGestureHost" Spacing="8" />
-                </StackPanel>
-            </Border>
+            <!-- In-ear detection, sleep detection, speak-to-chat, auto answer, call microphone. -->
+            <controls:SettingsGroupView x:Name="WearGroup" Group="WearAndCalls" />
 
             <!-- Head gestures for calls (official HeadMotionItem) -->
             <Border x:Name="HeadCard" Style="{StaticResource CardStyle}">
@@ -143,25 +133,8 @@
                 </StackPanel>
             </Border>
 
-            <!-- More settings -->
-            <Border Style="{StaticResource CardStyle}">
-                <StackPanel Spacing="12">
-                    <TextBlock x:Uid="Controls_Settings" Text="More settings" Style="{StaticResource BodyStrongTextBlockStyle}" />
-                    <StackPanel x:Name="ToggleHost" Spacing="12" />
-                    <!-- Multi-value settings the earbuds report (auto power off, button assignment, levels). -->
-                    <StackPanel x:Name="OptionHost" Spacing="12" />
-                    <controls:SettingRow x:Name="GainSection" x:Uid="Moondrop_Gain" Header="Gain">
-                        <ComboBox x:Name="GainBox" MinWidth="200" SelectionChanged="OnGainChanged" />
-                    </controls:SettingRow>
-                    <controls:SettingRow x:Name="PromptVolumeSection" x:Uid="Prompt_Title" Header="Alert sound volume">
-                        <StackPanel Orientation="Horizontal" Spacing="12">
-                            <Slider x:Name="PromptVolumeSlider" Width="{StaticResource RowSliderWidth}" Minimum="1" Maximum="10" StepFrequency="1"
-                                    TickFrequency="1" TickPlacement="BottomRight" VerticalAlignment="Center" ValueChanged="OnPromptVolumeChanged" />
-                            <TextBlock x:Name="PromptVolumeValue" MinWidth="20" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </controls:SettingRow>
-                </StackPanel>
-            </Border>
+            <!-- Prompt tone and volume, indicator light, auto power off. -->
+            <controls:SettingsGroupView x:Name="GeneralGroup" Group="General" />
         </StackPanel>
         </Grid>
     </ScrollViewer>

@@ -110,6 +110,11 @@
                                Text="Hi-Res mode is on, so spatial audio is off. Turning spatial audio on turns Hi-Res mode off." />
                 </StackPanel>
             </Border>
+
+            <!-- Sound scene, surround switch, volume that follows the surroundings. -->
+            <controls:SettingsGroupView x:Name="ListeningGroup" Group="Listening" />
+            <!-- Hi-Res, LDAC, aptX, LC3, upscaling, channel swap, gain. -->
+            <controls:SettingsGroupView x:Name="QualityGroup" Group="AudioQuality" />
             </StackPanel>
             </Grid>
         </StackPanel>

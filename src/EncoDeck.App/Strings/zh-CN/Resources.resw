@@ -147,7 +147,16 @@
   <data name="Sound_Empty_Title.Text" xml:space="preserve"><value>暂无可用的声音设置</value></data>
   <data name="Sound_Empty_Body.Text" xml:space="preserve"><value>EncoDeck 暂时无法调整这副耳机的 EQ、低音或空间音频。</value></data>
   <data name="Controls_Title.Text" xml:space="preserve"><value>控制</value></data>
-  <data name="Controls_Settings.Text" xml:space="preserve"><value>更多设置</value></data>
+  <data name="Nav_Connections.Content" xml:space="preserve"><value>连接</value></data>
+  <data name="Group_Listening" xml:space="preserve"><value>聆听</value></data>
+  <data name="Group_AudioQuality" xml:space="preserve"><value>音质</value></data>
+  <data name="Group_WearAndCalls" xml:space="preserve"><value>佩戴与通话</value></data>
+  <data name="Group_General" xml:space="preserve"><value>通用</value></data>
+  <data name="Group_Connection" xml:space="preserve"><value>连接设置</value></data>
+  <data name="Controls_Empty_Title.Text" xml:space="preserve"><value>暂无可用的控制设置</value></data>
+  <data name="Controls_Empty_Body.Text" xml:space="preserve"><value>EncoDeck 暂时无法更改这副耳机的操控和其他设置。</value></data>
+  <data name="Connections_Empty_Title.Text" xml:space="preserve"><value>暂无可用的连接设置</value></data>
+  <data name="Connections_Empty_Body.Text" xml:space="preserve"><value>这副耳机没有向 EncoDeck 报告设备双连或其他连接设置。</value></data>
   <data name="Devices_Capabilities.Text" xml:space="preserve"><value>功能支持情况</value></data>
   <data name="Devices_Info.Text" xml:space="preserve"><value>设备信息</value></data>
   <data name="Devices_Firmware.Header" xml:space="preserve"><value>固件版本</value></data>
@@ -228,7 +237,7 @@
   <data name="Error_RemoveConnected" xml:space="preserve"><value>只能移除未连接的设备</value></data>
   <data name="Error_MaxPresets" xml:space="preserve"><value>自定义音效已达上限</value></data>
   <data name="Error_InvalidName" xml:space="preserve"><value>名称不能为空、不能重复，且不超过 42 个字符</value></data>
-  <data name="Error_SceneUnavailable" xml:space="preserve"><value>耳机没有切换到这个场景模式，已保持原来的模式。通过 BlueCaster 使用耳机时，空间音效可能不可用。</value></data>
+  <data name="Error_SceneUnavailable" xml:space="preserve"><value>耳机没有切换到这个场景模式，已保持原来的模式。通过 BlueCaster 以 LHDC 连接时，耳机不接受空间音效；在 BlueCaster 中改用 SBC 后即可切换。</value></data>
   <data name="Common_Cancel" xml:space="preserve"><value>取消</value></data>
   <data name="Common_OK" xml:space="preserve"><value>确定</value></data>
   <data name="Common_TurnOn" xml:space="preserve"><value>开启</value></data>

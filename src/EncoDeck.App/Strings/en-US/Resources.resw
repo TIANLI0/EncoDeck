@@ -147,7 +147,16 @@
   <data name="Sound_Empty_Title.Text" xml:space="preserve"><value>No sound settings available</value></data>
   <data name="Sound_Empty_Body.Text" xml:space="preserve"><value>EncoDeck can't adjust EQ, bass or spatial audio on these earbuds yet.</value></data>
   <data name="Controls_Title.Text" xml:space="preserve"><value>Controls</value></data>
-  <data name="Controls_Settings.Text" xml:space="preserve"><value>More settings</value></data>
+  <data name="Nav_Connections.Content" xml:space="preserve"><value>Connections</value></data>
+  <data name="Group_Listening" xml:space="preserve"><value>Listening</value></data>
+  <data name="Group_AudioQuality" xml:space="preserve"><value>Audio quality</value></data>
+  <data name="Group_WearAndCalls" xml:space="preserve"><value>Wear and calls</value></data>
+  <data name="Group_General" xml:space="preserve"><value>General</value></data>
+  <data name="Group_Connection" xml:space="preserve"><value>Connection settings</value></data>
+  <data name="Controls_Empty_Title.Text" xml:space="preserve"><value>No control settings available</value></data>
+  <data name="Controls_Empty_Body.Text" xml:space="preserve"><value>EncoDeck can&apos;t change the controls or other settings of these earbuds yet.</value></data>
+  <data name="Connections_Empty_Title.Text" xml:space="preserve"><value>No connection settings available</value></data>
+  <data name="Connections_Empty_Body.Text" xml:space="preserve"><value>These earbuds don&apos;t report dual connection or other connection settings to EncoDeck.</value></data>
   <data name="Devices_Capabilities.Text" xml:space="preserve"><value>Feature support</value></data>
   <data name="Devices_Info.Text" xml:space="preserve"><value>Device information</value></data>
   <data name="Devices_Firmware.Header" xml:space="preserve"><value>Firmware</value></data>
@@ -228,7 +237,7 @@
   <data name="Error_RemoveConnected" xml:space="preserve"><value>Only unconnected devices can be removed</value></data>
   <data name="Error_MaxPresets" xml:space="preserve"><value>You have reached the maximum number of custom EQs</value></data>
   <data name="Error_InvalidName" xml:space="preserve"><value>The name must be unique, not empty and at most 42 characters</value></data>
-  <data name="Error_SceneUnavailable" xml:space="preserve"><value>The earbuds didn't switch to this scene and kept the current one. Spatial audio may be unavailable while the earbuds are used through BlueCaster.</value></data>
+  <data name="Error_SceneUnavailable" xml:space="preserve"><value>The earbuds didn't switch to this scene and kept the current one. Over LHDC through BlueCaster, the earbuds don't accept spatial audio; switch to SBC in BlueCaster to use it.</value></data>
   <data name="Common_Cancel" xml:space="preserve"><value>Cancel</value></data>
   <data name="Common_OK" xml:space="preserve"><value>OK</value></data>
   <data name="Common_TurnOn" xml:space="preserve"><value>Turn on</value></data>

@@ -12,7 +12,7 @@
         <Border x:Name="Track" Style="{StaticResource SegmentedTrackStyle}">
             <Grid>
                 <Canvas x:Name="Layer">
-                    <Border x:Name="Indicator" Background="{ThemeResource AccentFillColorDefaultBrush}" CornerRadius="6" Opacity="0">
+                    <Border x:Name="Indicator" Background="{ThemeResource AccentFillColorDefaultBrush}" CornerRadius="{ThemeResource ControlCornerRadius}" Opacity="0">
                         <Border.RenderTransform>
                             <TranslateTransform x:Name="Move" />
                         </Border.RenderTransform>

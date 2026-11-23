@@ -13,8 +13,8 @@ namespace EncoDeck.App.Controls;
 /// <summary>
 /// Noise control as on HeyMelody's device page: one round button per mode (noise cancelling,
 /// adaptive, transparency, off) with its label underneath, and the level rows of the selected
-/// mode below. A click shows the choice at once with a ring turning around it until the earbuds
-/// answer; afterwards the buttons mirror the device-confirmed state again.
+/// mode below. A click shows the choice at once; a ring turns around it only if the earbuds are slow
+/// to answer (<see cref="PendingSpinner"/>); afterwards the buttons mirror the device-confirmed state again.
 /// </summary>
 public sealed partial class NoiseModeCircles : UserControl
 {
@@ -30,7 +30,7 @@ public sealed partial class NoiseModeCircles : UserControl
         (NoiseControlMode.Off, "prohibited", "NoiseMode_Off"),
     ];
 
-    private readonly List<(NoiseControlMode Mode, ToggleButton Button, ProgressRing Ring, FrameworkElement Cell)> _modes = [];
+    private readonly List<(NoiseControlMode Mode, ToggleButton Button, PendingSpinner Ring, FrameworkElement Cell)> _modes = [];
     private readonly NoiseRows _rows;
     private NoiseControlMode? _pendingMode;
 
@@ -59,7 +59,7 @@ public sealed partial class NoiseModeCircles : UserControl
             var cell = new StackPanel { Spacing = 8, HorizontalAlignment = HorizontalAlignment.Center };
             cell.Children.Add(circle);
             cell.Children.Add(FitLabel.Create(label));
-            _modes.Add((mode, button, ring, cell));
+            _modes.Add((mode, button, new PendingSpinner(ring), cell));
             ModeGrid.Children.Add(cell);
         }
         // Moving the control to another parent (HomePage on wide windows) can raise Unloaded after the
@@ -110,9 +110,7 @@ public sealed partial class NoiseModeCircles : UserControl
             if (show) Grid.SetColumn(cell, visible++);
             button.IsChecked = _pendingMode is { } pending ? mode == pending : NoiseModes.IsSelected(vm, mode);
             button.IsEnabled = vm.CanSetNoise;
-            bool waiting = mode == _pendingMode;
-            ring.IsActive = waiting;
-            ring.Visibility = waiting ? Visibility.Visible : Visibility.Collapsed;
+            ring.Waiting = mode == _pendingMode;
         }
         if (ModeGrid.ColumnDefinitions.Count != visible)
         {

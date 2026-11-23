@@ -50,6 +50,11 @@
                         <controls:FluentIcon Symbol="options" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
+                <NavigationViewItem x:Uid="Nav_Connections" Content="Connections" Tag="Connections">
+                    <NavigationViewItem.Icon>
+                        <controls:FluentIcon Symbol="bluetooth_connected" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
                 <NavigationViewItem x:Uid="Nav_Devices" Content="Devices" Tag="Devices">
                     <NavigationViewItem.Icon>
                         <controls:FluentIcon Symbol="phone_laptop" />

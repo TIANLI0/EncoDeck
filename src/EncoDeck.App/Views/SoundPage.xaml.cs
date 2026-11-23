@@ -13,8 +13,9 @@ using Microsoft.UI.Xaml.Controls.Primitives;
 namespace EncoDeck.App.Views;
 
 /// <summary>
-/// Earbud-side sound settings: EQ presets, custom EQ, the bass engine and spatial audio. Values shown
-/// are always the ones the earbuds reported back after the official re-read.
+/// Earbud-side sound settings: EQ presets, custom EQ, the bass engine, spatial audio, then the listening
+/// (<see cref="Controls.SettingGroup.Listening"/>) and audio-quality (<see cref="Controls.SettingGroup.AudioQuality"/>)
+/// switches. Values shown are always the ones the earbuds reported back after the official re-read.
 /// </summary>
 public sealed partial class SoundPage : Page
 {
@@ -42,6 +43,10 @@ public sealed partial class SoundPage : Page
     public SoundPage()
     {
         InitializeComponent();
+        ListeningGroup.Title = Loc.Get("Group_Listening");
+        QualityGroup.Title = Loc.Get("Group_AudioQuality");
+        ListeningGroup.HasRowsChanged += (_, _) => Sync();
+        QualityGroup.HasRowsChanged += (_, _) => Sync();
         Loaded += (_, _) =>
         {
             ViewModel.EqualizerPresets.CollectionChanged += OnPresetsChanged;
@@ -383,8 +388,7 @@ public sealed partial class SoundPage : Page
             SyncBandEditor();
             SyncBass(f, ready);
             SyncSpatial(f, ready);
-            EmptyCard.Visibility = Show(ready && EqCard.Visibility == Visibility.Collapsed
-                && BassCard.Visibility == Visibility.Collapsed && SpatialCard.Visibility == Visibility.Collapsed);
+            EmptyCard.Visibility = Show(ready && EqCard.Visibility == Visibility.Collapsed && !SideVisible);
             LayoutColumns();
         }
         finally
@@ -566,9 +570,12 @@ public sealed partial class SoundPage : Page
     /// <summary>Two columns when there is room; the side cards move under the EQ when narrow or alone.</summary>
     private void OnColumnsSizeChanged(object sender, SizeChangedEventArgs e) => LayoutColumns();
 
+    private bool SideVisible => BassCard.Visibility == Visibility.Visible || SpatialCard.Visibility == Visibility.Visible
+        || ListeningGroup.HasRows || QualityGroup.HasRows;
+
     private void LayoutColumns()
     {
-        bool sideVisible = BassCard.Visibility == Visibility.Visible || SpatialCard.Visibility == Visibility.Visible;
+        bool sideVisible = SideVisible;
         bool eqVisible = EqCard.Visibility == Visibility.Visible;
         bool twoColumns = SoundColumns.ActualWidth >= 720 && sideVisible && eqVisible;
         RightColumn.Width = twoColumns ? new GridLength(1, GridUnitType.Star) : new GridLength(0);

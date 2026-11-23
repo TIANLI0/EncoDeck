@@ -16,15 +16,14 @@ using Microsoft.UI.Xaml.Controls;
 namespace EncoDeck.App.Views;
 
 /// <summary>
-/// Game mode, dual connection, gestures, head gestures, find earbuds, fit test and the remaining
-/// switches. Controls always show what the earbuds last confirmed; a change snaps back until the
-/// earbuds acknowledge it and the official re-read reports the new value.
+/// How the earbuds are operated and worn: earbud controls (gestures, touch lock, button assignments), game mode,
+/// wear and calls, head gestures, fit test, find earbuds, then prompts and power. Dual connection is on
+/// <see cref="ConnectionsPage"/> and sound settings on <see cref="SoundPage"/> (<see cref="SettingGroups"/>).
+/// Controls always show what the earbuds last confirmed; a change snaps back until the earbuds acknowledge it
+/// and the official re-read reports the new value.
 /// </summary>
 public sealed partial class ControlsPage : Page
 {
-    private static readonly TimeSpan PromptVolumeDebounce = TimeSpan.FromMilliseconds(500);
-
-    private readonly List<(DeviceToggleViewModel Toggle, ToggleSwitch Switch, SettingRow Row)> _switches = [];
     private readonly List<(int Type, RadioButton Button)> _gameSoundButtons = [];
     private readonly List<(OppoGestureRow Row, ComboBox Box)> _gestureBoxes = [];
     private readonly List<(EarSide Side, GestureAction Action, ComboBox Box, SettingRow Row)> _moondropGestures = [];
@@ -34,15 +33,7 @@ public sealed partial class ControlsPage : Page
     private bool _brandGestureWrite;
     private readonly HashSet<string> _moondropWrites = [];
     private readonly List<(uint Bit, CheckBox Box)> _cycleBoxes = [];
-    private readonly List<byte[]?> _preferredItems = [];
-    private DispatcherQueueTimer? _promptVolumeTimer;
-    private readonly List<(string Id, FrameworkElement Control, TextBlock? Value)> _optionControls = [];
-    private readonly HashSet<string> _optionWrites = [];
-    private string _optionSignature = string.Empty;
-    private DispatcherQueueTimer? _optionSliderTimer;
-    private (string Id, int Value)? _optionSliderTarget;
     private string? _builtFor;
-    private string _sourceSignature = string.Empty;
     private bool _syncing;
 
     public ControlsPage()
@@ -53,24 +44,20 @@ public sealed partial class ControlsPage : Page
         EarSelector.SelectedIndex = 0;
         HeadMotionChoice.Items.Add(Loc.Get("Head_NodAnswers"));
         HeadMotionChoice.Items.Add(Loc.Get("Head_ShakeAnswers"));
-        foreach (string key in new[] { "Moondrop_GainLow", "Moondrop_GainMid", "Moondrop_GainHigh" }) GainBox.Items.Add(Loc.Get(key));
+        WearGroup.Title = Loc.Get("Group_WearAndCalls");
+        GeneralGroup.Title = Loc.Get("Group_General");
+        foreach (var group in new[] { OperationRows, WearGroup, GeneralGroup }) group.HasRowsChanged += (_, _) => Sync();
         Loaded += (_, _) =>
         {
-            ViewModel.Toggles.CollectionChanged += OnTogglesChanged;
             ViewModel.PropertyChanged += OnViewModelChanged;
             Features.Changed += OnFeaturesChanged;
-            RebuildToggles();
             BuildForModel(force: true);
             Sync();
         };
         Unloaded += (_, _) =>
         {
-            ViewModel.Toggles.CollectionChanged -= OnTogglesChanged;
             ViewModel.PropertyChanged -= OnViewModelChanged;
             Features.Changed -= OnFeaturesChanged;
-            foreach (var (toggle, _, _) in _switches) toggle.PropertyChanged -= OnToggleChanged;
-            _promptVolumeTimer?.Stop();
-            _optionSliderTimer?.Stop();
         };
     }
 
@@ -80,19 +67,11 @@ public sealed partial class ControlsPage : Page
 
     private EarSide SelectedEar => EarSelector.SelectedIndex == 1 ? EarSide.Right : EarSide.Left;
 
-    private void OnTogglesChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
-    {
-        RebuildToggles();
-        Sync();
-    }
-
     private void OnViewModelChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(DeviceViewModel.ModelName) or nameof(DeviceViewModel.ProfileKey)) BuildForModel(force: false);
         Sync();
     }
-
-    private void OnToggleChanged(object? sender, PropertyChangedEventArgs e) => Sync();
 
     private void OnFeaturesChanged(object? sender, EventArgs e)
     {
@@ -102,22 +81,6 @@ public sealed partial class ControlsPage : Page
 
     // ---- building ------------------------------------------------------------------------------
 
-    private void RebuildToggles()
-    {
-        foreach (var (toggle, _, _) in _switches) toggle.PropertyChanged -= OnToggleChanged;
-        _switches.Clear();
-        ToggleHost.Children.Clear();
-        foreach (var toggle in ViewModel.Toggles)
-        {
-            var sw = new ToggleSwitch { Name = $"Toggle{toggle.Toggle}", Style = (Style)Application.Current.Resources["TrailingSwitchStyle"], Tag = toggle };
-            sw.Toggled += OnSwitchToggled;
-            toggle.PropertyChanged += OnToggleChanged;
-            var row = new SettingRow { Header = toggle.Label, Description = toggle.Description, Action = sw };
-            _switches.Add((toggle, sw, row));
-            ToggleHost.Children.Add(row);
-        }
-    }
-
     /// <summary>Builds the per-model rows once; values are filled in by <see cref="Sync"/>.</summary>
     private void BuildForModel(bool force)
     {
@@ -125,7 +88,6 @@ public sealed partial class ControlsPage : Page
         string key = ViewModel.ProfileKey;
         if (!force && key == _builtFor) return;
         _builtFor = key;
-        _promptVolumeTimer?.Stop();
 
         _gameSoundButtons.Clear();
         GameSoundHost.Children.Clear();
@@ -230,20 +192,6 @@ public sealed partial class ControlsPage : Page
         // One setting for both earbuds everywhere: no left/right choice.
         bool perEar = model is not null && (model.GestureRows.Any(r => r.IsWritten && !r.IsCallControl && !r.BothEars) || (model.NoiseCycleIndices.Count > 0 && !model.NoiseCycleShared));
         EarSelector.Visibility = Show(perEar);
-        bool earFun = Features.State.Profile is EncoDeck.Protocol.Brands.EarFun.EarFunProfile;
-        var (minVolume, maxVolume) = Features.State.Profile is EncoDeck.Protocol.Brands.Moondrop.MoondropProfile or EncoDeck.Protocol.Brands.EarFun.EarFunProfile
-            ? (0, 100) : model?.PromptVolumeRange ?? (1, 10);
-        // Changing the range can un-coerce a previous value and raise ValueChanged; it is not a user edit.
-        bool wasSyncing = _syncing;
-        _syncing = true;
-        try
-        {
-            PromptVolumeSlider.Minimum = minVolume;
-            PromptVolumeSlider.Maximum = maxVolume;
-            PromptVolumeSlider.StepFrequency = earFun ? 25 : 1;
-            PromptVolumeSlider.TickFrequency = earFun ? 25 : 1;
-        }
-        finally { _syncing = wasSyncing; }
     }
 
     private Grid GestureRow(OppoGestureRow row)
@@ -271,36 +219,13 @@ public sealed partial class ControlsPage : Page
         try
         {
             NotReadyBar.IsOpen = !ready && ViewModel.HasDevice;
-
-            foreach (var (toggle, sw, row) in _switches)
-            {
-                bool moondropSetting = f.IsMoondrop && toggle.Toggle is not (DeviceToggle.DualDeviceConnection or DeviceToggle.HeadTracking);
-                bool supported = !moondropSetting || f.Has(EncoDeck.Protocol.Brands.Moondrop.MoondropProfile.ToggleCapability(toggle.Toggle));
-                row.Visibility = Show(!moondropSetting || (ready && toggle.IsKnown && f.HasSwitch(toggle.Toggle) && supported));
-                sw.IsOn = toggle.IsOn;
-                sw.IsEnabled = toggle.IsKnown && supported && !toggle.IsPending && !_moondropWrites.Contains($"toggle:{toggle.Toggle}")
-                    && (!moondropSetting || toggle.Toggle != DeviceToggle.PromptTone || (!f.IsPending("prompt-tone") && !f.IsPending("prompt-volume")));
-            }
-
-            bool gain = f.IsMoondrop && ready && f.Has(DeviceCapability.Gain) && f.State.Gain?.Value is >= 0 and <= 2;
-            GainSection.Visibility = Show(gain);
-            GainBox.SelectedIndex = gain ? f.State.Gain!.Value : -1;
-            GainBox.IsEnabled = gain && !f.IsPending("gain") && !_moondropWrites.Contains("gain");
-
-            SyncOptions(f, ready);
             SyncGame(f, ready);
-            SyncDual(f, ready);
             SyncGestures(f, ready);
             SyncHead(f, ready);
             SyncFind(f, ready);
             SyncFit(f, ready);
-
-            PromptVolumeSection.Visibility = Show(f.Has(DeviceCapability.PromptVolume) && f.State.PromptVolume is not null);
-            // Don't fight the user: hold the slider while they drag and while the write is in flight.
-            if (_promptVolumeTimer?.IsRunning != true && !f.IsPending("prompt-volume") && f.State.PromptVolume?.Value is int volume) PromptVolumeSlider.Value = volume;
-            PromptVolumeValue.Text = ((int)Math.Round(PromptVolumeSlider.Value)).ToString(System.Globalization.CultureInfo.CurrentCulture);
-            PromptVolumeSlider.IsEnabled = ready && !f.IsPending("prompt-volume")
-                && (!f.IsMoondrop || (!f.IsPending("prompt-tone") && !f.IsPending("toggle:PromptTone") && !_moondropWrites.Contains("toggle:PromptTone")));
+            EmptyCard.Visibility = Show(ready && !new UIElement[] { GestureCard, GameCard, WearGroup, HeadCard, FitCard, FindCard, GeneralGroup }
+                .Any(card => card.Visibility == Visibility.Visible));
         }
         finally
         {
@@ -334,99 +259,22 @@ public sealed partial class ControlsPage : Page
         }
     }
 
-    private void SyncDual(FeaturesViewModel f, bool ready)
-    {
-        bool available = f.HasDualConnectionCard;
-        DualCard.Visibility = Show(available);
-        if (!available) return;
-        // vivo and Sennheiser report their source list without a device-side switch.
-        bool hasSwitch = f.HasSwitch(DeviceToggle.DualDeviceConnection);
-        DualSwitch.Visibility = Show(hasSwitch);
-        bool? enabled = f.Toggle(DeviceToggle.DualDeviceConnection);
-        DualSwitch.IsOn = enabled == true;
-        DualSwitch.IsEnabled = hasSwitch && ready && enabled is not null && !f.IsPending("toggle:DualDeviceConnection");
-
-        var devices = f.SourceDevices;
-        string signature = string.Join('|', devices.Select(d => $"{d.AddressText}/{d.State}/{d.IsThisDevice}/{d.IsAudioActive}/{d.Name}"))
-            + $"#{ready}#{f.AreSourceDevicesCached}#{f.CanManageSourceDevices}#{f.CanConnectSourceDevices}#{f.IsPending("multi-connect")}#{f.IsPending("preferred-device")}#{Convert.ToHexString(f.PreferredAddress ?? [])}#{f.IsPreferredKnown}";
-        if (signature == _sourceSignature) return;
-        _sourceSignature = signature;
-
-        SourceHost.Children.Clear();
-        foreach (var device in devices) SourceHost.Children.Add(SourceRow(device, ready && !f.IsPending("multi-connect") && !f.AreSourceDevicesCached));
-        // Brands that report only the multipoint switch have no list to manage.
-        if (!f.CanManageSourceDevices && devices.Count > 0)
-            SourceHost.Children.Add(new TextBlock { Text = Loc.Get(f.CanConnectSourceDevices ? "Dual_ConnectOnly" : "Dual_ManagementUnavailable"), TextWrapping = TextWrapping.Wrap,
-                Style = (Style)Application.Current.Resources["SecondaryTextStyle"] });
-
-        // Official options: auto select, the connected devices, and the current preferred device.
-        _preferredItems.Clear();
-        PreferredBox.Items.Clear();
-        _preferredItems.Add(null);
-        PreferredBox.Items.Add(Loc.Get("Dual_AutoSelect"));
-        foreach (var device in devices.Where(d => d.IsConnected || (f.PreferredAddress is { } p && d.Address.AsSpan().SequenceEqual(p))))
-        {
-            _preferredItems.Add(device.Address);
-            PreferredBox.Items.Add(DisplayName(device));
-        }
-        int selected = f.PreferredAddress is { } preferred
-            ? _preferredItems.FindIndex(a => a is not null && a.AsSpan().SequenceEqual(preferred))
-            : 0;
-        PreferredBox.SelectedIndex = f.IsPreferredKnown ? selected : -1;
-        PreferredSection.Visibility = Show(f.HasPreferredDevice && (f.IsPreferredKnown || devices.Count > 0));
-        PreferredBox.IsEnabled = ready && f.HasPreferredDevice && f.IsPreferredKnown && !f.IsPending("preferred-device");
-    }
-
-    private Grid SourceRow(SourceDevice device, bool ready)
-    {
-        var grid = new Grid { ColumnSpacing = 12 };
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        string symbol = FluentIcons.ForDeviceType(device.DeviceType);
-        grid.Children.Add(new FluentIcon(symbol, 20) { VerticalAlignment = VerticalAlignment.Center });
-        var text = new StackPanel { Spacing = 0, VerticalAlignment = VerticalAlignment.Center };
-        text.Children.Add(new TextBlock { Text = DisplayName(device), TextTrimming = TextTrimming.CharacterEllipsis });
-        text.Children.Add(new TextBlock
-        {
-            // A list restored from last session carries no addresses.
-            // Index-only lists (Sennheiser) carry a one-byte key, not an address.
-            Text = string.IsNullOrWhiteSpace(device.Name) || device.Address.Length != 6 ? DescribeSource(device) : $"{DescribeSource(device)} · {device.AddressText}",
-            Style = (Style)Application.Current.Resources["SecondaryTextStyle"],
-            IsTextSelectionEnabled = true,
-        });
-        Grid.SetColumn(text, 1);
-        grid.Children.Add(text);
-
-        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center };
-        bool busy = device.State is 1 or 4;
-        if (Features.CanConnectSourceDevices && !device.IsConnected && !busy)
-        {
-            actions.Children.Add(ActionButton("Dual_Connect", device, ready && Features.CanConnectAnother, OnConnectSourceClick));
-            if (Features.CanRemoveSourceDevices) actions.Children.Add(ActionButton("Dual_Remove", device, ready, OnRemoveSourceClick));
-        }
-        else if (Features.CanManageSourceDevices && device.IsConnected && !device.IsThisDevice)
-        {
-            actions.Children.Add(ActionButton("Dual_Disconnect", device, ready, OnDisconnectSourceClick));
-        }
-        else if (device.IsThisDevice && device.IsConnected && App.Instance.Device.CanDisconnect)
-        {
-            // This PC: EncoDeck's own Disconnect, which also keeps it from reconnecting the earbuds.
-            actions.Children.Add(ActionButton("Dual_Disconnect", device, !App.Instance.Device.IsChangingConnection, OnDisconnectThisPcClick));
-        }
-        Grid.SetColumn(actions, 2);
-        grid.Children.Add(actions);
-        return grid;
-    }
-
-    private static Button ActionButton(string key, SourceDevice device, bool ready, RoutedEventHandler handler)
-    {
-        var button = new Button { Content = Loc.Get(key), Tag = device, IsEnabled = ready };
-        button.Click += handler;
-        return button;
-    }
-
+    /// <summary>
+    /// The earbud-controls card: gestures where the earbuds offer them, then touch lock, button assignments and
+    /// voice commands (<see cref="SettingGroup.Operation"/>). The card shows when either part has rows.
+    /// </summary>
     private void SyncGestures(FeaturesViewModel f, bool ready)
+    {
+        SyncGestureRows(f, ready);
+        bool gestures = GestureCard.Visibility == Visibility.Visible;
+        GestureHost.Visibility = Show(gestures);
+        CallGestureHost.Visibility = Show(gestures);
+        if (gestures || !OperationRows.HasRows) return;
+        GestureCard.Visibility = Visibility.Visible;
+        EarSelector.Visibility = CycleSection.Visibility = CallGestureTitle.Visibility = Visibility.Collapsed;
+    }
+
+    private void SyncGestureRows(FeaturesViewModel f, bool ready)
     {
         if (_brandGestures.Count > 0)
         {
@@ -522,97 +370,6 @@ public sealed partial class ControlsPage : Page
         }
     }
 
-    /// <summary>Device-reported options: a list or a slider per option, always showing the confirmed value.</summary>
-    private void SyncOptions(FeaturesViewModel f, bool ready)
-    {
-        var options = f.Options;
-        string signature = string.Join('|', options.Select(o =>
-            $"{o.Id}/{o.LabelKey}/{o.DescriptionKey}/{o.Minimum}/{o.Maximum}/{string.Join(',', o.Choices.Select(c => $"{c.Value}:{c.LabelKey}:{c.Argument}"))}"));
-        if (signature != _optionSignature)
-        {
-            _optionSignature = signature;
-            _optionControls.Clear();
-            OptionHost.Children.Clear();
-            foreach (var option in options)
-            {
-                FrameworkElement control;
-                TextBlock? valueText = null;
-                if (option.IsRange)
-                {
-                    var slider = new Slider
-                    {
-                        Width = (double)Application.Current.Resources["RowSliderWidth"], Minimum = option.Minimum, Maximum = option.Maximum,
-                        StepFrequency = 1, TickFrequency = 1, TickPlacement = Microsoft.UI.Xaml.Controls.Primitives.TickPlacement.BottomRight,
-                        VerticalAlignment = VerticalAlignment.Center, Tag = option.Id,
-                    };
-                    slider.ValueChanged += OnOptionSliderChanged;
-                    valueText = new TextBlock { MinWidth = 20, VerticalAlignment = VerticalAlignment.Center };
-                    var panel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
-                    panel.Children.Add(slider);
-                    panel.Children.Add(valueText);
-                    control = slider;
-                    OptionHost.Children.Add(new SettingRow { Header = Loc.Get(option.LabelKey), Description = OptionDescription(option), Action = panel });
-                }
-                else
-                {
-                    var box = new ComboBox { MinWidth = 200, Tag = option.Id };
-                    foreach (var choice in option.Choices)
-                        box.Items.Add(new ComboBoxItem { Content = choice.Argument is null ? Loc.Get(choice.LabelKey) : Loc.Format(choice.LabelKey, choice.Argument), Tag = choice.Value });
-                    box.SelectionChanged += OnOptionChanged;
-                    control = box;
-                    OptionHost.Children.Add(new SettingRow { Header = Loc.Get(option.LabelKey), Description = OptionDescription(option), Action = box });
-                }
-                _optionControls.Add((option.Id, control, valueText));
-            }
-        }
-        foreach (var (id, control, valueText) in _optionControls)
-        {
-            var option = options.First(o => o.Id == id);
-            bool busy = _optionWrites.Contains(id);
-            if (control is Control enabled) enabled.IsEnabled = ready && !busy;
-            if (control is ComboBox box)
-                box.SelectedIndex = option.Choices.ToList().FindIndex(c => c.Value == option.Value);
-            else if (control is Slider slider && !busy && _optionSliderTarget?.Id != id)
-                slider.Value = option.Value;
-            if (valueText is not null && control is Slider shown)
-                valueText.Text = ((int)Math.Round(shown.Value)).ToString(System.Globalization.CultureInfo.CurrentCulture);
-        }
-    }
-
-    private static string? OptionDescription(DeviceOption option) => option.DescriptionKey is { } key ? Loc.Get(key) : null;
-
-    private async void OnOptionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (_syncing || !IsLoaded || sender is not ComboBox { IsEnabled: true, Tag: string id, SelectedItem: ComboBoxItem { Tag: int value } }
-            || Features.Options.FirstOrDefault(o => o.Id == id) is not { } option || option.Value == value || !_optionWrites.Add(id)) return;
-        Sync(); // the device decides; snap back until it confirms
-        try { await Features.SetOptionAsync(id, value); }
-        finally { _optionWrites.Remove(id); Sync(); }
-    }
-
-    private void OnOptionSliderChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
-    {
-        if (_syncing || !IsLoaded || sender is not Slider { Tag: string id } slider) return;
-        if (_optionControls.FirstOrDefault(c => c.Id == id).Value is { } text)
-            text.Text = ((int)Math.Round(slider.Value)).ToString(System.Globalization.CultureInfo.CurrentCulture);
-        _optionSliderTarget = (id, (int)Math.Round(slider.Value));
-        // Written 500 ms after the slider stops, like the prompt volume.
-        _optionSliderTimer ??= CreateTimer(PromptVolumeDebounce, async () =>
-        {
-            if (_optionSliderTarget is not { } target) return;
-            if (Features.Options.FirstOrDefault(o => o.Id == target.Id) is not { } option || option.Value == target.Value || !_optionWrites.Add(target.Id))
-            {
-                _optionSliderTarget = null;
-                Sync();
-                return;
-            }
-            try { await Features.SetOptionAsync(target.Id, target.Value); }
-            finally { _optionWrites.Remove(target.Id); _optionSliderTarget = null; Sync(); }
-        });
-        _optionSliderTimer.Stop();
-        _optionSliderTimer.Start();
-    }
-
     private void SyncHead(FeaturesViewModel f, bool ready)
     {
         bool available = f.HasSwitch(DeviceToggle.HeadGestures);
@@ -644,24 +401,6 @@ public sealed partial class ControlsPage : Page
 
     // ---- handlers ------------------------------------------------------------------------------
 
-    private async void OnSwitchToggled(object sender, RoutedEventArgs e)
-    {
-        if (_syncing || !IsLoaded || sender is not ToggleSwitch { Tag: DeviceToggleViewModel toggle } sw || !sw.IsEnabled) return;
-        bool requested = sw.IsOn;
-        string key = $"toggle:{toggle.Toggle}";
-        bool moondrop = Features.IsMoondrop && toggle.Toggle is not (DeviceToggle.DualDeviceConnection or DeviceToggle.HeadTracking);
-        if (moondrop && (!Features.IsReady || !toggle.IsKnown || !Features.HasSwitch(toggle.Toggle)
-            || !Features.Has(EncoDeck.Protocol.Brands.Moondrop.MoondropProfile.ToggleCapability(toggle.Toggle))
-            || !_moondropWrites.Add(key))) return;
-        Sync(); // the device decides; snap back until it confirms
-        try { await ViewModel.SetToggleAsync(toggle.Toggle, requested); }
-        finally
-        {
-            if (moondrop) _moondropWrites.Remove(key);
-            Sync();
-        }
-    }
-
     private async void OnGameModeToggled(object sender, RoutedEventArgs e)
     {
         if (_syncing) return;
@@ -688,66 +427,6 @@ public sealed partial class ControlsPage : Page
         Sync();
     }
 
-    private async void OnDualToggled(object sender, RoutedEventArgs e)
-    {
-        if (_syncing) return;
-        bool requested = DualSwitch.IsOn;
-        Sync();
-        await Features.SetToggleAsync(DeviceToggle.DualDeviceConnection, requested);
-        Sync();
-    }
-
-    private async void OnConnectSourceClick(object sender, RoutedEventArgs e)
-    {
-        if (sender is not Button { Tag: SourceDevice device }) return;
-        // Dual connection off: the earbuds leave this PC for the other device, and EncoDeck disconnects with them.
-        if (Features.ConnectHandsOverThisPc)
-        {
-            if (!await ConfirmAsync("Dual_HandOver_Title", Loc.Format("Dual_HandOver_Message", DisplayName(device)), "Dual_Connect")) return;
-        }
-        // Official: with two devices already connected, connecting a third drops one of them.
-        // Connect-only lists (Sennheiser) refuse instead of dropping a device, so there is nothing to confirm.
-        else if (Features.CanManageSourceDevices && Features.SourceDevices.Count(d => d.IsConnected) >= 2
-            && !await ConfirmAsync("Dual_ConnectNew_Title", Loc.Format("Dual_ConnectNew_Message", DisplayName(device)), "Dual_Connect"))
-        {
-            return;
-        }
-        await Features.ConnectSourceAsync(device);
-        Sync();
-    }
-
-    private async void OnDisconnectThisPcClick(object sender, RoutedEventArgs e)
-    {
-        if (!await ConfirmAsync("Dual_DisconnectThisPc_Title", Loc.Get("Dual_DisconnectThisPc_Message"), "Dual_Disconnect")) return;
-        await Features.DisconnectThisPcAsync();
-        Sync();
-    }
-
-    private async void OnDisconnectSourceClick(object sender, RoutedEventArgs e)
-    {
-        if (sender is not Button { Tag: SourceDevice device }) return;
-        if (!await ConfirmAsync("Dual_Disconnect_Title", Loc.Format("Dual_Disconnect_Message", DisplayName(device)), "Dual_Disconnect")) return;
-        await Features.MultiConnectAsync(MultiConnectOperation.Disconnect, device);
-        Sync();
-    }
-
-    private async void OnRemoveSourceClick(object sender, RoutedEventArgs e)
-    {
-        if (sender is not Button { Tag: SourceDevice device }) return;
-        if (!await ConfirmAsync("Dual_Remove_Title", DisplayName(device), "Dual_Remove")) return;
-        await Features.MultiConnectAsync(MultiConnectOperation.Remove, device);
-        Sync();
-    }
-
-    private async void OnPreferredChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (_syncing || PreferredBox.SelectedIndex < 0 || PreferredBox.SelectedIndex >= _preferredItems.Count) return;
-        var address = _preferredItems[PreferredBox.SelectedIndex];
-        _sourceSignature = string.Empty; // re-render from the confirmed state afterwards
-        await Features.SetPreferredDeviceAsync(address);
-        Sync();
-    }
-
     private void OnEarChanged(object sender, SelectionChangedEventArgs e) => Sync();
 
     private async void OnGestureChanged(object sender, SelectionChangedEventArgs e)
@@ -759,18 +438,6 @@ public sealed partial class ControlsPage : Page
         Sync();
         await Features.SetGestureAsync(row, side, function);
         Sync();
-    }
-
-    private async void OnGainChanged(object sender, SelectionChangedEventArgs e)
-    {
-        var f = Features;
-        int level = GainBox.SelectedIndex;
-        if (_syncing || !IsLoaded || !GainBox.IsEnabled || !f.IsMoondrop || !f.IsReady || !f.Has(DeviceCapability.Gain)
-            || f.State.Gain?.Value is not (>= 0 and <= 2) || level is < 0 or > 2 || level == f.State.Gain?.Value
-            || !_moondropWrites.Add("gain")) return;
-        Sync();
-        try { await f.SetGainAsync(level); }
-        finally { _moondropWrites.Remove("gain"); Sync(); }
     }
 
     private async void OnSennheiserGestureChanged(object sender, SelectionChangedEventArgs e)
@@ -876,37 +543,6 @@ public sealed partial class ControlsPage : Page
         Sync();
     }
 
-    private void OnPromptVolumeChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
-    {
-        // Setting Minimum while the XAML loads raises ValueChanged too: that is not the user, and
-        // must never write a volume to the earbuds (nor touch controls that do not exist yet).
-        if (_syncing || !IsLoaded) return;
-        PromptVolumeValue.Text = ((int)Math.Round(e.NewValue)).ToString(System.Globalization.CultureInfo.CurrentCulture);
-        // Official: written 500 ms after the slider stops.
-        _promptVolumeTimer ??= CreateTimer(PromptVolumeDebounce, async () =>
-        {
-            await Features.SetPromptVolumeAsync((int)Math.Round(PromptVolumeSlider.Value));
-            Sync();
-        });
-        _promptVolumeTimer.Stop();
-        _promptVolumeTimer.Start();
-    }
-
-    // ---- helpers -------------------------------------------------------------------------------
-
-    private DispatcherQueueTimer CreateTimer(TimeSpan interval, Func<Task> action)
-    {
-        var timer = DispatcherQueue.CreateTimer();
-        timer.Interval = interval;
-        timer.IsRepeating = false;
-        timer.Tick += async (t, _) =>
-        {
-            t.Stop();
-            await action();
-        };
-        return timer;
-    }
-
     private async Task<bool> ConfirmAsync(string titleKey, string message, string primaryKey)
     {
         var dialog = new ContentDialog
@@ -921,20 +557,6 @@ public sealed partial class ControlsPage : Page
         return await dialog.ShowAsync() == ContentDialogResult.Primary;
     }
 
-
-    private static string DisplayName(SourceDevice device) => string.IsNullOrWhiteSpace(device.Name) ? device.AddressText : device.Name;
-
-    /// <summary>Row summaries as in the official dual-connection page.</summary>
-    private static string DescribeSource(SourceDevice device) => device switch
-    {
-        { State: 1 } => Loc.Get("Dual_Connecting"),
-        { IsThisDevice: true, IsConnected: true, IsAudioActive: true } => Loc.Get("Dual_InUseThis"),
-        { IsThisDevice: true, IsConnected: true } => Loc.Get("Dual_ConnectedThis"),
-        { IsThisDevice: true } => Loc.Get("Dual_This"),
-        { IsConnected: true, IsAudioActive: true } => Loc.Get("Dual_InUse"),
-        { IsConnected: true } => Loc.Get("Dual_Connected"),
-        _ => Loc.Get("Dual_NotConnected"),
-    };
 
     private static string DescribeFit(FitTestResult result)
     {

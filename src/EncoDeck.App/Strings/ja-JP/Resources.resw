@@ -147,7 +147,16 @@
   <data name="Sound_Empty_Title.Text" xml:space="preserve"><value>利用できるサウンド設定はありません</value></data>
   <data name="Sound_Empty_Body.Text" xml:space="preserve"><value>EncoDeck はこのイヤホンの EQ、低音、空間オーディオをまだ調整できません。</value></data>
   <data name="Controls_Title.Text" xml:space="preserve"><value>操作</value></data>
-  <data name="Controls_Settings.Text" xml:space="preserve"><value>その他の設定</value></data>
+  <data name="Nav_Connections.Content" xml:space="preserve"><value>接続</value></data>
+  <data name="Group_Listening" xml:space="preserve"><value>リスニング</value></data>
+  <data name="Group_AudioQuality" xml:space="preserve"><value>音質</value></data>
+  <data name="Group_WearAndCalls" xml:space="preserve"><value>装着と通話</value></data>
+  <data name="Group_General" xml:space="preserve"><value>一般</value></data>
+  <data name="Group_Connection" xml:space="preserve"><value>接続設定</value></data>
+  <data name="Controls_Empty_Title.Text" xml:space="preserve"><value>利用できる操作設定はありません</value></data>
+  <data name="Controls_Empty_Body.Text" xml:space="preserve"><value>EncoDeck はこのイヤホンの操作やその他の設定をまだ変更できません。</value></data>
+  <data name="Connections_Empty_Title.Text" xml:space="preserve"><value>利用できる接続設定はありません</value></data>
+  <data name="Connections_Empty_Body.Text" xml:space="preserve"><value>このイヤホンはデュアル接続などの接続設定を EncoDeck に報告していません。</value></data>
   <data name="Devices_Capabilities.Text" xml:space="preserve"><value>機能の対応状況</value></data>
   <data name="Devices_Info.Text" xml:space="preserve"><value>デバイス情報</value></data>
   <data name="Devices_Firmware.Header" xml:space="preserve"><value>ファームウェア</value></data>
@@ -228,7 +237,7 @@
   <data name="Error_RemoveConnected" xml:space="preserve"><value>削除できるのは未接続のデバイスのみです</value></data>
   <data name="Error_MaxPresets" xml:space="preserve"><value>カスタムイコライザーの上限に達しました</value></data>
   <data name="Error_InvalidName" xml:space="preserve"><value>名前は空にできず、重複不可、42 文字以内にしてください</value></data>
-  <data name="Error_SceneUnavailable" xml:space="preserve"><value>イヤホンはこのシーンに切り替えず、現在のシーンのままです。BlueCaster 経由で使用している間は、空間オーディオを利用できない場合があります。</value></data>
+  <data name="Error_SceneUnavailable" xml:space="preserve"><value>イヤホンはこのシーンに切り替えず、現在のシーンのままです。BlueCaster 経由の LHDC 接続では空間オーディオを受け付けません。BlueCaster で SBC に切り替えると使用できます。</value></data>
   <data name="Common_Cancel" xml:space="preserve"><value>キャンセル</value></data>
   <data name="Common_OK" xml:space="preserve"><value>OK</value></data>
   <data name="Common_TurnOn" xml:space="preserve"><value>オンにする</value></data>

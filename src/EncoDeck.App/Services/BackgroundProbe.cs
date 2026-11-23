@@ -15,7 +15,7 @@ internal static class BackgroundProbe
 {
     public const string Argument = "--background-probe";
 
-    private static readonly string[] Pages = ["Home", "Sound", "Controls", "Devices", "Labs", "Settings", "About"];
+    private static readonly string[] Pages = ["Home", "Sound", "Controls", "Connections", "Devices", "Labs", "Settings", "About"];
 
     public static async Task RunAsync(App app, string outDir, DispatcherQueue dispatcher)
     {

@@ -10,7 +10,7 @@ namespace EncoDeck.App.Controls;
 
 /// <summary>
 /// Noise cancelling / adaptive / transparency / off selector with a level row for the selected
-/// mode. A click shows the choice at once with a spinner until the earbuds answer; afterwards the
+/// mode. A click shows the choice at once, with a spinner only if the earbuds are slow to answer; afterwards the
 /// buttons mirror the device-confirmed state in <see cref="DeviceViewModel"/> again.
 /// </summary>
 public sealed partial class NoiseControlSelector : UserControl
@@ -19,7 +19,7 @@ public sealed partial class NoiseControlSelector : UserControl
         nameof(ViewModel), typeof(DeviceViewModel), typeof(NoiseControlSelector), new PropertyMetadata(null, OnViewModelChanged));
 
     private readonly NoiseRows _rows;
-    private readonly (NoiseControlMode Mode, ToggleButton Button, UIElement Icon, ProgressRing Ring)[] _modes;
+    private readonly (NoiseControlMode Mode, ToggleButton Button, PendingSpinner Ring)[] _modes;
     private NoiseControlMode? _pendingMode;
 
     public NoiseControlSelector()
@@ -27,10 +27,10 @@ public sealed partial class NoiseControlSelector : UserControl
         InitializeComponent();
         _modes =
         [
-            (NoiseControlMode.NoiseCancellation, AncButton, AncIcon, AncRing),
-            (NoiseControlMode.Adaptive, AdaptiveButton, AdaptiveIcon, AdaptiveRing),
-            (NoiseControlMode.Transparency, TransparencyButton, TransparencyIcon, TransparencyRing),
-            (NoiseControlMode.Off, OffButton, OffIcon, OffRing),
+            (NoiseControlMode.NoiseCancellation, AncButton, new PendingSpinner(AncRing, AncIcon)),
+            (NoiseControlMode.Adaptive, AdaptiveButton, new PendingSpinner(AdaptiveRing, AdaptiveIcon)),
+            (NoiseControlMode.Transparency, TransparencyButton, new PendingSpinner(TransparencyRing, TransparencyIcon)),
+            (NoiseControlMode.Off, OffButton, new PendingSpinner(OffRing, OffIcon)),
         ];
         _rows = new NoiseRows(RowsHost, ModeGrid, LevelsRow, SubModesRow, ManualLevelsRow, () => _pendingMode is not null) { Changed = Sync };
         foreach (var label in new[] { AncLabel, AdaptiveLabel, TransparencyLabel, OffLabel }) FitLabel.Attach(label);
@@ -75,17 +75,14 @@ public sealed partial class NoiseControlSelector : UserControl
     {
         if (ViewModel is not { } vm) return;
         int visible = 0;
-        foreach (var (mode, button, icon, ring) in _modes)
+        foreach (var (mode, button, ring) in _modes)
         {
             bool show = NoiseModes.IsAvailable(vm, mode);
             button.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
             if (show) Grid.SetColumn(button, visible++);
             button.IsChecked = _pendingMode is { } pending ? mode == pending : NoiseModes.IsSelected(vm, mode);
             button.IsEnabled = vm.CanSetNoise;
-            bool waiting = mode == _pendingMode;
-            ring.IsActive = waiting;
-            ring.Visibility = waiting ? Visibility.Visible : Visibility.Collapsed;
-            icon.Visibility = waiting ? Visibility.Collapsed : Visibility.Visible;
+            ring.Waiting = mode == _pendingMode;
         }
         if (ModeGrid.ColumnDefinitions.Count != visible)
         {
