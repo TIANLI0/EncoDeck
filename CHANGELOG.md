@@ -4,6 +4,40 @@
 
 This file records the user-visible changes of every EncoDeck version (Keep a Changelog, Semantic Versioning). Since 1.15.0 each version lists the Chinese notes first and the English ones below the divider.
 
+## [1.18.0-beta.2] - 2026-11-23 · 设置重新分类与新的“连接”页 / Settings regrouped and a new Connections page
+
+### 新增
+
+- 新增“连接”页：设备双连（已配对设备列表、优先设备）从“控制”页移到这里，另有“连接设置”卡片放 Swift Pair 快速配对和 2.4G 勿扰（[#16](https://github.com/TIANLI0/EncoDeck/issues/16)）。
+
+### 改进
+
+- 各品牌耳机的设置按用途分到所在页面的卡片中，取代原来的“更多设置”（[#16](https://github.com/TIANLI0/EncoDeck/issues/16)）：
+  - “音效”页新增“聆听”（场景模式、环绕、智能音量调节）和“音质”（Hi-Res、LDAC、aptX Adaptive / Lossless、LC3、DSEE、左右声道互换、增益）。
+  - “控制”页依次为耳机控制（手势之后是触控操作 / 触控锁、按键分配、快捷语音指令）、游戏模式、“佩戴与通话”（佩戴检测、入睡暂停音乐播放、Speak-to-Chat、自动接听、通话麦克风）、点头摇头控制、贴合度检测、查找耳机和“通用”（提示音与音量、指示灯、自动关机）。
+  - Sony 的环境声级别移到首页降噪卡片中。
+  - 耳机没有的设置整张卡片隐藏；某页没有任何可用设置时显示说明，不再出现只有标题的空卡片。
+- 分段按钮和底槽改用 Windows 控件的标准圆角，不再是圆润的胶囊形（[#16](https://github.com/TIANLI0/EncoDeck/issues/16)）。
+- 切换降噪模式、档位或子模式后，只有耳机超过约 0.7 秒仍未确认时才显示转圈，正常切换不再每次闪一下；降噪标题旁重复的转圈已去掉（[#16](https://github.com/TIANLI0/EncoDeck/issues/16)）。
+- EDIFIER W830NB 经 BlueCaster 以 LHDC 连接时拒绝切换到空间音效，提示现在说明原因，并建议在 BlueCaster 中改用 SBC（[#18](https://github.com/TIANLI0/EncoDeck/issues/18)）。
+
+---
+
+### Added
+
+- A new Connections page: dual connection (the paired-device list and the preferred device) moves here from the Controls page, with a Connection settings card for Swift Pair and 2.4 GHz do not disturb ([#16](https://github.com/TIANLI0/EncoDeck/issues/16)).
+
+### Improved
+
+- Every brand's settings are sorted by purpose into cards on the page they belong to, replacing the old "More settings" list ([#16](https://github.com/TIANLI0/EncoDeck/issues/16)):
+  - The Sound page gains Listening (scene, surround, smart volume) and Audio quality (Hi-Res, LDAC, aptX Adaptive / Lossless, LC3, DSEE, swap left / right channels, gain).
+  - The Controls page shows earbud controls (gestures, then touch controls / touch lock, button assignments and voice commands), game mode, Wear and calls (in-ear detection, pause when asleep, Speak-to-Chat, auto-answer calls, call microphone), head nodding/shaking control, the earbud fit test, find my earbuds and General (alert sound and its volume, indicator light, auto power off).
+  - Sony's ambient sound level moves into the noise control card on the home page.
+  - Cards for settings the earbuds don't have are hidden; a page with nothing to set says so instead of showing an empty card.
+- Segmented buttons and their track use the standard Windows control corner radius instead of a rounded pill ([#16](https://github.com/TIANLI0/EncoDeck/issues/16)).
+- After changing the noise mode, level or sub-mode, a spinner appears only if the earbuds take longer than about 0.7 s to confirm, so normal changes no longer flash one; the duplicate spinner by the noise control title is gone ([#16](https://github.com/TIANLI0/EncoDeck/issues/16)).
+- When EDIFIER W830NB refuses spatial sound over LHDC through BlueCaster, the message now says why and suggests switching to SBC in BlueCaster ([#18](https://github.com/TIANLI0/EncoDeck/issues/18)).
+
 ## [1.18.0-beta.1] - 2026-11-20 · 分段式降噪控件 / Segmented noise controls
 
 ### 改进
