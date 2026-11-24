@@ -4,6 +4,56 @@
 
 This file records the user-visible changes of every EncoDeck version (Keep a Changelog, Semantic Versioning). Since 1.15.0 each version lists the Chinese notes first and the English ones below the divider.
 
+## [1.18.0-beta.3] - 2026-11-24 · 安全加固与稳定性 / Hardening and reliability
+
+### 改进
+
+- 实验室的 LE Audio 码率：自动恢复用的计划任务不再运行 EncoDeck 本身，只运行系统自带的 `rundll32` 和 `%ProgramData%\EncoDeck\LeHook\` 里的组件副本；该文件夹改为只有管理员可以改动。已经应用过的选择请重新点一次“应用”以换成新的任务。Windows 更新改动了 LE Audio 相关代码后，自动恢复会失败，同样需要重新“应用”。
+- 应用内更新：发布页没有提供 SHA-256 时不再下载；运行安装程序前会重新校验文件并检查数字签名，签名者须与当前安装的 EncoDeck 一致。
+- 连接 BlueCaster 时确认对方属于当前用户、管理员或系统，并且不再允许它以你的身份操作。
+- LHDC：每次以管理员权限部署前，按组件自带的清单校验所有文件；运行时被改动时拒绝部署，需重新安装组件。
+- 漫步者、vivo、小米、索尼、Nothing、Google、Bose、三星、森海塞尔、荣耀、EarFun、水月雨、AKG 等品牌：设置写入期间对应控件会暂时停用，失败时只恢复这一项原来的值并显示原因。
+- 没有可关注的设备时，后台不再定时检查编码和驱动状态；主窗口最小化或不可见时，首页的耳机模型停止刷新，3D 模型自动旋转的刷新降到约 30 帧。
+- 设置页的滑块停手后才保存一次；改动无关设置时不再重新注册全局快捷键、重建耳机选项。
+- 日志文件单个上限 20 MB，超出后续写到新文件，保留最近 7 天；后台线程出错导致退出时会留下日志。
+
+### 修复
+
+- 拖动 EQ、低音、提示音量等滑块后立刻切换页面、关闭窗口或退出，改动不再丢失。
+- OPPO：切换内置 EQ 预设失败后，之前选中的自定义 EQ 不再显示为未选中。
+- 蓝牙驱动重置、适配器重新插拔或被其他程序接管后，设备列表不再停住，会自动恢复。
+- 连接控制通道的过程中耳机断开，状态不再停在“重连中”最长 30 秒；此时点“重试”也会立即生效。
+- 其他品牌耳机每收到一条数据就刷新一次界面和缓存的问题。
+- 头戴式耳机的低电量通知不再写成“左耳”。
+- 开启左右声道校准后长时间播放时，系统音频对象不再堆积。
+- 日志文件一次写入失败后，本次运行不再停止记录。
+- BlueCaster 断开的瞬间发出的操作不再报内部错误。
+
+---
+
+### Improved
+
+- Labs LE Audio bitrate: the scheduled task that restores your choice no longer runs EncoDeck itself, only Windows' own `rundll32` with the component copy in `%ProgramData%\EncoDeck\LeHook\`, a folder that only administrators can now change. If you had applied a choice, press Apply once more to switch to the new task. After a Windows update that changes the LE Audio code the automatic restore fails and Apply is needed again as well.
+- In-app updates: nothing is downloaded when the release publishes no SHA-256; before the installer runs, the file is checked again and its digital signature must come from the same publisher as the installed EncoDeck.
+- When connecting to BlueCaster, EncoDeck checks that it belongs to you, an administrator or the system, and no longer lets it act on your behalf.
+- LHDC: before every deployment with administrator rights, all files are checked against the list the component ships; an altered runtime is refused and has to be installed again.
+- EDIFIER, vivo, Xiaomi, Sony, Nothing, Google, Bose, Samsung, Sennheiser, HONOR, EarFun, MOONDROP, AKG and others: a control is disabled while its setting is being written, and a failed write restores only that setting and says why.
+- With no device to watch, the background checks of the codec and driver state stop; while the main window is minimized or hidden the earbud model on the home page stops refreshing, and the 3D model's idle rotation is drawn at about 30 frames per second.
+- Sliders on the Settings page save once after you stop; changing an unrelated setting no longer re-registers global hotkeys or rebuilds the earbud options.
+- A log file is capped at 20 MB and continues in a new file, with the last 7 days kept; a crash on a background thread now leaves a log entry.
+
+### Fixed
+
+- Dragging the EQ, bass or prompt volume slider and immediately switching pages, closing the window or exiting no longer loses the change.
+- OPPO: after a built-in EQ preset fails to apply, the custom EQ you had selected no longer shows as deselected.
+- After a Bluetooth driver reset, an adapter being unplugged and plugged back in, or another program taking the adapter, the device list no longer freezes and recovers by itself.
+- When the earbuds drop while the control channel is being opened, the status no longer stays on "Reconnecting" for up to 30 seconds; Retry now takes effect at once too.
+- Other brands' earbuds refreshed the interface and the cache for every piece of data received.
+- The low-battery notification for headphones no longer says "Left".
+- System audio objects no longer pile up during long playback with left/right calibration on.
+- File logging no longer stops for the rest of the session after a single failed write.
+- An action sent at the moment BlueCaster disconnects no longer reports an internal error.
+
 ## [1.18.0-beta.2] - 2026-11-23 · 设置重新分类与新的“连接”页 / Settings regrouped and a new Connections page
 
 ### 新增
