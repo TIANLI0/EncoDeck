@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 using System.Globalization;
+using EncoDeck.Core.Devices;
 using EncoDeck.Core.State;
 using EncoDeck.Platform.A2dpCodec;
 using Microsoft.Extensions.Logging;
@@ -10,20 +11,27 @@ namespace EncoDeck.App.Services;
 /// Shows the A2DP codec Windows logs (<see cref="WindowsA2dpCodecLog"/>) on the active device instead of the earbuds'
 /// own report. Checks the log's write time every few seconds and reads it (a few milliseconds) only when it changed.
 /// Windows logs a codec when a stream ends, and the session starts a new file at every boot, so the latest codec per
-/// device is remembered in <c>a2dp-codecs.txt</c>.
+/// device is remembered in <c>a2dp-codecs.txt</c>. Polls only while a Bluetooth device is linked (and briefly after, for
+/// the entry Windows writes as that stream ends); otherwise it sleeps until the link state changes, and the next link
+/// reads whatever was logged meanwhile.
 /// </summary>
 public sealed class WindowsCodecCompanion : IDisposable
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(3);
 
+    /// <summary>Windows logs a codec when the stream ends, which can be a moment after the link went down.</summary>
+    private static readonly TimeSpan LingerAfterLink = TimeSpan.FromSeconds(30);
+
     private readonly IDeviceStateStore _store;
     private readonly ILogger _logger;
     private readonly string _memoryPath;
     private readonly object _gate = new();
-    private readonly CancellationTokenSource _cts = new();
+    private readonly ConditionalPoll _poll;
     private readonly Dictionary<ulong, string> _codecs;
     private DateTime _written;
     private bool _authorized;
+    // UTC ticks until which the poll keeps running after the last link went down.
+    private long _lingerUntil;
 
     public WindowsCodecCompanion(string root, IDeviceStateStore store, ILogger logger)
     {
@@ -31,6 +39,7 @@ public sealed class WindowsCodecCompanion : IDisposable
         _logger = logger;
         _memoryPath = Path.Combine(root, "a2dp-codecs.txt");
         _codecs = Load(_memoryPath);
+        _poll = new ConditionalPoll("Windows A2DP codec log poll", PollInterval, IsWatching, Check, logger);
         _store.StateChanged += OnStateChanged;
     }
 
@@ -52,24 +61,17 @@ public sealed class WindowsCodecCompanion : IDisposable
     public void Start()
     {
         if (!WindowsA2dpCodecLog.IsSupported) return;
-        _ = PollAsync(_cts.Token);
+        _poll.Start();
     }
 
     /// <summary>Checks again now, after authorizing or removing the log.</summary>
     public Task RefreshAsync() => Task.Run(Check);
 
-    private async Task PollAsync(CancellationToken ct)
-    {
-        using var timer = new PeriodicTimer(PollInterval);
-        try
-        {
-            do Check();
-            while (await timer.WaitForNextTickAsync(ct).ConfigureAwait(false));
-        }
-        catch (OperationCanceledException)
-        {
-        }
-    }
+    /// <summary>The Bluetooth device whose codec Windows may log: the active one, while its link is up.</summary>
+    private static ulong? Watched(DeviceState state) =>
+        state.Device is { Transport: DeviceTransport.Bluetooth } device && state.Connection.IsLinkUp() ? device.Address.Value : null;
+
+    private bool IsWatching() => Watched(_store.Current) is not null || DateTime.UtcNow.Ticks < Interlocked.Read(ref _lingerUntil);
 
     private void Check()
     {
@@ -116,6 +118,12 @@ public sealed class WindowsCodecCompanion : IDisposable
 
     private void OnStateChanged(object? sender, DeviceStateChangedEventArgs e)
     {
+        ulong? watched = Watched(e.Current), previous = Watched(e.Previous);
+        if (watched != previous)
+        {
+            if (previous is not null) Interlocked.Exchange(ref _lingerUntil, (DateTime.UtcNow + LingerAfterLink).Ticks);
+            _poll.Wake();
+        }
         var (logged, codec) = For(e.Current);
         if (e.Current.WindowsCodecLogged != logged || e.Current.WindowsCodec != codec) Project();
     }
@@ -166,7 +174,6 @@ public sealed class WindowsCodecCompanion : IDisposable
     public void Dispose()
     {
         _store.StateChanged -= OnStateChanged;
-        _cts.Cancel();
-        _cts.Dispose();
+        _poll.Dispose();
     }
 }

@@ -15,6 +15,9 @@ namespace EncoDeck.App.Services;
 /// the user learns when an applied choice actually took effect. The service loses the hook when it restarts (reboot,
 /// Bluetooth turned off); while LE Audio earbuds are connected the choice is then put back through the scheduled task
 /// the apply registered (<see cref="LeAudioHookRestoreTask"/>), without another prompt. Not offered in the Store package.
+/// It polls only while there is something to watch: a choice other than Windows' own is applied, an applied choice waits
+/// for its link, a restore waits for its rebuild, or LE Audio earbuds are connected; otherwise it sleeps until one of
+/// those can begin (<see cref="Expect"/>, an LE Audio connection change).
 /// </summary>
 public sealed class LeAudioCodecCompanion : IDisposable
 {
@@ -34,8 +37,11 @@ public sealed class LeAudioCodecCompanion : IDisposable
     private readonly ISettingsStore _settings;
     private readonly ILogger _logger;
     private readonly object _gate = new();
-    private readonly CancellationTokenSource _cts = new();
+    private readonly ConditionalPoll _poll;
     private DateTime _linkWritten;
+    // What the last successful read said: a choice other than Windows' own is applied (poll thread only). Assumed
+    // until the first read succeeds, so an unreadable state keeps the poll running as it always did.
+    private bool _appliedNonDefault = true;
     private (LeAudioCodecPreset Preset, LeAudioLatencyMode Mode, DateTimeOffset Since)? _expected;
     private int _restorePid;
     private int _restoreAttempts;
@@ -47,6 +53,7 @@ public sealed class LeAudioCodecCompanion : IDisposable
         _leAudio = leAudio;
         _settings = settings;
         _logger = logger;
+        _poll = new ConditionalPoll("LE Audio link poll", PollInterval, IsWatching, Poll, logger);
     }
 
     public static bool Available => !PackageIdentity.IsPackaged;
@@ -69,35 +76,44 @@ public sealed class LeAudioCodecCompanion : IDisposable
     public void Start()
     {
         if (!Available) return;
-        _ = PollAsync(_cts.Token);
+        // LE Audio earbuds connecting is when a lost choice is put back (Restore) and a new link can appear (Check).
+        _leAudio.Changed += OnLeAudioChanged;
+        _poll.Start();
     }
+
+    private void OnLeAudioChanged(object? sender, EventArgs e) => _poll.Wake();
 
     /// <summary>After a successful apply: report the first new link that matches.</summary>
     public void Expect(LeAudioCodecPreset preset, LeAudioLatencyMode mode)
     {
         lock (_gate) _expected = (preset, mode, DateTimeOffset.Now);
+        // Watch for that link even while nothing else keeps the poll running.
+        _poll.Wake();
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
-    private async Task PollAsync(CancellationToken ct)
+    /// <summary>
+    /// Whether to keep ticking. <see cref="Restore"/> can only act while a choice other than Windows' own is applied or a
+    /// rebuild waits, and both keep the poll running, so the restore runs exactly when it did on an unconditional timer.
+    /// With Windows' own choice and nothing pending, a new link record (<see cref="Check"/>) is picked up on the next
+    /// wake instead (it is only written while LE Audio streams).
+    /// </summary>
+    private bool IsWatching() => Pending || _leAudio.LeAudioConnected || _rebuildAfterRestore || _appliedNonDefault;
+
+    /// <summary>One tick: the link record, then the restore; a failure in one never skips the other or ends the poll.</summary>
+    private void Poll()
     {
-        using var timer = new PeriodicTimer(PollInterval);
-        try
+        try { Check(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            do
-            {
-                try { Check(); }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-                {
-                    _logger.LogDebug(ex, "Could not read the LE Audio link record");
-                }
-                Restore();
-            }
-            while (await timer.WaitForNextTickAsync(ct).ConfigureAwait(false));
+            _logger.LogDebug(ex, "Could not read the LE Audio link record");
         }
-        catch (OperationCanceledException)
+        catch (Exception ex)
         {
+            // Includes a Changed / Switched subscriber that threw.
+            _logger.LogWarning(ex, "LE Audio link check failed");
         }
+        Restore();
     }
 
     private void Check()
@@ -126,6 +142,7 @@ public sealed class LeAudioCodecCompanion : IDisposable
     private void Restore()
     {
         LeAudioCodecApplied applied = LeAudioCodecHook.ReadApplied();
+        _appliedNonDefault = !applied.IsWindowsDefault;
         if (_rebuildAfterRestore && applied.Active)
         {
             _rebuildAfterRestore = false;
@@ -151,8 +168,8 @@ public sealed class LeAudioCodecCompanion : IDisposable
 
     public void Dispose()
     {
-        _cts.Cancel();
-        _cts.Dispose();
+        _leAudio.Changed -= OnLeAudioChanged;
+        _poll.Dispose();
     }
 
     /// <summary>Command-line name of a transport mode, and back.</summary>
@@ -176,8 +193,8 @@ public sealed class LeAudioCodecCompanion : IDisposable
     /// <summary>
     /// Runs in the elevated child, before any window or single-instance check. <paramref name="arguments"/> follow
     /// <see cref="ApplyArgument"/>: the preset id, the mode, then optionally <c>nocall</c> and
-    /// <see cref="LeAudioHookRestoreTask.RestoreArgument"/> (started by the restore task, which stays as it is). Otherwise
-    /// a choice other than Windows' own registers the restore task with the same arguments, and Windows' own removes it.
+    /// <see cref="LeAudioHookRestoreTask.RestoreArgument"/> (passed by a restore task an earlier version
+    /// registered). A choice other than Windows' own registers the restore task, and Windows' own removes it.
     /// </summary>
     public static int RunElevatedApply(IReadOnlyList<string> arguments)
     {
@@ -195,16 +212,16 @@ public sealed class LeAudioCodecCompanion : IDisposable
         // Off the UI thread: the apply awaits a download and must not wait on the dispatcher it blocks.
         int result = Task.Run(() => LeAudioCodecHook.ApplyElevatedAsync(preset, mode, noCallMode, LeAudioCodecHook.BundledDll, Log))
             .GetAwaiter().GetResult();
-        if (restore)
-        {
-            Log($"restored: result {result}");
-        }
-        else if (result == LeAudioCodecHook.Result.Ok && Environment.ProcessPath is { } exe)
+        // Only a task registered by an earlier version still gets here with "restore"; a successful run replaces it too.
+        if (restore) Log($"restored: result {result}");
+        if (result == LeAudioCodecHook.Result.Ok)
         {
             if (preset.IsWindowsDefault && mode == LeAudioLatencyMode.Auto && !noCallMode)
                 LeAudioHookRestoreTask.Unregister(Log);
             else
-                LeAudioHookRestoreTask.Register(exe, string.Join(' ', [ApplyArgument, .. arguments, LeAudioHookRestoreTask.RestoreArgument]), Log);
+                // The task runs the copy the service just loaded, from the folder only administrators can change; this
+                // executable may sit in a folder the user's programs can write to and is never run by the task.
+                LeAudioHookRestoreTask.Register(LeAudioCodecHook.AppliedCopy(LeAudioCodecHook.BundledDll), Log);
         }
         return result;
     }

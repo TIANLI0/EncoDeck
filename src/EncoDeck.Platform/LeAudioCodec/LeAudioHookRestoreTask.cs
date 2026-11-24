@@ -9,15 +9,28 @@ namespace EncoDeck.Platform.LeAudioCodec;
 /// <summary>
 /// Puts the hook back after Windows' Bluetooth audio service restarts (reboot, sign-in, Bluetooth turned off and on)
 /// without another administrator prompt. The elevated apply registers a hidden scheduled task, started only on demand,
-/// that repeats it with the same choice at the highest run level; EncoDeck starts that task when LE Audio earbuds are
-/// connected and the hook is no longer in the service.
+/// at the highest run level; EncoDeck starts that task when LE Audio earbuds are connected and the hook is no longer in
+/// the service. Anyone signed in as that user can start the task, so it must not run anything their programs can
+/// replace: it runs Windows' rundll32 on the hook's copy in the folder only administrators can change
+/// (<see cref="LeAudioCodecHook.AppliedCopy"/>, export <see cref="RestoreExport"/>), never EncoDeck itself, which a
+/// per-user installation keeps in a folder the user can write to.
 /// </summary>
 public static class LeAudioHookRestoreTask
 {
     public const string TaskName = @"EncoDeck\LE Audio hook";
 
-    /// <summary>Added to the task's arguments: a restore must not register the task again.</summary>
+    /// <summary>The hook DLL's rundll32 entry point (lehook.c).</summary>
+    public const string RestoreExport = "LeHookRestore";
+
+    /// <summary>
+    /// What tasks registered by versions up to 1.18.0-beta.2 pass to EncoDeck.exe, which they ran instead of the hook's
+    /// copy; such a run still restores, and then registers the current form over itself.
+    /// </summary>
     public const string RestoreArgument = "restore";
+
+    public static string Rundll32 => Path.Combine(Environment.SystemDirectory, "rundll32.exe");
+
+    internal static string RestoreArguments(string hookCopy) => $"\"{hookCopy}\",{RestoreExport}";
 
     private static readonly XNamespace Ns = "http://schemas.microsoft.com/windows/2004/02/mit/task";
     private static readonly TimeSpan SchtasksTimeout = TimeSpan.FromSeconds(20);
@@ -48,9 +61,13 @@ public static class LeAudioHookRestoreTask
         return "<?xml version=\"1.0\" encoding=\"UTF-16\"?>" + Environment.NewLine + task;
     }
 
-    /// <summary>Elevated: registers (or replaces) the task for the current user. Returns whether schtasks succeeded.</summary>
-    public static bool Register(string exe, string arguments, Action<string> log)
+    /// <summary>
+    /// Elevated: registers (or replaces) the task for the current user, to run <paramref name="hookCopy"/> (the copy the
+    /// apply just loaded into the service). Returns whether schtasks succeeded.
+    /// </summary>
+    public static bool Register(string hookCopy, Action<string> log)
     {
+        string exe = Rundll32, arguments = RestoreArguments(hookCopy);
         string? sid = WindowsIdentity.GetCurrent().User?.Value;
         if (sid is null) return false;
         string file = Path.Combine(Path.GetTempPath(), $"encodeck-lehook-{Guid.NewGuid():N}.xml");
@@ -80,7 +97,11 @@ public static class LeAudioHookRestoreTask
         log($"restore task: remove {(code == 0 ? "ok" : $"not present ({code})")}");
     }
 
-    /// <summary>Not elevated: starts the task. False when it does not exist or could not be started.</summary>
+    /// <summary>
+    /// Not elevated: starts the task. False when it does not exist or could not be started. A task an earlier version
+    /// registered still runs EncoDeck.exe; that run registers the current form in its place (it is elevated, which
+    /// removing the task would need too).
+    /// </summary>
     public static bool Run() => Schtasks($"/Run /TN \"{TaskName}\"") == 0;
 
     private static int Schtasks(string arguments)

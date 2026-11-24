@@ -70,10 +70,28 @@ public sealed partial class DeviceModelView : UserControl
     private double _dragStartX;
     private DispatcherQueueTimer? _animation;
     private long _lastTick;
+    /// <summary>
+    /// Playback is wanted (a model is shown and, without <see cref="Loop"/>, not finished) and not paused by the host.
+    /// The timer itself also stops while there is nothing to draw (window hidden, control collapsed) or nothing moves
+    /// (Windows animations off and no drag easing out); <see cref="Wake"/> restarts it.
+    /// </summary>
+    private bool _playing;
+    /// <summary>When the shown angle last changed or the user last touched it (Environment.TickCount64).</summary>
+    private long _lastMotion;
+    private XamlRoot? _root;
     public bool Loop { get; set; } = true;
     private double _playbackElapsed;
     internal event EventHandler<bool>? ModelAvailabilityChanged;
-    public void PauseAnimation() => _animation?.Stop();
+
+    /// <summary>With animations off, the turntable only moves while a drag eases out (about three seconds); it rests after this.</summary>
+    private const long RestAfterMs = 4000;
+
+    public void PauseAnimation()
+    {
+        _playing = false;
+        _animation?.Stop();
+    }
+
     public void ResumeAnimation()
     {
         if (_model is not null && (Loop || _playbackElapsed < _model.Frames.Sum(f => f.DurationMs) / 1000.0)) StartPlayback();
@@ -85,6 +103,7 @@ public sealed partial class DeviceModelView : UserControl
         // Reloaded (e.g. navigating back to the page): load the model and resume playback.
         Loaded += (_, _) =>
         {
+            WatchRoot(XamlRoot);
             if (_model is null && ModelPath is { Length: > 0 })
             {
                 _requestedPath = null;
@@ -93,8 +112,10 @@ public sealed partial class DeviceModelView : UserControl
         };
         Unloaded += (_, _) =>
         {
+            WatchRoot(null);
             Release();
         };
+        RegisterPropertyChangedCallback(VisibilityProperty, (_, _) => Wake());
         SizeChanged += (_, _) => OnSizeChanged();
         KeyDown += OnKeyDown;
         Scene.Ready += (_, _) => RevealScene();
@@ -231,33 +252,72 @@ public sealed partial class DeviceModelView : UserControl
         _animation.Interval = TimeSpan.FromMilliseconds(16);
         _animation.Tick -= OnAnimationTick;
         _animation.Tick += OnAnimationTick;
-        _lastTick = Environment.TickCount64;
+        _playing = true;
+        _lastTick = _lastMotion = Environment.TickCount64;
         _animation.Start();
+    }
+
+    /// <summary>
+    /// Input, or the window or control shown again: restart the timer if playback is wanted. Time spent stopped is not
+    /// played back (the motion caps each step anyway), as it was not while ticks were skipped before.
+    /// </summary>
+    private void Wake()
+    {
+        if (!_playing || _animation is null || _model is null) return;
+        _lastMotion = Environment.TickCount64;
+        if (_animation.IsRunning) return;
+        _lastTick = _lastMotion;
+        _animation.Start();
+    }
+
+    private void WatchRoot(XamlRoot? root)
+    {
+        if (ReferenceEquals(root, _root)) return;
+        if (_root is not null) _root.Changed -= OnRootChanged;
+        _root = root;
+        if (_root is not null) _root.Changed += OnRootChanged;
+    }
+
+    /// <summary>The window was shown (restored, or opened from the tray), resized or moved to another display scale.</summary>
+    private void OnRootChanged(XamlRoot sender, XamlRootChangedEventArgs args)
+    {
+        if (sender.IsHostVisible) Wake();
     }
 
     private void OnAnimationTick(DispatcherQueueTimer timer, object args)
     {
-        if (_model is null || _motion is null || !IsLoaded) { timer.Stop(); return; }
+        if (_model is null || _motion is null || !IsLoaded) { _playing = false; timer.Stop(); return; }
         long now = Environment.TickCount64;
         double elapsed = (now - _lastTick) / 1000.0;
         _lastTick = now;
-        // Nothing to draw while the window is minimised or hidden in the tray.
-        if (Visibility != Visibility.Visible || XamlRoot?.IsHostVisible == false) return;
+        // Nothing to draw while the window is minimised or hidden in the tray: stop until it shows (OnRootChanged) or
+        // the control becomes visible again.
+        if (Visibility != Visibility.Visible || XamlRoot?.IsHostVisible == false)
+        {
+            timer.Stop();
+            return;
+        }
+        bool animate = ShellEnvironment.AnimationsEnabled();
         if (!Loop)
         {
             _playbackElapsed += elapsed;
-            if (!ShellEnvironment.AnimationsEnabled() || _playbackElapsed >= _model.Frames.Sum(f => f.DurationMs) / 1000.0)
+            if (!animate || _playbackElapsed >= _model.Frames.Sum(f => f.DurationMs) / 1000.0)
             {
                 ShowFrame(_model.Frames.Count - 1);
+                _playing = false;
                 timer.Stop();
                 return;
             }
         }
         int before = _motion.Frame;
-        _motion.Advance(elapsed, ShellEnvironment.AnimationsEnabled());
+        _motion.Advance(elapsed, animate);
         int after = _motion.Frame;
         if (after != before) _direction = Step(before, after, _model.Frames.Count);
         if (after != _shown) ShowFrame(after);
+        if (after != before || _dragging) _lastMotion = now;
+        // Windows animations off: only a drag moves it (and eases out for about three seconds). At rest, stop ticking
+        // until the next input (Wake).
+        else if (!animate && now - _lastMotion > RestAfterMs) timer.Stop();
     }
 
     private void OnPointerPressed(object sender, PointerRoutedEventArgs e)
@@ -265,6 +325,7 @@ public sealed partial class DeviceModelView : UserControl
         if (_model is null || !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed || !Root.CapturePointer(e.Pointer)) return;
         _motion?.BeginDrag();
         _dragging = true;
+        Wake();
         _pointerId = e.Pointer.PointerId;
         _dragStartX = e.GetCurrentPoint(this).Position.X;
         Focus(FocusState.Pointer);
@@ -361,6 +422,7 @@ public sealed partial class DeviceModelView : UserControl
         if (_model is null || e.Key is not (Windows.System.VirtualKey.Left or Windows.System.VirtualKey.Right)) return;
         _motion?.Step(e.Key == Windows.System.VirtualKey.Right ? 5 : -5);
         if (_motion is not null) ShowFrame(_motion.Frame);
+        Wake();
         e.Handled = true;
     }
 
@@ -557,6 +619,7 @@ public sealed partial class DeviceModelView : UserControl
     private void Release()
     {
         _loadVersion++;
+        _playing = false;
         _animation?.Stop();
         _decoderCancel?.Cancel();
         _decoderCancel = null;

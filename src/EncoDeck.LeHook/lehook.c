@@ -33,7 +33,11 @@
 // The injector calls the exported LeHookEnable / LeHookDisable on a remote thread; loading the DLL by itself changes
 // nothing. Disabling restores the original bytes but keeps the DLL (and its trampolines) loaded until the service
 // restarts, so a thread that is still inside a hook can always return.
+// The process module functions come from kernel32 (K32...), so no psapi import is added.
+#define PSAPI_VERSION 2
 #include <windows.h>
+#include <psapi.h>
+#include <wchar.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -733,9 +737,188 @@ __declspec(dllexport) DWORD WINAPI LeHookDisable(LPVOID unused)
     return result;
 }
 
+// Restore. The service loses the hook when it restarts (reboot, sign-in, Bluetooth turned off and on). The elevated
+// apply registers a scheduled task that runs Windows' own rundll32 on this DLL's copy in %ProgramData%\EncoDeck\LeHook,
+// a folder only administrators can change: nothing a user's programs could replace is run with administrator rights.
+// LeHookRestore loads this same file into the service again and calls LeHookEnable there, with the targets and the
+// choice the apply left in HKLM, then records the service it went into (state.txt, as the apply does). After a Windows
+// update that changed the LE Audio code LeHookEnable refuses (the recorded bytes no longer match) and the choice has to
+// be applied again from EncoDeck, which works the targets out anew.
+#define SERVICE_NAME L"BthAvctpSvc"
+#define MODULE_PREFIX L"EncoDeck.LeHook."
+#define REMOTE_TIMEOUT_MS 10000
+#define MAX_MODULES 1024
+
+static HMODULE g_self;
+
+static DWORD ServicePid(void)
+{
+    DWORD pid = 0;
+    SC_HANDLE manager = OpenSCManagerW(NULL, NULL, SC_MANAGER_CONNECT);
+    if (!manager) return 0;
+    SC_HANDLE service = OpenServiceW(manager, SERVICE_NAME, SERVICE_QUERY_STATUS);
+    if (service)
+    {
+        SERVICE_STATUS_PROCESS status;
+        DWORD needed;
+        if (QueryServiceStatusEx(service, SC_STATUS_PROCESS_INFO, (LPBYTE)&status, sizeof status, &needed) &&
+            status.dwCurrentState == SERVICE_RUNNING)
+            pid = status.dwProcessId;
+        CloseServiceHandle(service);
+    }
+    CloseServiceHandle(manager);
+    return pid;
+}
+
+// Opening a service's process for writing takes the debug privilege, which an elevated token holds but has disabled.
+static BOOL EnableDebugPrivilege(void)
+{
+    HANDLE token;
+    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &token)) return FALSE;
+    TOKEN_PRIVILEGES privileges;
+    memset(&privileges, 0, sizeof privileges);
+    privileges.PrivilegeCount = 1;
+    privileges.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+    BOOL ok = LookupPrivilegeValueW(NULL, L"SeDebugPrivilege", &privileges.Privileges[0].Luid) &&
+              AdjustTokenPrivileges(token, FALSE, &privileges, 0, NULL, NULL) && GetLastError() == ERROR_SUCCESS;
+    CloseHandle(token);
+    return ok;
+}
+
+// Where the module called `name` is loaded in `process` (NULL when it is not), and whether another build of the hook is.
+static HMODULE FindRemoteModule(HANDLE process, const wchar_t *name, BOOL *otherBuild)
+{
+    static HMODULE modules[MAX_MODULES];
+    DWORD needed = 0;
+    *otherBuild = FALSE;
+    if (!K32EnumProcessModulesEx(process, modules, sizeof modules, &needed, LIST_MODULES_64BIT)) return NULL;
+    size_t count = needed / sizeof(HMODULE);
+    if (count > MAX_MODULES) count = MAX_MODULES;
+    HMODULE found = NULL;
+    for (size_t i = 0; i < count; i++)
+    {
+        wchar_t base[MAX_PATH];
+        if (!K32GetModuleBaseNameW(process, modules[i], base, MAX_PATH)) continue;
+        if (_wcsicmp(base, name) == 0)
+            found = modules[i];
+        else if (_wcsnicmp(base, MODULE_PREFIX, wcslen(MODULE_PREFIX)) == 0)
+            *otherBuild = TRUE;
+    }
+    return found;
+}
+
+// FALSE when the thread could not be started or did not finish in time (it may then still be running).
+static BOOL RunRemote(HANDLE process, void *start, void *parameter, DWORD *code)
+{
+    HANDLE thread = CreateRemoteThread(process, NULL, 0, (LPTHREAD_START_ROUTINE)start, parameter, 0, NULL);
+    if (!thread) return FALSE;
+    BOOL ok = WaitForSingleObject(thread, REMOTE_TIMEOUT_MS) == WAIT_OBJECT_0 && GetExitCodeThread(thread, code);
+    CloseHandle(thread);
+    return ok;
+}
+
+static BOOL LoadIntoService(HANDLE process, const wchar_t *path)
+{
+    SIZE_T size = (wcslen(path) + 1) * sizeof(wchar_t);
+    void *memory = VirtualAllocEx(process, NULL, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    if (!memory) return FALSE;
+    // kernel32 is mapped at the same address in every process of a boot session.
+    void *loadLibrary = (void *)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "LoadLibraryW");
+    DWORD code = 0;
+    BOOL written = loadLibrary && WriteProcessMemory(process, memory, path, size, NULL);
+    BOOL finished = written && RunRemote(process, loadLibrary, memory, &code);
+    // A thread that did not finish may still read the path: the few bytes stay with the service then.
+    if (!written || finished) VirtualFreeEx(process, memory, 0, MEM_RELEASE);
+    return finished;
+}
+
+// state.txt as EncoDeck writes it after an apply (LeAudioCodecHook.FormatState): the service the choice is in.
+static void WriteState(DWORD pid)
+{
+    wchar_t path[MAX_PATH];
+    if (!ExpandEnvironmentStringsW(L"%ProgramData%\\EncoDeck\\LeHook\\state.txt", path, MAX_PATH)) return;
+    char text[160];
+    int n = _snprintf(text, sizeof text, "pid=%lu\nframeUs=%lu\noctets=%lu\nmode=%lu\nnoCallMode=%lu\n", (unsigned long)pid,
+                      (unsigned long)ReadConfig(L"FrameDurationUs"), (unsigned long)ReadConfig(L"OctetsPerFrame"),
+                      (unsigned long)ReadConfig(L"LatencyMode"), ReadConfig(L"NoCallMode") ? 1ul : 0ul);
+    if (n <= 0 || n >= (int)sizeof text) return;
+    HANDLE file = CreateFileW(path, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (file == INVALID_HANDLE_VALUE)
+    {
+        Log("restore: cannot write the state (%lu)", GetLastError());
+        return;
+    }
+    DWORD written;
+    WriteFile(file, text, (DWORD)n, &written, NULL);
+    CloseHandle(file);
+}
+
+// rundll32 entry point, run elevated by the scheduled task: rundll32.exe "<this file>",LeHookRestore
+__declspec(dllexport) void CALLBACK LeHookRestore(HWND window, HINSTANCE instance, LPSTR commandLine, int show)
+{
+    (void)window;
+    (void)instance;
+    (void)commandLine;
+    (void)show;
+    wchar_t path[MAX_PATH];
+    DWORD length = g_self ? GetModuleFileNameW(g_self, path, MAX_PATH) : 0;
+    if (length == 0 || length >= MAX_PATH)
+    {
+        Log("restore: own path unknown");
+        return;
+    }
+    const wchar_t *name = wcsrchr(path, L'\\');
+    name = name ? name + 1 : path;
+    DWORD pid = ServicePid();
+    if (!pid)
+    {
+        Log("restore: the Bluetooth audio service is not running");
+        return;
+    }
+    if (!EnableDebugPrivilege()) Log("restore: no debug privilege (%lu)", GetLastError());
+    HANDLE process = OpenProcess(PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION | PROCESS_VM_OPERATION |
+                                     PROCESS_VM_WRITE | PROCESS_VM_READ,
+                                 FALSE, pid);
+    if (!process)
+    {
+        Log("restore: cannot open pid %lu (%lu)", (unsigned long)pid, GetLastError());
+        return;
+    }
+    BOOL otherBuild;
+    HMODULE remote = FindRemoteModule(process, name, &otherBuild);
+    if (otherBuild)
+    {
+        // Its patches would have to be taken out first, which EncoDeck's apply does.
+        Log("restore: another build of the hook is in pid %lu; apply again from EncoDeck", (unsigned long)pid);
+    }
+    else
+    {
+        if (!remote && LoadIntoService(process, path)) remote = FindRemoteModule(process, name, &otherBuild);
+        DWORD code = 0;
+        // The export sits at the same offset in the service's copy of this file.
+        void *enable = remote ? (void *)((uintptr_t)remote + ((uintptr_t)(void *)LeHookEnable - (uintptr_t)g_self)) : NULL;
+        if (!enable)
+            Log("restore: pid %lu did not load %ls (%lu)", (unsigned long)pid, name, GetLastError());
+        else if (!RunRemote(process, enable, NULL, &code))
+            Log("restore: LeHookEnable did not run in pid %lu (%lu)", (unsigned long)pid, GetLastError());
+        else if (code != 0)
+            Log("restore: LeHookEnable returned %lu in pid %lu; apply again from EncoDeck", (unsigned long)code, (unsigned long)pid);
+        else
+        {
+            WriteState(pid);
+            Log("restore: enabled in pid %lu", (unsigned long)pid);
+        }
+    }
+    CloseHandle(process);
+}
+
 BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved)
 {
     (void)reserved;
-    if (reason == DLL_PROCESS_ATTACH) DisableThreadLibraryCalls(instance);
+    if (reason == DLL_PROCESS_ATTACH)
+    {
+        g_self = instance;
+        DisableThreadLibraryCalls(instance);
+    }
     return TRUE;
 }

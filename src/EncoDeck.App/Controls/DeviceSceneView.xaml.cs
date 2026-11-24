@@ -19,8 +19,11 @@ namespace EncoDeck.App.Controls;
 /// (<see cref="OrbitCamera"/>). Drag in any direction to turn it, use the wheel to zoom, double-click
 /// to reset; arrow keys turn it too. It turns slowly on its own unless Windows animations are off.
 /// <para>
-/// Frames are drawn only while the view moves and the window is visible. Everything (device,
-/// textures, bitmap) is released when the control unloads.
+/// Frames are drawn only while the view moves and the window is visible: otherwise the control leaves
+/// <see cref="CompositionTarget.Rendering"/> altogether until input, a size or scale change, or the window
+/// showing again wakes it. Plain idle turning is drawn at about 30 frames a second (same speed in degrees
+/// per second), input and coasting at up to 60. Everything (device, textures, bitmap) is released when the
+/// control unloads.
 /// </para>
 /// </summary>
 public sealed partial class DeviceSceneView : UserControl
@@ -33,7 +36,7 @@ public sealed partial class DeviceSceneView : UserControl
     private SceneRenderer? _renderer;
     private BitmapTarget? _target;
     private WriteableBitmap? _bitmap;
-    private byte[] _pixels = [];
+    private XamlRoot? _root;
     private string? _loadedPath;
     private int _loadVersion;
     private bool _rendering;
@@ -48,10 +51,18 @@ public sealed partial class DeviceSceneView : UserControl
         InitializeComponent();
         Loaded += (_, _) =>
         {
+            WatchRoot(XamlRoot);
             if (_renderer is null && ScenePath is { Length: > 0 }) OnScenePathChanged();
         };
-        Unloaded += (_, _) => Release();
+        Unloaded += (_, _) =>
+        {
+            WatchRoot(null);
+            Release();
+        };
         KeyDown += OnKeyDown;
+        // A new size needs a new bitmap and a frame even while the camera rests.
+        SizeChanged += (_, _) => Wake();
+        RegisterPropertyChangedCallback(VisibilityProperty, (_, _) => Wake());
         ProtectedCursor = InputSystemCursor.Create(InputSystemCursorShape.SizeAll);
     }
 
@@ -159,7 +170,6 @@ public sealed partial class DeviceSceneView : UserControl
         _target!.Resize(width, height);
         if (_bitmap is not null && _bitmap.PixelWidth == _target.Width && _bitmap.PixelHeight == _target.Height) return;
         _bitmap = new WriteableBitmap(_target.Width, _target.Height);
-        _pixels = new byte[_target.Width * _target.Height * 4];
         Frame.Source = _bitmap;
         _dirty = true;
     }
@@ -182,24 +192,64 @@ public sealed partial class DeviceSceneView : UserControl
         CompositionTarget.Rendering -= OnRendering;
     }
 
+    /// <summary>
+    /// Something may need drawing again (input, size, scale, the window or the control shown again): back on
+    /// <see cref="CompositionTarget.Rendering"/> while a scene is loaded. The camera's clock does not run while it is
+    /// off, just as it did not while frames were skipped before.
+    /// </summary>
+    private void Wake()
+    {
+        if (_renderer is null || _target is null) return;
+        StartRendering();
+    }
+
+    private void WatchRoot(XamlRoot? root)
+    {
+        if (ReferenceEquals(root, _root)) return;
+        if (_root is not null) _root.Changed -= OnRootChanged;
+        _root = root;
+        if (_root is not null) _root.Changed += OnRootChanged;
+    }
+
+    /// <summary>The window was shown, resized or moved to another display scale.</summary>
+    private void OnRootChanged(XamlRoot sender, XamlRootChangedEventArgs args)
+    {
+        if (sender.IsHostVisible) Wake();
+    }
+
     private void OnRendering(object? sender, object e)
     {
         if (_renderer is null || _target is null) return;
+        // Nothing to draw while the window is minimised or hidden in the tray: leave Rendering until it shows again
+        // (OnRootChanged) or the control is made visible.
+        if (Visibility != Visibility.Visible || XamlRoot?.IsHostVisible == false)
+        {
+            StopRendering();
+            return;
+        }
         var now = _clock.Elapsed;
         float dt = (float)(now - _lastFrame).TotalSeconds;
-        // At most ~60 frames a second, also on high refresh-rate displays.
-        if (dt < 0.0155f) return;
+        // At most ~60 frames a second, also on high refresh-rate displays; plain idle turning (slow and steady) at
+        // about 30, which halves the GPU read-backs. The camera moves by elapsed time, so the speed stays the same.
+        if (dt < (_camera.Current == OrbitCamera.State.Rotate ? 0.030f : 0.0155f)) return;
         _lastFrame = now;
-        // Nothing to draw while the window is minimised or hidden in the tray.
-        if (Visibility != Visibility.Visible || XamlRoot?.IsHostVisible == false) return;
         _camera.AutoRotate = ShellEnvironment.AnimationsEnabled();
         _camera.Update(dt);
         try
         {
             EnsureBitmap();
-            if (!_camera.IsMoving && !_dirty) return;
-            _target.Render(_camera, _pixels);
-            _pixels.CopyTo(0, _bitmap!.PixelBuffer, 0, _pixels.Length);
+            if (!_camera.IsMoving && !_dirty)
+            {
+                // At rest (Windows animations off, nothing coasting): no frames until input or a change wakes it.
+                // Idle is the half second before turning starts, which still needs the clock.
+                if (_camera.Current != OrbitCamera.State.Idle) StopRendering();
+                return;
+            }
+            // Straight from the mapped texture into the bitmap's own buffer.
+            using (var pixels = _bitmap!.PixelBuffer.AsStream())
+            {
+                _target.Render(_camera, pixels);
+            }
             _bitmap.Invalidate();
             _dirty = false;
             if (!_announced)
@@ -231,6 +281,7 @@ public sealed partial class DeviceSceneView : UserControl
         _pointerId = e.Pointer.PointerId;
         _lastPoint = point.Position;
         _camera.BeginControl();
+        Wake();
         Focus(FocusState.Pointer);
         e.Handled = true;
     }
@@ -241,6 +292,7 @@ public sealed partial class DeviceSceneView : UserControl
         var position = e.GetCurrentPoint(Surface).Position;
         _camera.Slide((float)(position.X - _lastPoint.X) * OrbitCamera.TouchPixelsPerDip, (float)(position.Y - _lastPoint.Y) * OrbitCamera.TouchPixelsPerDip);
         _lastPoint = position;
+        Wake();
         e.Handled = true;
     }
 
@@ -249,6 +301,7 @@ public sealed partial class DeviceSceneView : UserControl
         if (_pointerId != e.Pointer.PointerId) return;
         _pointerId = null;
         _camera.EndControl();
+        Wake();
         Surface.ReleasePointerCapture(e.Pointer);
     }
 
@@ -259,6 +312,7 @@ public sealed partial class DeviceSceneView : UserControl
         // One notch is about a 40-pixel pinch on HeyMelody (wheel up = closer).
         _camera.Scroll(delta / 120f * 40);
         if (_pointerId is null) _camera.EndControl();
+        Wake();
         e.Handled = true;
     }
 
@@ -266,6 +320,7 @@ public sealed partial class DeviceSceneView : UserControl
     {
         if (_renderer is null) return;
         _camera.StartRecover();
+        Wake();
         e.Handled = true;
     }
 
@@ -284,6 +339,7 @@ public sealed partial class DeviceSceneView : UserControl
         _camera.BeginControl();
         _camera.Slide(dx, dy);
         _camera.EndControl();
+        Wake();
         e.Handled = true;
     }
 
@@ -323,8 +379,9 @@ public sealed partial class DeviceSceneView : UserControl
         await Task.Delay(1500); // 0.5 s idle, then 20°/s
         if (_camera.AutoRotate && Math.Abs(_camera.Yaw - yaw) < 5) throw new InvalidOperationException("The model does not turn by itself: " + DiagnosticState);
 
-        // Drag right and down for half a second, like a mouse would.
+        // Drag right and down for half a second, like a mouse would (this bypasses the input handlers, so wake it).
         _camera.BeginControl();
+        Wake();
         for (int i = 0; i < 30; i++)
         {
             _camera.Slide(8 * OrbitCamera.TouchPixelsPerDip, 4 * OrbitCamera.TouchPixelsPerDip);
@@ -337,11 +394,13 @@ public sealed partial class DeviceSceneView : UserControl
 
         for (int i = 0; i < 6; i++) _camera.Scroll(40);
         _camera.EndControl();
+        Wake();
         await Task.Delay(800);
         if (_camera.Distance >= _camera.DefaultDistance - 0.5f) throw new InvalidOperationException("The wheel did not zoom: " + DiagnosticState);
         await Save("3-zoomed");
 
         _camera.StartRecover();
+        Wake();
         await WaitFor(() => _camera.Current == OrbitCamera.State.Rotate, "reset");
         await Save("4-reset");
     }
@@ -356,7 +415,6 @@ public sealed partial class DeviceSceneView : UserControl
         Surface.ReleasePointerCaptures();
         Frame.Source = null;
         _bitmap = null;
-        _pixels = [];
         _target?.Dispose();
         _target = null;
         _renderer?.Dispose();

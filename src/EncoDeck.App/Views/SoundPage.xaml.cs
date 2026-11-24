@@ -5,7 +5,6 @@ using EncoDeck.App.ViewModels;
 using EncoDeck.Core.Capabilities;
 using EncoDeck.Core.Profiles;
 using EncoDeck.Core.State;
-using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -28,9 +27,9 @@ public sealed partial class SoundPage : Page
     private readonly List<(Slider Slider, TextBlock Value)> _bands = [];
     private readonly List<(SpatialAudioMode Mode, RadioButton Button)> _spatialButtons = [];
     private readonly List<(Slider Slider, TextBlock Value)> _sonyBands = [];
-    private DispatcherQueueTimer? _bandTimer;
-    private DispatcherQueueTimer? _bassTimer;
-    private DispatcherQueueTimer? _sonyTimer;
+    private Debouncer? _bandWrite;
+    private Debouncer? _bassWrite;
+    private Debouncer? _sonyWrite;
     private string _customSignature = string.Empty;
     private int? _editorPresetId;
     private string _bandLayout = string.Empty;
@@ -61,9 +60,11 @@ public sealed partial class SoundPage : Page
             ViewModel.PropertyChanged -= OnViewModelChanged;
             Features.Changed -= OnFeaturesChanged;
             foreach (var (preset, _) in _buttons) preset.PropertyChanged -= OnPresetChanged;
-            _bandTimer?.Stop();
-            _bassTimer?.Stop();
-            _sonyTimer?.Stop();
+            // The sliders already show the new values: a write still waiting for its debounce is sent now
+            // rather than dropped (it must not refresh this page any more).
+            _bandWrite?.Flush();
+            _bassWrite?.Flush();
+            _sonyWrite?.Flush();
         };
     }
 
@@ -283,7 +284,7 @@ public sealed partial class SoundPage : Page
         SonyBandEditor.Visibility = Show(editable);
         if (!editable) return;
         if (_sonyBands.Count == 0) BuildBandFaders();
-        if (_sonyTimer is { IsRunning: true }) return; // the user is still dragging
+        if (_sonyWrite is { IsPending: true }) return; // the user is still dragging
         var bands = ViewModel.EqualizerBands;
         _syncing = true;
         try
@@ -338,12 +339,12 @@ public sealed partial class SoundPage : Page
     {
         if (_syncing || !IsLoaded || sender is not Slider { Tag: int index } || index >= _sonyBands.Count) return;
         _sonyBands[index].Value.Text = FormatGain((int)Math.Round(e.NewValue));
-        _sonyTimer ??= CreateTimer(BandDebounce, SaveSonyBandsAsync);
-        _sonyTimer.Stop();
-        _sonyTimer.Start();
+        _sonyWrite ??= new Debouncer(DispatcherQueue, BandDebounce, SaveSonyBandsAsync);
+        _sonyWrite.Restart();
     }
 
-    private async Task SaveSonyBandsAsync()
+    /// <param name="refresh">Unused: this write never refreshes the page (the device state change does).</param>
+    private async Task SaveSonyBandsAsync(bool refresh)
     {
         if (!ViewModel.CanEditEqualizerBands || _sonyBands.Count == 0) return;
         var bands = _sonyBands.Select(b => (int)Math.Round(b.Slider.Value)).ToArray();
@@ -450,7 +451,7 @@ public sealed partial class SoundPage : Page
             CustomNameBox.Text = selected.Name;
         }
         // Never move a slider the user is still dragging, nor while its write and read-back are in flight.
-        if (_bandTimer?.IsRunning != true && !f.IsPending("custom-eq"))
+        if (_bandWrite?.IsPending != true && !f.IsPending("custom-eq"))
         {
             for (int i = 0; i < _bands.Count && i < selected.Bands.Count; i++)
             {
@@ -528,7 +529,7 @@ public sealed partial class SoundPage : Page
         BassSlider.Minimum = bass.Min;
         BassSlider.Maximum = bass.Max;
         // Official: incoming values are ignored while a write is pending.
-        if (_bassTimer?.IsRunning != true && !f.IsPending("bass-engine")) BassSlider.Value = bass.Current;
+        if (_bassWrite?.IsPending != true && !f.IsPending("bass-engine")) BassSlider.Value = bass.Current;
         BassSlider.IsEnabled = ready && on == true;
     }
 
@@ -653,26 +654,26 @@ public sealed partial class SoundPage : Page
     {
         if (_syncing || !IsLoaded || sender is not Slider { Tag: int index }) return;
         _bands[index].Value.Text = FormatGain((int)Math.Round(e.NewValue), _gainScale);
-        _bandTimer ??= CreateTimer(BandDebounce, SaveBandsAsync);
-        _bandTimer.Stop();
-        _bandTimer.Start();
+        _bandWrite ??= new Debouncer(DispatcherQueue, BandDebounce, SaveBandsAsync);
+        _bandWrite.Restart();
     }
 
     private async void OnBandPresetChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_syncing || !IsLoaded || BandPresetBox.SelectedItem is not ComboBoxItem { Tag: BandCurvePreset preset }
             || Features.SelectedCustomEqualizer is not { } curve || preset.Gains.Count != curve.Bands.Count) return;
-        _bandTimer?.Stop();
+        _bandWrite?.Cancel();
         await Features.SaveCustomEqualizerAsync(curve with { Bands = curve.Bands.Select((b, i) => b with { Gain = preset.Gains[i] }).ToArray() });
         Sync();
     }
 
-    private async Task SaveBandsAsync()
+    /// <param name="refresh">False when flushed as the page unloads: then only the write, no UI refresh.</param>
+    private async Task SaveBandsAsync(bool refresh)
     {
         if (Features.SelectedCustomEqualizer is not { } preset) return;
         var bands = preset.Bands.Select((b, i) => b with { Gain = i < _bands.Count ? (int)Math.Round(_bands[i].Slider.Value) : b.Gain }).ToArray();
         await Features.SaveCustomEqualizerAsync(preset with { Bands = bands });
-        Sync();
+        if (refresh) Sync();
     }
 
     private async void OnBassToggled(object sender, RoutedEventArgs e)
@@ -689,13 +690,12 @@ public sealed partial class SoundPage : Page
     private void OnBassLevelChanged(object sender, RangeBaseValueChangedEventArgs e)
     {
         if (_syncing || !IsLoaded) return;
-        _bassTimer ??= CreateTimer(BassDebounce, async () =>
+        _bassWrite ??= new Debouncer(DispatcherQueue, BassDebounce, async refresh =>
         {
             await Features.SetBassEngineLevelAsync((int)Math.Round(BassSlider.Value));
-            Sync();
+            if (refresh) Sync();
         });
-        _bassTimer.Stop();
-        _bassTimer.Start();
+        _bassWrite.Restart();
     }
 
     private async void OnSpatialClick(object sender, RoutedEventArgs e)
@@ -771,19 +771,6 @@ public sealed partial class SoundPage : Page
         {
             _dialogOpen = false;
         }
-    }
-
-    private DispatcherQueueTimer CreateTimer(TimeSpan interval, Func<Task> action)
-    {
-        var timer = DispatcherQueue.CreateTimer();
-        timer.Interval = interval;
-        timer.IsRepeating = false;
-        timer.Tick += async (t, _) =>
-        {
-            t.Stop();
-            await action();
-        };
-        return timer;
     }
 
     /// <summary>Gain in steps of 1 / <paramref name="scale"/> dB (OPPO whole dB, other brands 0.1 dB).</summary>

@@ -51,7 +51,13 @@ public sealed partial class MainWindow : Window
 
         var settings = App.Instance.Settings;
         settings.PropertyChanged += OnSettingsChanged;
-        Closed += (_, _) => settings.PropertyChanged -= OnSettingsChanged;
+        Closed += (_, _) =>
+        {
+            settings.PropertyChanged -= OnSettingsChanged;
+            // WinUI does not promise Unloaded for the pages of a closing window, so a slider write still waiting for
+            // its debounce (the earbuds' EQ, a settings slider) is sent here; the writes skip the UI refresh.
+            Debouncer.FlushAll();
+        };
         ShowUpdateBadge();
         AboutItem.Loaded += (_, _) => PinUpdateBadgeToIcon();
     }

@@ -5,6 +5,7 @@ using EncoDeck.Bluetooth.Discovery;
 using EncoDeck.Core.Devices;
 using EncoDeck.Core.Commands;
 using EncoDeck.Core.Notifications;
+using EncoDeck.Core.Profiles;
 using EncoDeck.Core.State;
 using EncoDeck.Platform.Input;
 using EncoDeck.Platform.Instance;
@@ -42,11 +43,25 @@ public partial class App : Application
         // Tray-resident: closing the last window must not end the process.
         DispatcherShutdownMode = DispatcherShutdownMode.OnExplicitShutdown;
         UnhandledException += OnUnhandledException;
+        // A crash on a worker thread (a companion's poll, a Bluetooth callback) ends the process without
+        // passing the XAML handler above; leave at least one log line saying why.
+        AppDomain.CurrentDomain.UnhandledException += OnDomainUnhandledException;
         TaskScheduler.UnobservedTaskException += (_, e) =>
         {
-            _logger?.LogError(e.Exception, "Unobserved task exception");
+            Logger?.LogError(e.Exception, "Unobserved task exception");
             e.SetObserved();
         };
+    }
+
+    /// <summary>The app's logger; the diagnostic modes have a host (and so a log) but never set <see cref="_logger"/>.</summary>
+    private ILogger? Logger
+    {
+        get
+        {
+            if (_logger is not null) return _logger;
+            try { return Host?.Loggers.CreateLogger<App>(); }
+            catch (ObjectDisposedException) { return null; }
+        }
     }
 
     public static App Instance => (App)Current;
@@ -396,7 +411,15 @@ public partial class App : Application
         if (!settings.LowBatteryNotification || e.Current.Connection != DeviceConnectionState.ControlReady) return;
         var low = Host.LowBattery.Evaluate(e.Current.Battery, settings.LowBatteryThreshold);
         if (low.Count == 0) return;
-        string parts = string.Join(" · ", low.Select(l => $"{Loc.Get(l.Component == BatteryComponent.Left ? "Battery_Left" : "Battery_Right")} {l.Level}%"));
+        // Headphones report their one battery as the left reading; name it the way the battery card does
+        // (BatteryItemViewModel.SetSingleBattery, same form check as DeviceViewModel.IsHeadphones).
+        bool headphones = e.Current.Profile?.Form == DeviceForm.Headphones;
+        string parts = string.Join(" · ", low.Select(l => $"{Loc.Get(l.Component switch
+        {
+            BatteryComponent.Left => headphones ? "Battery_Headphones" : "Battery_Left",
+            BatteryComponent.Case => "Battery_Case",
+            _ => "Battery_Right",
+        })} {l.Level}%"));
         _dispatcher?.TryEnqueue(() => _tray?.Notify(Loc.Format("Notify_LowBattery_Title", e.Current.Device?.Name), parts));
     }
 
@@ -477,9 +500,30 @@ public partial class App : Application
 
     private void OnUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
     {
-        _logger?.LogCritical(e.Exception, "Unhandled UI exception");
+        // WinUI's Exception can lose the original text across the ABI; e.Message keeps it.
+        Logger?.LogError(e.Exception, "Unhandled UI exception (handled, the app continues): {Message}", e.Message);
         // Device or communication problems must never take the app down.
         e.Handled = true;
+    }
+
+    /// <summary>
+    /// Last chance on any thread: the process is about to end, so the file log is flushed here (its writer
+    /// is a background task that would otherwise die with the queue unwritten).
+    /// </summary>
+    private void OnDomainUnhandledException(object sender, System.UnhandledExceptionEventArgs e)
+    {
+        try
+        {
+            // A non-Exception object (thrown by native code) has no stack; its text is all there is.
+            var exception = e.ExceptionObject as Exception;
+            Logger?.LogCritical(exception, "Unhandled exception on thread {Thread} (terminating: {Terminating}) {Detail}",
+                Environment.CurrentManagedThreadId, e.IsTerminating, exception is null ? Convert.ToString(e.ExceptionObject) : string.Empty);
+            if (e.IsTerminating) Host?.FileLog.Dispose();
+        }
+        catch (Exception)
+        {
+            // Nothing more can be done while the process ends.
+        }
     }
 
     public async void ExitApp()
@@ -495,6 +539,8 @@ public partial class App : Application
         Windows?.CloseAll();
         try
         {
+            // Slider writes still waiting (or just sent) go out before the device connection and settings close.
+            await Debouncer.FlushAndWaitAsync(TimeSpan.FromSeconds(4));
             if (Host is not null) await Host.DisposeAsync();
         }
         catch (Exception ex)

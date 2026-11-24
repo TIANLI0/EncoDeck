@@ -6,7 +6,6 @@ using EncoDeck.Core.Capabilities;
 using EncoDeck.Core.State;
 using EncoDeck.Protocol.Brands.EarFun;
 using EncoDeck.Protocol.Brands.Moondrop;
-using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -35,8 +34,8 @@ public sealed partial class SettingsGroupView : UserControl
     private SettingRow? _promptRow;
     private Slider? _promptSlider;
     private TextBlock? _promptValue;
-    private DispatcherQueueTimer? _promptTimer;
-    private DispatcherQueueTimer? _optionTimer;
+    private Debouncer? _promptWrite;
+    private Debouncer? _optionWrite;
     private (string Id, int Value)? _optionTarget;
     private string _optionSignature = string.Empty;
     private string? _builtFor;
@@ -117,8 +116,10 @@ public sealed partial class SettingsGroupView : UserControl
         ViewModel.PropertyChanged -= OnViewModelChanged;
         Features.Changed -= OnFeaturesChanged;
         foreach (var (toggle, _, _) in _switches) toggle.PropertyChanged -= OnToggleChanged;
-        _promptTimer?.Stop();
-        _optionTimer?.Stop();
+        // The sliders already show the new values: a write still waiting for its debounce is sent now
+        // rather than dropped (it must not refresh this view any more).
+        _promptWrite?.Flush();
+        _optionWrite?.Flush();
     }
 
     private void OnTogglesChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
@@ -187,7 +188,8 @@ public sealed partial class SettingsGroupView : UserControl
                 _promptRow = new SettingRow { Name = "PromptVolumeSection", Header = Loc.Get("Prompt_Title/Header"), Action = panel };
                 _rows.Children.Add(_promptRow);
             }
-            _promptTimer?.Stop();
+            // Another model: a volume still waiting was meant for the previous earbuds.
+            _promptWrite?.Cancel();
             var profile = Features.State.Profile;
             bool earFun = profile is EarFunProfile;
             var (min, max) = profile is MoondropProfile or EarFunProfile ? (0, 100) : Features.Model?.PromptVolumeRange ?? (1, 10);
@@ -261,7 +263,7 @@ public sealed partial class SettingsGroupView : UserControl
         bool shown = f.Has(DeviceCapability.PromptVolume) && f.State.PromptVolume is not null;
         _promptRow.Visibility = Show(shown);
         // Don't fight the user: hold the slider while they drag and while the write is in flight.
-        if (_promptTimer?.IsRunning != true && !f.IsPending("prompt-volume") && f.State.PromptVolume?.Value is int volume) _promptSlider.Value = volume;
+        if (_promptWrite?.IsPending != true && !f.IsPending("prompt-volume") && f.State.PromptVolume?.Value is int volume) _promptSlider.Value = volume;
         _promptValue.Text = ((int)Math.Round(_promptSlider.Value)).ToString(System.Globalization.CultureInfo.CurrentCulture);
         _promptSlider.IsEnabled = ready && !f.IsPending("prompt-volume")
             && (!f.IsMoondrop || (!f.IsPending("prompt-tone") && !f.IsPending("toggle:PromptTone") && !_writes.Contains("toggle:PromptTone")));
@@ -365,20 +367,24 @@ public sealed partial class SettingsGroupView : UserControl
             text.Text = ((int)Math.Round(slider.Value)).ToString(System.Globalization.CultureInfo.CurrentCulture);
         _optionTarget = (id, (int)Math.Round(slider.Value));
         // Written 500 ms after the slider stops, like the prompt volume.
-        _optionTimer ??= CreateTimer(async () =>
+        _optionWrite ??= new Debouncer(DispatcherQueue, SliderDebounce, async refresh =>
         {
             if (_optionTarget is not { } target) return;
             if (Features.Options.FirstOrDefault(o => o.Id == target.Id) is not { } option || option.Value == target.Value || !_writes.Add(target.Id))
             {
                 _optionTarget = null;
-                Sync();
+                if (refresh) Sync();
                 return;
             }
             try { await Features.SetOptionAsync(target.Id, target.Value); }
-            finally { _writes.Remove(target.Id); _optionTarget = null; Sync(); }
+            finally
+            {
+                _writes.Remove(target.Id);
+                _optionTarget = null;
+                if (refresh) Sync();
+            }
         });
-        _optionTimer.Stop();
-        _optionTimer.Start();
+        _optionWrite.Restart();
     }
 
     private async void OnGainChanged(object sender, SelectionChangedEventArgs e)
@@ -399,26 +405,12 @@ public sealed partial class SettingsGroupView : UserControl
         if (_syncing || !IsLoaded || _promptSlider is null || _promptValue is null) return;
         _promptValue.Text = ((int)Math.Round(e.NewValue)).ToString(System.Globalization.CultureInfo.CurrentCulture);
         // Official: written 500 ms after the slider stops.
-        _promptTimer ??= CreateTimer(async () =>
+        _promptWrite ??= new Debouncer(DispatcherQueue, SliderDebounce, async refresh =>
         {
             await Features.SetPromptVolumeAsync((int)Math.Round(_promptSlider.Value));
-            Sync();
+            if (refresh) Sync();
         });
-        _promptTimer.Stop();
-        _promptTimer.Start();
-    }
-
-    private DispatcherQueueTimer CreateTimer(Func<Task> action)
-    {
-        var timer = DispatcherQueue.CreateTimer();
-        timer.Interval = SliderDebounce;
-        timer.IsRepeating = false;
-        timer.Tick += async (t, _) =>
-        {
-            t.Stop();
-            await action();
-        };
-        return timer;
+        _promptWrite.Restart();
     }
 
     private static Visibility Show(bool visible) => visible ? Visibility.Visible : Visibility.Collapsed;

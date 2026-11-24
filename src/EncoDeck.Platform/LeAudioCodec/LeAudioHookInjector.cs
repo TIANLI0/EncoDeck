@@ -15,11 +15,15 @@ internal static partial class LeAudioHookInjector
 {
     private const string ModulePrefix = "EncoDeck.LeHook.";
 
+    /// <summary>The name <paramref name="hookDll"/> is copied under: a loaded DLL cannot be replaced, so each build gets its own.</summary>
+    public static string CopyName(string hookDll) =>
+        $"{ModulePrefix}{Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(hookDll)))[..8].ToLowerInvariant()}.dll";
+
+    /// <summary><paramref name="directory"/> must already be one only administrators can change (<see cref="LeAudioHookDirectory"/>).</summary>
     public static int Enable(int pid, string hookDll, string directory, Action<string> log)
     {
         Process.EnterDebugMode();
-        string hash = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(hookDll)))[..8].ToLowerInvariant();
-        string name = $"{ModulePrefix}{hash}.dll";
+        string name = CopyName(hookDll);
         string copy = Path.Combine(directory, name);
         // An older build may still be patched in: restore Windows' code first, the new build's prologue check fails otherwise.
         foreach (var (otherName, otherBase) in Modules(pid).Where(m => !m.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
@@ -30,9 +34,10 @@ internal static partial class LeAudioHookInjector
         nint remote = Find(pid, name);
         if (remote == 0)
         {
-            File.Copy(hookDll, copy, overwrite: true);
-            // The service runs as LOCAL SERVICE: it loads the DLL and appends to the log in this folder.
-            GrantLocalService(directory);
+            // Created anew, never written over: an existing file would keep its own owner and access list. The folder's
+            // list lets the service (LOCAL SERVICE) load it.
+            File.Delete(copy);
+            File.Copy(hookDll, copy, overwrite: false);
             Load(pid, copy);
             remote = Find(pid, name);
             if (remote == 0) throw new InvalidOperationException("The Bluetooth audio service did not load the hook.");
@@ -60,18 +65,6 @@ internal static partial class LeAudioHookInjector
 
     private static nint Find(int pid, string name) =>
         Modules(pid).FirstOrDefault(m => m.Name.Equals(name, StringComparison.OrdinalIgnoreCase)).Base;
-
-    private static void GrantLocalService(string directory)
-    {
-        using var icacls = Process.Start(new ProcessStartInfo("icacls.exe", $"\"{directory}\" /grant *S-1-5-19:(OI)(CI)M")
-        {
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true,
-        }) ?? throw new IOException("Cannot start icacls.");
-        icacls.StandardOutput.ReadToEnd();
-        icacls.WaitForExit();
-    }
 
     private static void Load(int pid, string dll)
     {

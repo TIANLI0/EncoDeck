@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 using EncoDeck.App.Services;
 using EncoDeck.Core.Capabilities;
 using EncoDeck.Core.Commands;
+using EncoDeck.Core.Configuration;
 using EncoDeck.Core.Devices;
 using EncoDeck.Core.Profiles;
 using EncoDeck.Core.Resources;
@@ -79,8 +80,36 @@ public sealed partial class DeviceViewModel : ObservableObject
         _dispatcher = dispatcher;
         _store.StateChanged += (_, _) => QueueApply();
         _resources.Changed += (_, _) => QueueApply();
-        _settings.Changed += (_, _) => QueueApply(rebuildOptions: true);
+        _appliedSettings = SettingsInputs.Of(_settings.Current);
+        _settings.Changed += OnSettingsChanged;
         Apply(_store.Current);
+    }
+
+    /// <summary>The settings this projection reads; any other settings change leaves it alone.</summary>
+    private readonly record struct SettingsInputs(bool Experimental, bool? ShowAudioTransportSwitch, int LowBatteryThreshold)
+    {
+        public static SettingsInputs Of(AppSettings s) => new(s.EnableExperimentalFeatures, s.ShowAudioTransportSwitch, s.LowBatteryThreshold);
+    }
+
+    private readonly Lock _settingsGate = new();
+    private SettingsInputs _appliedSettings;
+
+    /// <summary>
+    /// Rebuilding the option lists recreates the noise, EQ and switch view models every page is bound to, so it only
+    /// happens when the experimental switch (which decides the MOONDROP switches offered) changed; the transport switch
+    /// and the low-battery level only need the state projected again.
+    /// </summary>
+    private void OnSettingsChanged(object? sender, AppSettings settings)
+    {
+        var next = SettingsInputs.Of(settings);
+        SettingsInputs previous;
+        lock (_settingsGate)
+        {
+            previous = _appliedSettings;
+            _appliedSettings = next;
+        }
+        if (next == previous) return;
+        QueueApply(rebuildOptions: next.Experimental != previous.Experimental);
     }
 
     public BatteryItemViewModel Left { get; } = new(BatteryComponent.Left);

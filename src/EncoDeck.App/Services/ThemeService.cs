@@ -16,7 +16,23 @@ public sealed class ThemeService
     public ThemeService(ISettingsStore settings)
     {
         _settings = settings;
-        _settings.Changed += (_, _) => ApplyAll();
+        _seenThemes = (settings.Current.Theme, settings.Current.QuickSettingsPanelTheme);
+        _settings.Changed += OnSettingsChanged;
+    }
+
+    // The theme settings last applied: the app's and the Quick Settings panel's own (the only themeOf in use).
+    private (AppTheme App, AppTheme QuickSettingsPanel) _seenThemes;
+
+    /// <summary>Re-themes the windows only when a theme setting changed, not on every settings change.</summary>
+    private void OnSettingsChanged(object? sender, AppSettings settings)
+    {
+        var themes = (settings.Theme, settings.QuickSettingsPanelTheme);
+        lock (_lock)
+        {
+            if (themes == _seenThemes) return;
+            _seenThemes = themes;
+        }
+        ApplyAll();
     }
 
     public ElementTheme Theme => ToElementTheme(_settings.Current.Theme);

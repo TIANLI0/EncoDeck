@@ -94,6 +94,12 @@ public static class LeAudioCodecHook
     public static string BundledDll => Path.Combine(AppContext.BaseDirectory, HookDllName);
 
     /// <summary>
+    /// Where a successful apply left its copy of <paramref name="hookDll"/>: the file the service loaded and the
+    /// restore task runs, in the folder only administrators can change.
+    /// </summary>
+    public static string AppliedCopy(string hookDll) => Path.Combine(HookDirectory, LeAudioHookInjector.CopyName(hookDll));
+
+    /// <summary>
     /// No elevation. Finds the patched functions in this Windows' LE Audio code; the first time for a Windows build
     /// that downloads its public symbols (about 12 MB, cached per user).
     /// </summary>
@@ -219,8 +225,9 @@ public static class LeAudioCodecHook
         if (!Environment.IsPrivilegedProcess) return Result.NotElevated;
         try
         {
+            // Before anything in the folder is trusted: only administrators may change it from here on.
+            LeAudioHookDirectory.Prepare(HookDirectory, log);
             // Worked out again here, from a symbol cache only administrators can change: the hook patches what HKLM names.
-            Directory.CreateDirectory(HookDirectory);
             var (targets, error) = await LeAudioHookTargets.ResolveAsync(TargetPath, ElevatedSymbolCache).ConfigureAwait(false);
             if (targets is null)
             {

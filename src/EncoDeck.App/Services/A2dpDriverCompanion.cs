@@ -12,7 +12,8 @@ namespace EncoDeck.App.Services;
 /// bitrate while it does, into the device state. Windows logs codecs only for its own driver, so without this the tag
 /// kept the codec Windows streamed before the LHDC component took the earbuds over. That component swaps the driver when
 /// it applies LHDC or restores Windows audio, so it is read every few seconds while a link is up (a few CfgMgr32 calls
-/// and a registry read, no administrator rights) and right away when the device or its link changes.
+/// and a registry read, no administrator rights) and right away when the device or its link changes. Without a
+/// Bluetooth link there is nothing to read and no timer runs; a state change wakes it.
 /// </summary>
 public sealed class A2dpDriverCompanion : IDisposable
 {
@@ -21,38 +22,30 @@ public sealed class A2dpDriverCompanion : IDisposable
     private readonly IDeviceStateStore _store;
     private readonly ILogger _logger;
     private readonly object _gate = new();
-    private readonly CancellationTokenSource _cts = new();
+    private readonly ConditionalPoll _poll;
     private string? _logged;
 
     public A2dpDriverCompanion(IDeviceStateStore store, ILogger logger)
     {
         _store = store;
         _logger = logger;
+        _poll = new ConditionalPoll("A2DP driver poll", PollInterval, () => Target(_store.Current) is not null, Check, logger);
     }
 
     public void Start()
     {
         _store.StateChanged += OnStateChanged;
-        _ = PollAsync(_cts.Token);
-    }
-
-    private async Task PollAsync(CancellationToken ct)
-    {
-        using var timer = new PeriodicTimer(PollInterval);
-        try
-        {
-            do Check();
-            while (await timer.WaitForNextTickAsync(ct).ConfigureAwait(false));
-        }
-        catch (OperationCanceledException)
-        {
-        }
+        _poll.Start();
     }
 
     private void OnStateChanged(object? sender, DeviceStateChangedEventArgs e)
     {
+        ulong? target = Target(e.Current);
+        if (target == Target(e.Previous)) return;
         // Another device, or a link that just came up: read it now rather than on the next tick.
-        if (Target(e.Current) is not null && Target(e.Current) != Target(e.Previous)) _ = Task.Run(Check);
+        if (target is not null) _ = Task.Run(_poll.CheckNow);
+        // Resume polling for the new link, or let one more check clear what the dropped one projected.
+        _poll.Wake();
     }
 
     /// <summary>The Bluetooth device whose driver matters: the active one, while a link is up.</summary>
@@ -80,7 +73,6 @@ public sealed class A2dpDriverCompanion : IDisposable
     public void Dispose()
     {
         _store.StateChanged -= OnStateChanged;
-        _cts.Cancel();
-        _cts.Dispose();
+        _poll.Dispose();
     }
 }

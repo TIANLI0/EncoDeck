@@ -89,16 +89,18 @@ public sealed class LeAudioCodecHookTests
     }
 
     [Fact]
-    public void RestoreTaskRunsTheApplyElevatedOnDemand()
+    public void RestoreTaskRunsTheHookCopyWithRundll32OnDemand()
     {
-        string xml = LeAudioHookRestoreTask.BuildXml(@"C:\Program Files\EncoDeck\EncoDeck.exe",
-            "--le-hook-apply 48_5 high restore", "S-1-5-21-1-2-3-1001");
+        // Anyone signed in as the user can start the task: it runs Windows' rundll32 on the copy in the folder only
+        // administrators can change, never EncoDeck.exe, which may sit where the user's programs can write.
+        string copy = @"C:\ProgramData\EncoDeck\LeHook\EncoDeck.LeHook.0fa8acd8.dll";
+        string xml = LeAudioHookRestoreTask.BuildXml(LeAudioHookRestoreTask.Rundll32, LeAudioHookRestoreTask.RestoreArguments(copy), "S-1-5-21-1-2-3-1001");
         var task = System.Xml.Linq.XDocument.Parse(xml).Root!;
         System.Xml.Linq.XNamespace ns = "http://schemas.microsoft.com/windows/2004/02/mit/task";
         Assert.Equal("HighestAvailable", task.Descendants(ns + "RunLevel").Single().Value);
         Assert.Equal("S-1-5-21-1-2-3-1001", task.Descendants(ns + "UserId").Single().Value);
-        Assert.Equal(@"C:\Program Files\EncoDeck\EncoDeck.exe", task.Descendants(ns + "Command").Single().Value);
-        Assert.EndsWith(LeAudioHookRestoreTask.RestoreArgument, task.Descendants(ns + "Arguments").Single().Value);
+        Assert.Equal(Path.Combine(Environment.SystemDirectory, "rundll32.exe"), task.Descendants(ns + "Command").Single().Value);
+        Assert.Equal($"\"{copy}\",LeHookRestore", task.Descendants(ns + "Arguments").Single().Value);
         // Started by EncoDeck only: no triggers, hidden, allowed on battery.
         Assert.Empty(task.Descendants(ns + "Triggers"));
         Assert.Equal("true", task.Descendants(ns + "Hidden").Single().Value);

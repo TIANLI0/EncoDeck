@@ -40,13 +40,10 @@ public sealed class BitmapTarget : IDisposable
     /// <summary>Draws one frame into <paramref name="pixels"/> (<c>Width * Height * 4</c> bytes, rows packed).</summary>
     public void Render(OrbitCamera camera, Span<byte> pixels)
     {
-        _renderer.Render(_color!, Width, Height, camera);
-        var context = _renderer.Context;
-        context.CopyResource(_staging!, _color!);
-        var mapped = context.Map(_staging!, 0, MapMode.Read);
+        int row = Width * 4;
+        var mapped = RenderAndMap(camera);
         try
         {
-            int row = Width * 4;
             for (int y = 0; y < Height; y++)
             {
                 unsafe
@@ -57,8 +54,46 @@ public sealed class BitmapTarget : IDisposable
         }
         finally
         {
-            context.Unmap(_staging!, 0);
+            _renderer.Context.Unmap(_staging!, 0);
         }
+    }
+
+    /// <summary>
+    /// Draws one frame and writes it, rows packed, to <paramref name="destination"/> from its current position, e.g. a
+    /// <c>WriteableBitmap.PixelBuffer</c> stream, so the pixels go straight from the mapped texture to the bitmap
+    /// without an intermediate array.
+    /// </summary>
+    public void Render(OrbitCamera camera, Stream destination)
+    {
+        int row = Width * 4;
+        var mapped = RenderAndMap(camera);
+        try
+        {
+            unsafe
+            {
+                byte* source = (byte*)mapped.DataPointer;
+                if (mapped.RowPitch == row)
+                {
+                    destination.Write(new ReadOnlySpan<byte>(source, checked(row * Height)));
+                }
+                else
+                {
+                    for (int y = 0; y < Height; y++) destination.Write(new ReadOnlySpan<byte>(source + (nint)y * mapped.RowPitch, row));
+                }
+            }
+        }
+        finally
+        {
+            _renderer.Context.Unmap(_staging!, 0);
+        }
+    }
+
+    private MappedSubresource RenderAndMap(OrbitCamera camera)
+    {
+        _renderer.Render(_color!, Width, Height, camera);
+        var context = _renderer.Context;
+        context.CopyResource(_staging!, _color!);
+        return context.Map(_staging!, 0, MapMode.Read);
     }
 
     private void ReleaseTextures()

@@ -15,13 +15,20 @@ using Microsoft.UI.Dispatching;
 namespace EncoDeck.App.ViewModels;
 
 /// <summary>
-/// Two-way projection of <see cref="AppSettings"/>; every change is persisted immediately. Also shows the
+/// Two-way projection of <see cref="AppSettings"/>; every change is persisted immediately, except the slider-bound
+/// values, which are saved once the slider rests (<see cref="SliderPersistDelay"/>; see <see cref="FlushPendingSettings"/>). Also shows the
 /// device artwork download and app updates, whose status arrives on background threads and is applied here
 /// on the UI thread (coalesced, so a fast download never floods the dispatcher).
 /// </summary>
 public sealed partial class SettingsViewModel : ObservableObject
 {
     private static readonly string[] Languages = ["", "zh-CN", "en-US", "ja-JP"];
+
+    /// <summary>
+    /// A dragged slider changes its value at every step; saving each step wrote settings.json on the UI thread and
+    /// woke every settings subscriber. The value is kept here and saved once it rests this long.
+    /// </summary>
+    private static readonly TimeSpan SliderPersistDelay = TimeSpan.FromMilliseconds(400);
 
     private readonly ISettingsStore _settings;
     private readonly StartupRegistration _startup;
@@ -36,6 +43,11 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly string _executablePath = Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "EncoDeck.exe");
     private int _artworkQueued;
     private int _updatesQueued;
+    private Debouncer? _sliderPersist;
+    // Slider values not saved yet (null: the stored value is current).
+    private double? _pendingPopupScalePercent;
+    private double? _pendingPopupDurationSeconds;
+    private int? _pendingLowBatteryThreshold;
 
     /// <param name="artworkRoot">Opened by "Open folder" while nothing is cached for the device yet.</param>
     /// <param name="exit">The app's clean shutdown, used after the installer has been started.</param>
@@ -72,6 +84,40 @@ public sealed partial class SettingsViewModel : ObservableObject
     {
         _settings.Update(change);
         OnPropertyChanged(property);
+    }
+
+    /// <summary>A slider value: shown at once (the getter returns the pending value), saved once the slider rests.</summary>
+    private void UpdateLater(Action keep, string property)
+    {
+        keep();
+        OnPropertyChanged(property);
+        _sliderPersist ??= new Debouncer(_dispatcher, SliderPersistDelay, _ =>
+        {
+            PersistSliders();
+            return Task.CompletedTask;
+        });
+        _sliderPersist.Restart();
+    }
+
+    /// <summary>
+    /// Saves slider values still waiting for their delay. Called when the settings page unloads and before anything
+    /// reads them from the store (the popup preview); the app's exit flushes every <see cref="Debouncer"/> too.
+    /// </summary>
+    public void FlushPendingSettings() => _sliderPersist?.Flush();
+
+    private void PersistSliders()
+    {
+        double? scale = _pendingPopupScalePercent, duration = _pendingPopupDurationSeconds;
+        int? threshold = _pendingLowBatteryThreshold;
+        _pendingPopupScalePercent = _pendingPopupDurationSeconds = null;
+        _pendingLowBatteryThreshold = null;
+        if (scale is null && duration is null && threshold is null) return;
+        _settings.Update(s => s with
+        {
+            PopupScale = scale is { } percent ? percent / 100.0 : s.PopupScale,
+            PopupDurationSeconds = duration ?? s.PopupDurationSeconds,
+            LowBatteryThreshold = threshold ?? s.LowBatteryThreshold,
+        });
     }
 
     public bool StartWithWindows
@@ -155,14 +201,14 @@ public sealed partial class SettingsViewModel : ObservableObject
     /// <summary>Popup size in percent of its standard size (60–160).</summary>
     public double PopupScalePercent
     {
-        get => Math.Round(S.PopupScale * 100);
-        set => Update(s => s with { PopupScale = Math.Round(value) / 100.0 }, nameof(PopupScalePercent));
+        get => _pendingPopupScalePercent ?? Math.Round(S.PopupScale * 100);
+        set => UpdateLater(() => _pendingPopupScalePercent = Math.Round(value), nameof(PopupScalePercent));
     }
 
     public double PopupDurationSeconds
     {
-        get => S.PopupDurationSeconds;
-        set => Update(s => s with { PopupDurationSeconds = Math.Round(value, 1) }, nameof(PopupDurationSeconds));
+        get => _pendingPopupDurationSeconds ?? S.PopupDurationSeconds;
+        set => UpdateLater(() => _pendingPopupDurationSeconds = Math.Round(value, 1), nameof(PopupDurationSeconds));
     }
 
     public bool SuppressPopupWhenFullscreen
@@ -179,8 +225,8 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     public double LowBatteryThreshold
     {
-        get => S.LowBatteryThreshold;
-        set => Update(s => s with { LowBatteryThreshold = (int)Math.Round(value) }, nameof(LowBatteryThreshold));
+        get => _pendingLowBatteryThreshold ?? S.LowBatteryThreshold;
+        set => UpdateLater(() => _pendingLowBatteryThreshold = (int)Math.Round(value), nameof(LowBatteryThreshold));
     }
 
     public bool RawProtocolLogging

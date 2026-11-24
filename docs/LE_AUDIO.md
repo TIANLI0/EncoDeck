@@ -152,12 +152,12 @@ Windows 给 LE Audio 耳机选的 LC3 配置是固定的：48 kHz、7.5 ms 一�
 原理：Windows 的 LE Audio 客户端运行在“蓝牙音频服务”（`BthAvctpSvc`）里。它先按耳机声明的能力挑一个 LC3 配置，再按这个配置查一组传输参数（每个 SDU 的大小、间隔、延迟上限、重传次数）。点“应用”后，EncoDeck 以管理员权限把一个小组件（`EncoDeck.LeHook.dll`）载入这个服务，在这两处换成所选的档位和传输方式。两边保持一致后，发给耳机的编解码配置、ISO 链路参数和交给硬件编码器的数据通路配置都会使用新设置。
 
 - 下次建立 LE Audio 链路时生效（暂停所有播放 5 秒以上再继续，或开始、停止游戏）；打开了左右声道校准时，应用后会自动重建一次链路，并开始检查左右是否对齐。组件会记录每条新链路实际使用的参数：卡片显示“当前链路”，新链路符合所选设置时会弹出“LE Audio 已切换”通知。
-- 修改只在内存里，不改动系统文件。蓝牙音频服务重启（重启电脑、注销、关闭蓝牙）后组件随之卸载；“应用”时 EncoDeck 会注册一个隐藏的计划任务（`EncoDeck\LE Audio hook`，没有触发器，只在被调用时以最高权限重新应用同一选择），之后耳机以 LC3 连接而组件不在时，EncoDeck 用它自动恢复，不再需要管理员确认；打开了左右声道校准时还会重建一次链路，让设置立即生效。选“Windows 默认 + 自动”再应用，Windows 的选择就不再被修改（组件只继续记录当前链路），计划任务也会删除；卸载安装版时同样删除。
+- 修改只在内存里，不改动系统文件。蓝牙音频服务重启（重启电脑、注销、关闭蓝牙）后组件随之卸载；“应用”时 EncoDeck 会注册一个隐藏的计划任务（`EncoDeck\LE Audio hook`，没有触发器，只在被调用时以最高权限把组件重新载入服务、恢复同一选择），之后耳机以 LC3 连接而组件不在时，EncoDeck 用它自动恢复，不再需要管理员确认。这个任务只运行系统自带的 `rundll32` 和 `%ProgramData%\EncoDeck\LeHook\` 里的组件副本，该文件夹只有管理员可以改动；它不运行 EncoDeck 本身（默认安装位置普通程序也能写入）。Windows 更新改动了 LE Audio 相关代码后，自动恢复会失败，需要重新点一次“应用”；打开了左右声道校准时还会重建一次链路，让设置立即生效。选“Windows 默认 + 自动”再应用，Windows 的选择就不再被修改（组件只继续记录当前链路），计划任务也会删除；卸载安装版时同样删除。
 - 不绑定 Windows 版本。EncoDeck 第一次使用时会从微软的公开符号服务器（`msdl.microsoft.com`）下载这台电脑上 `Microsoft.Bluetooth.Audio.dll` 对应的公开符号（约 12 MB，之后缓存），按函数名找到 `LC3ClientCodec::GetPreferredConfigurationFromCapabilities` 和 `LC3ClientCodec::FindQosSettings`，再逐条核对它们开头的指令能否安全搬移；“应用”时由管理员进程重新做一遍，结果写入只有管理员能改的注册表，组件按它核对内存中的实际字节后才修改。找不到函数、指令对不上（例如 Windows 更新重写了它们）或下载不到符号时，卡片不显示，组件也不做任何修改。已在 Windows 11 预览版 26340.9767（`Microsoft.Bluetooth.Audio.dll` 10.0.26100.9767）上实测。
 - 组件还会在每次调用时核对数据结构（标志位、编解码 ID、LTV 能否完整解析、QoS 元素大小和已知档位）；某个 Windows 版本改了结构时，它会原样放行而不是改错。
 - 仅 x64、48 kHz；商店版不提供。耳机必须支持所选档位。应用后没有声音或有杂音，说明耳机或电脑的蓝牙音频硬件不支持，选回“Windows 默认”即可。
 - 码率越高，占用的蓝牙空口越多；同一个蓝牙适配器上的手柄、键鼠可能更容易受影响。
-- 日志在 `%ProgramData%\EncoDeck\LeHook\`：`lehook.log` 记录每次被替换的配置，`link.txt` 是最近一条链路的参数，`apply.log` 记录每次应用和自动恢复。命令行可以用 `EncoDeck.Probe le-hook status` 查看。
+- 日志在 `%ProgramData%\EncoDeck\LeHook\`：`lehook.log` 记录每次被替换的配置，`link.txt` 是最近一条链路的参数，`apply.log` 记录每次应用；自动恢复的结果也记在 `lehook.log`（以 `restore:` 开头）。命令行可以用 `EncoDeck.Probe le-hook status` 查看。
 
 ## 已知问题
 

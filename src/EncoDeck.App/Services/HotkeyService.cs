@@ -24,6 +24,8 @@ public sealed class HotkeyService : IDisposable
     private readonly DispatcherQueue _dispatcher;
     private readonly ILogger _logger;
     private readonly Dictionary<HotkeyAction, HotkeyRegistration> _status = [];
+    private readonly Lock _bindingsGate = new();
+    private HotkeyBindings? _seenBindings;
     private int _suspended;
     private bool _running;
 
@@ -35,6 +37,7 @@ public sealed class HotkeyService : IDisposable
         _dispatcher = dispatcher;
         _logger = logger;
         _hotkeys.Pressed += OnPressed;
+        _seenBindings = _settings.Current.Hotkeys;
         _settings.Changed += OnSettingsChanged;
         Apply();
     }
@@ -66,7 +69,19 @@ public sealed class HotkeyService : IDisposable
         _hotkeys.Dispose();
     }
 
-    private void OnSettingsChanged(object? sender, AppSettings e) => _dispatcher.TryEnqueue(Apply);
+    /// <summary>
+    /// Re-registers only when the bindings changed: every other setting (a slider, the theme) would otherwise release all
+    /// hotkeys for a moment, and another app could take a combination in that gap.
+    /// </summary>
+    private void OnSettingsChanged(object? sender, AppSettings e)
+    {
+        lock (_bindingsGate)
+        {
+            if (Equals(e.Hotkeys, _seenBindings)) return;
+            _seenBindings = e.Hotkeys;
+        }
+        _dispatcher.TryEnqueue(Apply);
+    }
 
     private void Apply()
     {
