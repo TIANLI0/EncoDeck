@@ -67,11 +67,13 @@ public sealed class AudioKeepAlive : IKeepAliveStream
     {
         IAudioClient? client = null;
         IAudioRenderClient? render = null;
+        IMMDeviceEnumerator? enumerator = null;
+        IMMDevice? device = null;
         uint bufferFrames;
         try
         {
-            var enumerator = (IMMDeviceEnumerator)new MMDeviceEnumerator();
-            Check(enumerator.GetDevice(endpointId, out var device));
+            enumerator = (IMMDeviceEnumerator)new MMDeviceEnumerator();
+            Check(enumerator.GetDevice(endpointId, out device));
             Guid audioClient = typeof(IAudioClient).GUID;
             Check(device.Activate(ref audioClient, ClsctxAll, 0, out object clientObject));
             client = (IAudioClient)clientObject;
@@ -104,6 +106,12 @@ public sealed class AudioKeepAlive : IKeepAliveStream
             Release(client);
             started.TrySetException(ex);
             return;
+        }
+        finally
+        {
+            // Only needed to create the stream: the audio client holds its own references to what it uses.
+            Release(device);
+            Release(enumerator);
         }
 
         try
@@ -220,32 +228,49 @@ public sealed class AudioKeepAlive : IKeepAliveStream
     /// </summary>
     public static bool HasActiveCapture(string captureEndpointId) => HasActiveSessions(captureEndpointId, excludeSelf: false);
 
+    /// <summary>
+    /// Polled every couple of seconds for as long as the guard runs (hours): every COM object it obtains is released
+    /// here, in reverse order, rather than left to the finalizer thread to pile up between collections.
+    /// </summary>
     private static bool HasActiveSessions(string endpointId, bool excludeSelf)
     {
         var enumerator = (IMMDeviceEnumerator)new MMDeviceEnumerator();
-        Check(enumerator.GetDevice(endpointId, out var device));
-        Guid managerId = typeof(IAudioSessionManager2).GUID;
-        Check(device.Activate(ref managerId, ClsctxAll, 0, out object managerObject));
-        var manager = (IAudioSessionManager2)managerObject;
-        Check(manager.GetSessionEnumerator(out var sessions));
-        Check(sessions.GetCount(out int count));
-        uint self = (uint)Environment.ProcessId;
-        for (int i = 0; i < count; i++)
+        IMMDevice? device = null;
+        object? managerObject = null;
+        IAudioSessionEnumerator? sessions = null;
+        try
         {
-            if (sessions.GetSession(i, out object sessionObject) < 0) continue;
-            var session = (IAudioSessionControl2)sessionObject;
-            try
+            Check(enumerator.GetDevice(endpointId, out device));
+            Guid managerId = typeof(IAudioSessionManager2).GUID;
+            Check(device.Activate(ref managerId, ClsctxAll, 0, out managerObject));
+            var manager = (IAudioSessionManager2)managerObject;
+            Check(manager.GetSessionEnumerator(out sessions));
+            Check(sessions.GetCount(out int count));
+            uint self = (uint)Environment.ProcessId;
+            for (int i = 0; i < count; i++)
             {
-                if (session.GetState(out int state) < 0 || state != AudioSessionStateActive) continue;
-                if (excludeSelf && session.GetProcessId(out uint pid) >= 0 && pid == self) continue;
-                return true;
+                if (sessions.GetSession(i, out object sessionObject) < 0) continue;
+                var session = (IAudioSessionControl2)sessionObject;
+                try
+                {
+                    if (session.GetState(out int state) < 0 || state != AudioSessionStateActive) continue;
+                    if (excludeSelf && session.GetProcessId(out uint pid) >= 0 && pid == self) continue;
+                    return true;
+                }
+                finally
+                {
+                    Release(session);
+                }
             }
-            finally
-            {
-                Release(session);
-            }
+            return false;
         }
-        return false;
+        finally
+        {
+            Release(sessions);
+            Release(managerObject);
+            Release(device);
+            Release(enumerator);
+        }
     }
 
     private const int AudioSessionStateActive = 1;
