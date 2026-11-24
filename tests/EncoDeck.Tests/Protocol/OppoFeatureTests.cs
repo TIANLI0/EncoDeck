@@ -469,6 +469,26 @@ public class OppoFeatureTests
     }
 
     [Fact]
+    public async Task CustomEqualizer_RejectedBuiltInPresetKeepsCustomSelected()
+    {
+        await using var h = await StartAsync();
+        Assert.True((await h.Controller.SelectCustomEqualizerAsync(4, Ct)).IsSuccess);
+        var equalizerBefore = h.State.Equalizer;
+        h.Device.SetStatus = 0x02;
+
+        string builtIn = OppoModels.EncoX4.EqualizerPresets.Values.First().Id;
+        var result = await h.Controller.SetEqualizerPresetAsync(builtIn, Ct);
+
+        Assert.Equal(CommandStatus.Rejected, result.Status);
+        var state = h.State;
+        Assert.True(state.CustomEqualizers!.Value.Single().IsSelected);
+        Assert.NotEqual(StateSource.Optimistic, state.CustomEqualizers.Source);
+        Assert.Equal(equalizerBefore, state.Equalizer);
+        Assert.Empty(state.PendingCommands);
+        Assert.Equal(CommandStatus.Rejected, state.LastError!.Status);
+    }
+
+    [Fact]
     public async Task CustomEqualizer_SaveClampsGainsAndRenames()
     {
         await using var h = await StartAsync();

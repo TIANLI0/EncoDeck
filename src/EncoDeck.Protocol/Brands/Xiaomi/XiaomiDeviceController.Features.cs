@@ -194,20 +194,7 @@ internal sealed partial class XiaomiDeviceController
     private void Report(CommandResult result) =>
         Store.TryUpdate(DeviceId, s => s with { LastError = result.IsSuccess ? null : new DeviceError(result.Detail ?? result.Status.ToString(), result.Status, Now) });
 
-    private async Task<CommandResult> SerializedAsync(Func<CancellationToken, Task<CommandResult>> action, CancellationToken ct)
-    {
-        bool entered = false;
-        try
-        {
-            await _operations.WaitAsync(ct).ConfigureAwait(false); entered = true;
-            if (Closed.IsCompleted) return CommandResult.NotConnected;
-            return await action(ct).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException) { return new(CommandStatus.Cancelled); }
-        finally { if (entered) _operations.Release(); }
-    }
-
-    public override Task<CommandResult> SetToggleAsync(DeviceToggle toggle, bool enabled, CancellationToken cancellationToken) => SerializedAsync(ct =>
+    public override Task<CommandResult> SetToggleAsync(DeviceToggle toggle, bool enabled, CancellationToken cancellationToken) => RunCommandAsync(PendingKeys.Toggle(toggle), _operations, ct =>
         toggle switch
         {
             DeviceToggle.GamingMode when _profile.HasGamingMode => WriteConfirmedAsync(XiaomiConfig.LowLatency, [enabled ? (byte)1 : (byte)0], ct),
@@ -235,7 +222,7 @@ internal sealed partial class XiaomiDeviceController
         return result;
     }
 
-    public override Task<CommandResult> SetNoiseControlAsync(NoiseControlState target, CancellationToken cancellationToken) => SerializedAsync(async ct =>
+    public override Task<CommandResult> SetNoiseControlAsync(NoiseControlState target, CancellationToken cancellationToken) => RunCommandAsync(PendingKeys.NoiseControl, _operations, async ct =>
     {
         if (!_profile.NoiseControlOptions.Any(o => o.Matches(target))) return NotSupported("This noise option is not published for the connected model.");
         var current = await ReadValueAsync(XiaomiConfig.Noise, ct).ConfigureAwait(false);
@@ -269,11 +256,11 @@ internal sealed partial class XiaomiDeviceController
         return await WriteConfirmedAsync(XiaomiConfig.Noise, [mode, level], ct).ConfigureAwait(false);
     }, cancellationToken);
 
-    public override Task<CommandResult> SetEqualizerPresetAsync(string presetId, CancellationToken cancellationToken) => SerializedAsync(ct =>
+    public override Task<CommandResult> SetEqualizerPresetAsync(string presetId, CancellationToken cancellationToken) => RunCommandAsync(PendingKeys.Equalizer, _operations, ct =>
         _profile.EqualizerPresets.Any(p => p.Id == presetId) && byte.TryParse(presetId[7..], out var id)
             ? WriteConfirmedAsync(XiaomiConfig.EqualizerPreset, [id], ct) : Task.FromResult(NotSupported("EQ preset is not listed for this model.")), cancellationToken);
 
-    public override Task<CommandResult> SelectCustomEqualizerAsync(int id, CancellationToken cancellationToken = default) => SerializedAsync(ct =>
+    public override Task<CommandResult> SelectCustomEqualizerAsync(int id, CancellationToken cancellationToken = default) => RunCommandAsync(PendingKeys.CustomEqualizer, _operations, ct =>
         id == XiaomiCustomCurve.PresetId && _profile.HasCustomEqualizer
             ? WriteConfirmedAsync(XiaomiConfig.EqualizerPreset, [XiaomiCustomCurve.PresetId], ct)
             : Task.FromResult(NotSupported("Custom EQ")), cancellationToken);
@@ -282,7 +269,7 @@ internal sealed partial class XiaomiDeviceController
     /// Stores new gains for the existing bands and confirms them by reading the curve back. The
     /// curve's band layout, gain range and name are the earbuds'; renaming is not supported.
     /// </summary>
-    public override Task<CommandResult> SaveCustomEqualizerAsync(CustomEqualizer preset, CancellationToken cancellationToken = default) => SerializedAsync(async ct =>
+    public override Task<CommandResult> SaveCustomEqualizerAsync(CustomEqualizer preset, CancellationToken cancellationToken = default) => RunCommandAsync(PendingKeys.CustomEqualizer, _operations, async ct =>
     {
         if (preset.Id != XiaomiCustomCurve.PresetId || !_profile.HasCustomEqualizer) return NotSupported("Custom EQ");
         var currentValue = await ReadValueAsync(XiaomiConfig.CustomEqualizer, ct).ConfigureAwait(false);
@@ -296,7 +283,7 @@ internal sealed partial class XiaomiDeviceController
             actual => XiaomiCustomCurve.TryParse(actual, out var stored) && stored.SameBands(preset.Bands), ct).ConfigureAwait(false);
     }, cancellationToken);
 
-    public override Task<CommandResult> SetSpatialAudioAsync(SpatialAudioMode mode, CancellationToken cancellationToken = default) => SerializedAsync(async ct =>
+    public override Task<CommandResult> SetSpatialAudioAsync(SpatialAudioMode mode, CancellationToken cancellationToken = default) => RunCommandAsync(PendingKeys.Spatial, _operations, async ct =>
     {
         if (mode is not (SpatialAudioMode.Off or SpatialAudioMode.Fixed or SpatialAudioMode.HeadTracking)) return NotSupported("Spatial mode");
         var current = await ReadValueAsync(XiaomiConfig.Spatial, ct).ConfigureAwait(false);
@@ -308,7 +295,7 @@ internal sealed partial class XiaomiDeviceController
         return await WriteConfirmedAsync(XiaomiConfig.Spatial, [value], ct).ConfigureAwait(false);
     }, cancellationToken);
 
-    public override Task<CommandResult> SetPromptVolumeAsync(int level, CancellationToken cancellationToken = default) => SerializedAsync(async ct =>
+    public override Task<CommandResult> SetPromptVolumeAsync(int level, CancellationToken cancellationToken = default) => RunCommandAsync(PendingKeys.PromptVolume, _operations, async ct =>
     {
         if (level is < 1 or > 10) return NotSupported("Prompt volume must be 1–10.");
         if (!_profile.HasConfig(XiaomiConfig.PromptVolume)) return NotSupported("Prompt volume bounds are unknown.");
@@ -319,7 +306,7 @@ internal sealed partial class XiaomiDeviceController
     /// One gesture on one earbud: the write carries 0xFF for the other earbud, and only a readback
     /// showing the new function on that earbud confirms it.
     /// </summary>
-    public override Task<CommandResult> SetKeyFunctionAsync(KeyFunction assignment, CancellationToken cancellationToken = default) => SerializedAsync(async ct =>
+    public override Task<CommandResult> SetKeyFunctionAsync(KeyFunction assignment, CancellationToken cancellationToken = default) => RunCommandAsync(PendingKeys.KeyFunction, _operations, async ct =>
     {
         if (!_profile.HasGestures || assignment.Button != 0 || assignment.Side is not (EarSide.Left or EarSide.Right)
             || XiaomiGestures.KindOf(assignment.Action) is not byte kind
@@ -337,7 +324,7 @@ internal sealed partial class XiaomiDeviceController
     /// Rings both earbuds. Starting is refused unless a fresh wear-state read shows neither earbud in
     /// an ear, since the tone is loud; stopping is always allowed.
     /// </summary>
-    public override Task<CommandResult> FindEarbudsAsync(bool ring, CancellationToken cancellationToken = default) => SerializedAsync(async ct =>
+    public override Task<CommandResult> FindEarbudsAsync(bool ring, CancellationToken cancellationToken = default) => RunCommandAsync(PendingKeys.FindEarbuds, _operations, async ct =>
     {
         if (!_profile.HasFind) return NotSupported("Find earbuds");
         CommandResult? result = null;

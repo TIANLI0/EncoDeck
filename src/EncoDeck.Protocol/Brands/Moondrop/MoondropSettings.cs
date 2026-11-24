@@ -20,7 +20,7 @@ public sealed partial class MoondropDeviceController
     private static bool ValidVoice(byte[] payload) => payload.Length == 3 && payload[0] <= 1 && payload[1] <= 100;
 
     private Task<CommandResult> WriteVoiceAsync(bool? enabled, int? volume, CancellationToken cancellationToken) =>
-        RunWriteAsync(volume.HasValue ? "prompt-volume" : "prompt-tone", async ct =>
+        RunWriteAsync(volume.HasValue ? PendingKeys.PromptVolume : PendingKeys.PromptTone, async ct =>
         {
             var current = await RequestAsync(14, 1, [], ct).ConfigureAwait(false);
             if (current is null || !ValidVoice(current.Payload)) return new(CommandStatus.Timeout, "Complete VoiceConf unavailable; nothing written.");
@@ -36,7 +36,7 @@ public sealed partial class MoondropDeviceController
     {
         if (!CanWrite(DeviceCapability.SpatialAudio, 18) || mode == SpatialAudioMode.HeadTracking && !CanWrite(DeviceCapability.HeadTracking, 18))
             return Task.FromResult(NotSupported("Spatial audio"));
-        return RunWriteAsync("spatial", async ct =>
+        return RunWriteAsync(PendingKeys.Spatial, async ct =>
         {
             await RequestAsync(18, 2, [mode == SpatialAudioMode.Off ? (byte)0 : (byte)1], ct).ConfigureAwait(false);
             await RequestAsync(18, 4, [mode == SpatialAudioMode.HeadTracking ? (byte)1 : (byte)0], ct).ConfigureAwait(false);
@@ -56,7 +56,7 @@ public sealed partial class MoondropDeviceController
     {
         if (!CanWrite(DeviceCapability.Gain, 15)) return Task.FromResult(NotSupported("Gain"));
         if (_profile.EncodeGain(level) is not { } value) return Task.FromResult(new CommandResult(CommandStatus.Rejected, "Unknown gain level."));
-        return RunWriteAsync("gain", async ct =>
+        return RunWriteAsync(PendingKeys.Gain, async ct =>
         {
             await RequestAsync(15, 2, [value], ct).ConfigureAwait(false);
             var actual = await RequestAsync(15, 1, [], ct).ConfigureAwait(false);
@@ -73,7 +73,7 @@ public sealed partial class MoondropDeviceController
             return Task.FromResult(new CommandResult(CommandStatus.Unsupported, "Only known TOUCHV2 actions on an individual ear are writable; unknown nibbles are preserved."));
         if (key.Function is 4 or 5 && !Context.AllowExperimental())
             return Task.FromResult(NotSupported("Inferred volume gesture action (experimental)"));
-        return RunWriteAsync("key-function", async ct =>
+        return RunWriteAsync(PendingKeys.KeyFunction, async ct =>
         {
             var current = await RequestAsync(22, 2, [], ct).ConfigureAwait(false);
             if (current is not { Payload.Length: 5 }) return new(CommandStatus.Timeout, "Complete TOUCHV2 configuration unavailable; nothing written.");

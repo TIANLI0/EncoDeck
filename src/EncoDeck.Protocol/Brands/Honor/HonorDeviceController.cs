@@ -134,7 +134,7 @@ internal sealed class HonorDeviceController(IDuplexByteChannel channel, Controll
         if (_profile.Model.Eq) await Query(EqGet, ct).ConfigureAwait(false);
     }
 
-    public override Task<CommandResult> RefreshAsync(CancellationToken cancellationToken) => Serialized(async ct =>
+    public override Task<CommandResult> RefreshAsync(CancellationToken cancellationToken) => RunExclusiveAsync(Operations, async ct =>
     {
         var response = await Query(Battery, ct).ConfigureAwait(false);
         if (!Fields(response, out var fields) || !ValidBattery(fields)) return Failure(response);
@@ -145,18 +145,7 @@ internal sealed class HonorDeviceController(IDuplexByteChannel channel, Controll
     private static CommandResult Failure(BrandPacket? response) => response is null ? TimedOut :
         new(CommandStatus.Rejected, "HONOR returned an error or malformed control response.");
 
-    private async Task<CommandResult> Serialized(Func<CancellationToken, Task<CommandResult>> action, CancellationToken ct)
-    {
-        bool entered = false;
-        try
-        {
-            await Operations.WaitAsync(ct).ConfigureAwait(false); entered = true;
-            if (Closed.IsCompleted || Store.Current.Device?.DeviceId != DeviceId) return CommandResult.NotConnected;
-            return await action(ct).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException) { return new(CommandStatus.Cancelled); }
-        finally { if (entered) Operations.Release(); }
-    }
+    protected override bool CanRunCommands => base.CanRunCommands && Store.Current.Device?.DeviceId == DeviceId;
 
     private async Task<CommandResult> Confirm(ushort set, byte[] value, ushort get,
         Func<Dictionary<byte, byte[]>, bool> matches, CancellationToken ct)
@@ -182,7 +171,7 @@ internal sealed class HonorDeviceController(IDuplexByteChannel channel, Controll
         byte sub = target.Mode == NoiseControlMode.Off ? (byte)0
             : (byte)(target.LevelId switch { "cozy" => 0, "general" => 1, "ultra" => 2, "dynamic" => 3, _ => 0xFF });
         byte[] write = _profile.Model.Choice ? [1, 1, mode] : [1, 2, mode, sub];
-        return Serialized(ct => Confirm(AncSet, write, AncGet,
+        return RunCommandAsync(PendingKeys.NoiseControl, Operations, ct => Confirm(AncSet, write, AncGet,
             f => ParseNoise(f) is { } n && n.Mode == target.Mode && (target.LevelId is null || n.LevelId == target.LevelId), ct), cancellationToken);
     }
 
@@ -191,7 +180,7 @@ internal sealed class HonorDeviceController(IDuplexByteChannel channel, Controll
         if (!_profile.Toggles.Contains(toggle)) return Task.FromResult(NotSupported(toggle.ToString()));
         ushort set = toggle == DeviceToggle.InEarDetection ? WearSet : DualSet;
         ushort get = toggle == DeviceToggle.InEarDetection ? WearGet : DualGet;
-        return Serialized(ct => Confirm(set, [1, 1, enabled ? (byte)1 : (byte)0], get,
+        return RunCommandAsync(PendingKeys.Toggle(toggle), Operations, ct => Confirm(set, [1, 1, enabled ? (byte)1 : (byte)0], get,
             f => f.TryGetValue(1, out var v) && v.Length == 1 && v[0] == (enabled ? 1 : 0), ct), cancellationToken);
     }
 
@@ -199,7 +188,7 @@ internal sealed class HonorDeviceController(IDuplexByteChannel channel, Controll
     {
         if (!_profile.EqualizerPresets.Any(p => p.Id == presetId) || !byte.TryParse(presetId, out byte value))
             return Task.FromResult(NotSupported("EQ preset has not been advertised by this device."));
-        return Serialized(ct => Confirm(EqSet, [1, 1, value], EqGet,
+        return RunCommandAsync(PendingKeys.Equalizer, Operations, ct => Confirm(EqSet, [1, 1, value], EqGet,
             f => f.TryGetValue(1, out var v) && v is [var actual] && actual == value, ct), cancellationToken);
     }
 }

@@ -177,7 +177,7 @@ internal sealed partial class SonyMdrController(IDuplexByteChannel channel, Cont
         if (target.Mode is not (NoiseControlMode.Off or NoiseControlMode.NoiseCancellation or NoiseControlMode.Transparency)
             || (target.LevelId is not null && (target.Mode != NoiseControlMode.Transparency || voice is null)))
             return CommandResult.Unsupported("This protocol exposes off, noise cancelling and ambient sound (standard or focus on voice) only.");
-        return await Exclusive(async ct =>
+        return await Exclusive(PendingKeys.NoiseControl, async ct =>
         {
             if (!_noiseReady || (_v2 && !_noiseType.HasValue)) return CommandResult.Unsupported("A compatible noise-control layout has not been confirmed on this device.");
             if (SonySettings.IgnoresNoiseWrites(Model, _firmware))
@@ -194,20 +194,16 @@ internal sealed partial class SonyMdrController(IDuplexByteChannel channel, Cont
         }, cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>Runs one serialized command; cancellation is reported, not thrown.</summary>
-    private async Task<CommandResult> Exclusive(Func<CancellationToken, Task<CommandResult>> body, CancellationToken cancellationToken)
-    {
-        bool entered = false;
-        try
+    /// <summary>
+    /// Runs one serialized command; cancellation is reported, not thrown. A success only counts while this
+    /// device is still the active one.
+    /// </summary>
+    private Task<CommandResult> Exclusive(string pendingKey, Func<CancellationToken, Task<CommandResult>> body, CancellationToken cancellationToken) =>
+        RunCommandAsync(pendingKey, _commands, async ct =>
         {
-            await _commands.WaitAsync(cancellationToken).ConfigureAwait(false); entered = true;
-            if (Closed.IsCompleted) return CommandResult.NotConnected;
-            var result = await body(cancellationToken).ConfigureAwait(false);
+            var result = await body(ct).ConfigureAwait(false);
             return Store.Current.Device?.DeviceId == DeviceId || result.Status != CommandStatus.Success ? result : CommandResult.NotConnected;
-        }
-        catch (OperationCanceledException) { return new(CommandStatus.Cancelled); }
-        finally { if (entered) _commands.Release(); }
-    }
+        }, cancellationToken);
 
     protected override void OnReceived(ReadOnlySpan<byte> data)
     {

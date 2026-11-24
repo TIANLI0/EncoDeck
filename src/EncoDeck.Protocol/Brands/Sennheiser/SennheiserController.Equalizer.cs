@@ -91,18 +91,15 @@ internal sealed partial class SennheiserController
     public override Task<CommandResult> SetEqualizerPresetAsync(string presetId, CancellationToken cancellationToken)
     {
         int mode = profile.WithLive(_live).EqualizerPresets.Any(p => p.Id == presetId) ? presetId[^1] - '0' : -1;
-        return mode < 0 ? Task.FromResult(NotSupported("Sound mode")) : SetSoundModeAsync((byte)mode, cancellationToken);
+        return mode < 0 ? Task.FromResult(NotSupported("Sound mode")) : SetSoundModeAsync(PendingKeys.Equalizer, (byte)mode, cancellationToken);
     }
 
     public override Task<CommandResult> SelectCustomEqualizerAsync(int id, CancellationToken cancellationToken = default) =>
-        _live.Equalizer is null || id != UserCurveId ? Task.FromResult(NotSupported("Custom EQ")) : SetSoundModeAsync(CurveMode, cancellationToken);
+        _live.Equalizer is null || id != UserCurveId ? Task.FromResult(NotSupported("Custom EQ")) : SetSoundModeAsync(PendingKeys.CustomEqualizer, CurveMode, cancellationToken);
 
-    private async Task<CommandResult> SetSoundModeAsync(byte mode, CancellationToken ct)
-    {
-        await Operations.WaitAsync(ct).ConfigureAwait(false);
-        try
+    private Task<CommandResult> SetSoundModeAsync(string pendingKey, byte mode, CancellationToken cancellationToken) =>
+        RunCommandAsync(pendingKey, Operations, async ct =>
         {
-            if (Closed.IsCompleted) return CommandResult.NotConnected;
             var result = await SetValueAsync(0x0803, [0, mode], ct).ConfigureAwait(false);
             if (!result.IsSuccess) return result;
             // The mode change is applied asynchronously; poll the readback briefly before deciding.
@@ -114,18 +111,13 @@ internal sealed partial class SennheiserController
                 if (read.Payload[1] == mode) return CommandResult.Ok;
             }
             return new(CommandStatus.Rejected, "Sound-mode readback did not match.");
-        }
-        catch (OperationCanceledException) { return new(CommandStatus.Cancelled); }
-        finally { Operations.Release(); }
-    }
+        }, cancellationToken);
 
     public override async Task<CommandResult> SaveCustomEqualizerAsync(CustomEqualizer preset, CancellationToken cancellationToken = default)
     {
         if (_live.Equalizer is not { } range || preset.Id != UserCurveId) return NotSupported("Custom EQ");
-        await Operations.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
+        return await RunCommandAsync(PendingKeys.CustomEqualizer, Operations, async cancellationToken =>
         {
-            if (Closed.IsCompleted) return CommandResult.NotConnected;
             if (_eqGains is not { } current || preset.Bands.Count != current.Length
                 || preset.Bands.Select(b => b.FrequencyHz).Where((hz, i) => hz != _eqFrequencies[i]).Any())
                 return new(CommandStatus.Rejected, "The device EQ layout changed; nothing written.");
@@ -141,7 +133,6 @@ internal sealed partial class SennheiserController
             if (read is null) return TimedOut;
             return read.Payload.Select(b => (int)(sbyte)b).SequenceEqual(preset.Bands.Select(b => b.Gain))
                 ? CommandResult.Ok : new(CommandStatus.Rejected, "EQ readback did not match.");
-        }
-        finally { Operations.Release(); }
+        }, cancellationToken).ConfigureAwait(false);
     }
 }

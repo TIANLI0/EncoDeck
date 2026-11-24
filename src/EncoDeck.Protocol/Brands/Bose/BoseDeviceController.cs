@@ -85,7 +85,7 @@ internal sealed class BoseDeviceController(IDuplexByteChannel channel, Controlle
         }
     }
 
-    public override Task<CommandResult> RefreshAsync(CancellationToken cancellationToken) => Serialized(async ct =>
+    public override Task<CommandResult> RefreshAsync(CancellationToken cancellationToken) => Serialized(null, async ct =>
     {
         if (!await ReadBattery(ct).ConfigureAwait(false)) return Fail("Bose returned an invalid battery report.");
         if (_modeObserved)
@@ -103,7 +103,7 @@ internal sealed class BoseDeviceController(IDuplexByteChannel channel, Controlle
             || target.Mode is not (NoiseControlMode.NoiseCancellation or NoiseControlMode.Transparency))
             return Task.FromResult(NotSupported($"Noise mode {target.Mode}/{target.LevelId}"));
         byte index = target.Mode == NoiseControlMode.NoiseCancellation ? (byte)0 : (byte)1;
-        return Serialized(async ct =>
+        return Serialized(PendingKeys.NoiseControl, async ct =>
         {
             // Re-read the preset first: never start a mode the device no longer reports as Quiet / Aware.
             await ReadMode(index, optional: false, ct).ConfigureAwait(false);
@@ -251,18 +251,18 @@ internal sealed class BoseDeviceController(IDuplexByteChannel channel, Controlle
         return new(CommandStatus.Rejected, detail);
     }
 
-    private async Task<CommandResult> Serialized(Func<CancellationToken, Task<CommandResult>> action, CancellationToken ct)
+    protected override bool CanRunCommands => base.CanRunCommands && Store.Current.Device?.DeviceId == DeviceId;
+
+    /// <summary>One command at a time; a BMAP error reply is a rejection, or a timeout once the session ended.</summary>
+    private Task<CommandResult> Serialized(string? pendingKey, Func<CancellationToken, Task<CommandResult>> action, CancellationToken ct)
     {
-        bool entered = false;
-        try
+        return pendingKey is null ? RunExclusiveAsync(Operations, Body, ct) : RunCommandAsync(pendingKey, Operations, Body, ct);
+
+        async Task<CommandResult> Body(CancellationToken token)
         {
-            await Operations.WaitAsync(ct).ConfigureAwait(false); entered = true;
-            if (Closed.IsCompleted || Store.Current.Device?.DeviceId != DeviceId) return CommandResult.NotConnected;
-            return await action(ct).ConfigureAwait(false);
+            try { return await action(token).ConfigureAwait(false); }
+            catch (BmapException ex) { return Closed.IsCompleted ? TimedOut : new(CommandStatus.Rejected, ex.Message); }
         }
-        catch (OperationCanceledException) { return new(CommandStatus.Cancelled); }
-        catch (BmapException ex) { return Closed.IsCompleted ? TimedOut : new(CommandStatus.Rejected, ex.Message); }
-        finally { if (entered) Operations.Release(); }
     }
 
     private sealed class BmapException(string message) : Exception(message);

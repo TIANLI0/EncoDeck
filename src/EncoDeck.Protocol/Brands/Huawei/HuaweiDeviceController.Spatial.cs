@@ -43,19 +43,7 @@ internal sealed partial class HuaweiDeviceController
         });
     }
 
-    private async Task<CommandResult> SerializedAsync(Func<CancellationToken, Task<CommandResult>> action, CancellationToken ct)
-    {
-        bool entered = false;
-        try
-        {
-            await _operations.WaitAsync(ct).ConfigureAwait(false); entered = true;
-            return Closed.IsCompleted ? CommandResult.NotConnected : await action(ct).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException) { return new(CommandStatus.Cancelled); }
-        finally { if (entered) _operations.Release(); }
-    }
-
-    public override Task<CommandResult> SetSpatialAudioAsync(SpatialAudioMode mode, CancellationToken cancellationToken = default) => SerializedAsync(async ct =>
+    public override Task<CommandResult> SetSpatialAudioAsync(SpatialAudioMode mode, CancellationToken cancellationToken = default) => RunCommandAsync(PendingKeys.Spatial, _operations, async ct =>
     {
         if (!Profile.SpatialConfirmed) return NotSupported("Independent spatial audio has not been reported by this device.");
         byte value;
@@ -83,7 +71,6 @@ internal sealed partial class HuaweiDeviceController
             Profile = Profile.WithFailedSpatial(mode);
             Store.TryUpdate(DeviceId, s => s with { Profile = Profile });
         }
-        Store.TryUpdate(DeviceId, s => s with { LastError = result.IsSuccess ? null : new DeviceError(result.Detail ?? result.Status.ToString(), result.Status, Now) });
         return result;
     }, cancellationToken);
 }

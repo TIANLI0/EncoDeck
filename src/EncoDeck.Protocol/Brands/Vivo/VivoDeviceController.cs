@@ -156,19 +156,22 @@ public sealed class VivoDeviceController : BrandControllerBase
         }
         byte mode = VivoParsers.NoiseModeByte(target.Mode);
         byte[] payload = [mode, .. Model.NoiseSetSuffix];
-        var result = await WriteConfirmedAsync(
-            VivoCommands.SetNoiseMode,
-            payload,
-            f => f.Command == VivoCommands.ReportNoiseMode && VivoParsers.TryParseNoise(f.Payload, out var m) && m == target.Mode,
-            VivoCommands.QueryNoiseMode,
-            Model.NoiseQueryPayload,
-            VivoCommands.ReportNoiseMode,
-            cancellationToken).ConfigureAwait(false);
-        if (result.IsSuccess)
+        return await RunCommandAsync(PendingKeys.NoiseControl, null, async ct =>
         {
-            Store.TryUpdate(DeviceId, s => s with { NoiseControl = Observed.From(new NoiseControlState(target.Mode), Now, StateSource.CommandConfirmation), LastUpdateSource = StateSource.CommandConfirmation });
-        }
-        return result;
+            var result = await WriteConfirmedAsync(
+                VivoCommands.SetNoiseMode,
+                payload,
+                f => f.Command == VivoCommands.ReportNoiseMode && VivoParsers.TryParseNoise(f.Payload, out var m) && m == target.Mode,
+                VivoCommands.QueryNoiseMode,
+                Model.NoiseQueryPayload,
+                VivoCommands.ReportNoiseMode,
+                ct).ConfigureAwait(false);
+            if (result.IsSuccess)
+            {
+                Store.TryUpdate(DeviceId, s => s with { NoiseControl = Observed.From(new NoiseControlState(target.Mode), Now, StateSource.CommandConfirmation), LastUpdateSource = StateSource.CommandConfirmation });
+            }
+            return result;
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     public override async Task<CommandResult> SetEqualizerPresetAsync(string presetId, CancellationToken cancellationToken)
@@ -179,20 +182,23 @@ public sealed class VivoDeviceController : BrandControllerBase
         {
             return NotSupported("This equalizer preset");
         }
-        var result = await WriteConfirmedAsync(
-            VivoCommands.SetAudioEffect,
-            [effect],
-            f => f.Command is VivoCommands.AckAudioEffect or VivoCommands.ReportAudioEffect
-                && VivoParsers.TryParseValue(f.Payload, out byte v) && VivoCatalog.NormalizeReportedEffect(v) == effect,
-            VivoCommands.QueryAudioEffect,
-            [],
-            VivoCommands.ReportAudioEffect,
-            cancellationToken).ConfigureAwait(false);
-        if (result.IsSuccess)
+        return await RunCommandAsync(PendingKeys.Equalizer, null, async ct =>
         {
-            Store.TryUpdate(DeviceId, s => s with { Equalizer = Observed.From(new EqualizerState(presetId, effect), Now, StateSource.CommandConfirmation), LastUpdateSource = StateSource.CommandConfirmation });
-        }
-        return result;
+            var result = await WriteConfirmedAsync(
+                VivoCommands.SetAudioEffect,
+                [effect],
+                f => f.Command is VivoCommands.AckAudioEffect or VivoCommands.ReportAudioEffect
+                    && VivoParsers.TryParseValue(f.Payload, out byte v) && VivoCatalog.NormalizeReportedEffect(v) == effect,
+                VivoCommands.QueryAudioEffect,
+                [],
+                VivoCommands.ReportAudioEffect,
+                ct).ConfigureAwait(false);
+            if (result.IsSuccess)
+            {
+                Store.TryUpdate(DeviceId, s => s with { Equalizer = Observed.From(new EqualizerState(presetId, effect), Now, StateSource.CommandConfirmation), LastUpdateSource = StateSource.CommandConfirmation });
+            }
+            return result;
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     public override async Task<CommandResult> SetToggleAsync(DeviceToggle toggle, bool enabled, CancellationToken cancellationToken)
@@ -200,20 +206,23 @@ public sealed class VivoDeviceController : BrandControllerBase
         if (toggle == DeviceToggle.InEarDetection) return await SetWearDetectionAsync(enabled, cancellationToken).ConfigureAwait(false);
         if (toggle != DeviceToggle.GamingMode || !Supported(DeviceCapability.GamingMode)) return NotSupported(toggle.ToString());
         byte value = enabled ? (byte)1 : (byte)0;
-        var result = await WriteConfirmedAsync(
-            VivoCommands.SetLowLatency,
-            [value],
-            f => f.Command is VivoCommands.AckLowLatency or VivoCommands.ReportLowLatency
-                && VivoParsers.TryParseValue(f.Payload, out byte v) && v == value,
-            VivoCommands.QueryLowLatency,
-            [],
-            VivoCommands.ReportLowLatency,
-            cancellationToken).ConfigureAwait(false);
-        if (result.IsSuccess)
+        return await RunCommandAsync(PendingKeys.Toggle(toggle), null, async ct =>
         {
-            Store.TryUpdate(DeviceId, s => s with { Toggles = s.Toggles.SetItem(toggle, Observed.From(enabled, Now, StateSource.CommandConfirmation)), LastUpdateSource = StateSource.CommandConfirmation });
-        }
-        return result;
+            var result = await WriteConfirmedAsync(
+                VivoCommands.SetLowLatency,
+                [value],
+                f => f.Command is VivoCommands.AckLowLatency or VivoCommands.ReportLowLatency
+                    && VivoParsers.TryParseValue(f.Payload, out byte v) && v == value,
+                VivoCommands.QueryLowLatency,
+                [],
+                VivoCommands.ReportLowLatency,
+                ct).ConfigureAwait(false);
+            if (result.IsSuccess)
+            {
+                Store.TryUpdate(DeviceId, s => s with { Toggles = s.Toggles.SetItem(toggle, Observed.From(enabled, Now, StateSource.CommandConfirmation)), LastUpdateSource = StateSource.CommandConfirmation });
+            }
+            return result;
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     public override async Task<CommandResult> FindEarbudsAsync(bool ring, CancellationToken cancellationToken = default)
@@ -244,19 +253,22 @@ public sealed class VivoDeviceController : BrandControllerBase
     {
         if (!CurrentProfile.OffersWearDetectionSwitch) return NotSupported(nameof(DeviceToggle.InEarDetection));
         byte value = enabled ? (byte)1 : (byte)0;
-        var result = await RunPendingAsync($"toggle:{DeviceToggle.InEarDetection}", c => WriteConfirmedAsync(
-            VivoCommands.SetWearDetection,
-            [value],
-            f => f.Command == VivoCommands.ReportWearDetection && VivoParsers.TryParseWearDetection(f.Payload, out bool on) && on == enabled,
-            VivoCommands.QueryWearDetection,
-            [],
-            VivoCommands.ReportWearDetection,
-            c), ct).ConfigureAwait(false);
-        if (result.IsSuccess)
+        return await RunCommandAsync(PendingKeys.Toggle(DeviceToggle.InEarDetection), null, async c =>
         {
-            Store.TryUpdate(DeviceId, s => s with { Toggles = s.Toggles.SetItem(DeviceToggle.InEarDetection, Observed.From(enabled, Now, StateSource.CommandConfirmation)), LastUpdateSource = StateSource.CommandConfirmation });
-        }
-        return result;
+            var result = await WriteConfirmedAsync(
+                VivoCommands.SetWearDetection,
+                [value],
+                f => f.Command == VivoCommands.ReportWearDetection && VivoParsers.TryParseWearDetection(f.Payload, out bool on) && on == enabled,
+                VivoCommands.QueryWearDetection,
+                [],
+                VivoCommands.ReportWearDetection,
+                c).ConfigureAwait(false);
+            if (result.IsSuccess)
+            {
+                Store.TryUpdate(DeviceId, s => s with { Toggles = s.Toggles.SetItem(DeviceToggle.InEarDetection, Observed.From(enabled, Now, StateSource.CommandConfirmation)), LastUpdateSource = StateSource.CommandConfirmation });
+            }
+            return result;
+        }, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -282,7 +294,7 @@ public sealed class VivoDeviceController : BrandControllerBase
         {
             bool right = assignment.Side == EarSide.Right;
             byte code = (byte)(assignment.Function + (right ? VivoConstants.RightDoubleTapBase : 0));
-            return await RunPendingAsync("key-function", c => WriteConfirmedAsync(
+            return await RunCommandAsync(PendingKeys.KeyFunction, null, c => WriteConfirmedAsync(
                 VivoCommands.SetDoubleTap,
                 [code],
                 f => f.Command == VivoCommands.ReportDoubleTap && VivoParsers.TryParseDoubleTap(f.Payload, out byte l, out byte r) && (right ? r : l) == code,
@@ -297,7 +309,7 @@ public sealed class VivoDeviceController : BrandControllerBase
             && longPress is not null)
         {
             byte function = (byte)assignment.Function;
-            return await RunPendingAsync("key-function", c => WriteConfirmedAsync(
+            return await RunCommandAsync(PendingKeys.KeyFunction, null, c => WriteConfirmedAsync(
                 VivoCommands.SetLongPress,
                 [VivoConstants.LongPressSubCommand, function],
                 f => f.Command == VivoCommands.ReportLongPress && VivoParsers.TryParseLongPress(f.Payload, out byte v) && v == function,
@@ -313,7 +325,7 @@ public sealed class VivoDeviceController : BrandControllerBase
         {
             byte left = assignment.Side == EarSide.Left ? (byte)assignment.Function : current.Left;
             byte right = assignment.Side == EarSide.Right ? (byte)assignment.Function : current.Right;
-            return await RunPendingAsync("key-function", c => WriteConfirmedAsync(
+            return await RunCommandAsync(PendingKeys.KeyFunction, null, c => WriteConfirmedAsync(
                 VivoCommands.SetNoiseCycle,
                 [VivoConstants.NoiseCycleSubCommand, left, right],
                 f => f.Command == VivoCommands.ReportNoiseCycle && VivoParsers.TryParseNoiseCycle(f.Payload, out byte l, out byte r) && l == left && r == right,
@@ -371,7 +383,7 @@ public sealed class VivoDeviceController : BrandControllerBase
                 return CommandResult.Unsupported("This device operation is not available.");
         }
 
-        return await RunPendingAsync("multi-connect", c => WriteConfirmedAsync(
+        return await RunCommandAsync(PendingKeys.MultiConnect, null, c => WriteConfirmedAsync(
             command,
             payload,
             f => f.Command == VivoCommands.ReportSourceDevices && VivoParsers.TryParseSourceDevices(f.Payload, out var list) && done(list),
@@ -394,31 +406,6 @@ public sealed class VivoDeviceController : BrandControllerBase
             table.Add(ReferenceEquals(device, target) ? state : device.State);
         }
         return [.. table];
-    }
-
-    /// <summary>Marks a write as pending in the store and records a failure as the last error.</summary>
-    private async Task<CommandResult> RunPendingAsync(string description, Func<CancellationToken, Task<CommandResult>> action, CancellationToken ct)
-    {
-        if (Closed.IsCompleted) return CommandResult.NotConnected;
-        var pending = new PendingCommand(Guid.NewGuid(), description, Now);
-        Store.TryUpdate(DeviceId, s => s with { PendingCommands = s.PendingCommands.Add(pending), LastError = null });
-        CommandResult result;
-        try
-        {
-            result = await action(ct).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
-            result = new CommandResult(CommandStatus.Cancelled);
-        }
-        Store.TryUpdate(DeviceId, s =>
-        {
-            var next = s with { PendingCommands = s.PendingCommands.RemoveAll(p => p.Id == pending.Id) };
-            return result.IsSuccess || result.Status == CommandStatus.Cancelled
-                ? next
-                : next with { LastError = new DeviceError(result.Detail ?? result.Status.ToString(), result.Status, Now) };
-        });
-        return result;
     }
 
     /// <summary>

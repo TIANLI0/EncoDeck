@@ -158,10 +158,8 @@ internal sealed class AkgHybridController(IDuplexByteChannel channel, Controller
     {
         if (target.LevelId is not null || target.Mode is not (NoiseControlMode.Off or NoiseControlMode.NoiseCancellation or NoiseControlMode.Transparency))
             return CommandResult.Unsupported("Unsupported ANC mode.");
-        await Operations.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
+        return await RunCommandAsync(PendingKeys.NoiseControl, Operations, async cancellationToken =>
         {
-            if (Closed.IsCompleted) return CommandResult.NotConnected;
             if (!Context.AllowExperimental()) return CommandResult.Unsupported("AKG Hybrid noise control is experimental; enable experimental features first.");
             // Read before every write: the session must still answer, and the read may reveal the layout.
             await ProbeAncAsync(cancellationToken).ConfigureAwait(false);
@@ -179,7 +177,6 @@ internal sealed class AkgHybridController(IDuplexByteChannel channel, Controller
                 if (Store.Current.NoiseControl?.Value.Mode == target.Mode) return CommandResult.Ok;
             }
             return new(CommandStatus.Rejected, "ANC readback did not match.");
-        }
-        finally { Operations.Release(); }
+        }, cancellationToken).ConfigureAwait(false);
     }
 }

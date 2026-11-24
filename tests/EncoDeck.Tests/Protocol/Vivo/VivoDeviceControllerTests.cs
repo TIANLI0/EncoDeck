@@ -149,4 +149,86 @@ public class VivoDeviceControllerTests
         Assert.Equal(CommandStatus.Unsupported, (await controller.SetSpatialAudioAsync(SpatialAudioMode.Off, Ct)).Status);
         Assert.Equal(CommandStatus.Unsupported, (await controller.SetToggleAsync(DeviceToggle.HeadTracking, true, Ct)).Status);
     }
+
+    /// <summary>Records whether any state change showed <paramref name="key"/> as pending.</summary>
+    private static Func<bool> WatchPending(DeviceStateStore store, string key)
+    {
+        bool seen = false;
+        store.StateChanged += (_, e) => seen |= e.Current.IsPending(key);
+        return () => seen;
+    }
+
+    [Fact]
+    public async Task Writes_ArePendingUntilConfirmed()
+    {
+        await using var device = new FakeVivoDevice();
+        var (controller, store) = Create(device);
+        await using var _ = controller;
+        Assert.True(await controller.InitializeAsync(Ct));
+        var seen = WatchPending(store, PendingKeys.NoiseControl);
+
+        Assert.True((await controller.SetNoiseControlAsync(new NoiseControlState(NoiseControlMode.NoiseCancellation), Ct)).IsSuccess);
+
+        Assert.True(seen());
+        Assert.Empty(store.Current.PendingCommands);
+        Assert.Null(store.Current.LastError);
+    }
+
+    [Fact]
+    public async Task Writes_ClearThePendingMarkerWhenTheDeviceKeepsItsSetting()
+    {
+        await using var device = new FakeVivoDevice();
+        var (controller, store) = Create(device);
+        await using var _ = controller;
+        Assert.True(await controller.InitializeAsync(Ct));
+        var seen = WatchPending(store, PendingKeys.Equalizer);
+
+        // The emulator never applies EQ writes and keeps reporting preset 0.
+        var result = await controller.SetEqualizerPresetAsync("vivo-eq-1", Ct);
+
+        Assert.Equal(CommandStatus.Rejected, result.Status);
+        Assert.True(seen());
+        Assert.Empty(store.Current.PendingCommands);
+        Assert.Equal(CommandStatus.Rejected, store.Current.LastError!.Status);
+        Assert.Equal("vivo-eq-0", store.Current.Equalizer!.Value.ActivePresetId);
+    }
+
+    [Fact]
+    public async Task Writes_ClearThePendingMarkerWhenCancelled()
+    {
+        await using var device = new FakeVivoDevice();
+        var (controller, store) = Create(device);
+        await using var _ = controller;
+        Assert.True(await controller.InitializeAsync(Ct));
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(Ct);
+
+        var write = controller.SetEqualizerPresetAsync("vivo-eq-1", cts.Token);
+        while (!store.Current.IsPending(PendingKeys.Equalizer)) await Task.Delay(5, Ct);
+        await cts.CancelAsync();
+
+        Assert.Equal(CommandStatus.Cancelled, (await write).Status);
+        Assert.Empty(store.Current.PendingCommands);
+        Assert.Equal(CommandStatus.Cancelled, store.Current.LastError!.Status);
+    }
+
+    [Fact]
+    public async Task Writes_ClearThePendingMarkerWhenTheChannelFails()
+    {
+        await using var device = new FakeVivoDevice();
+        var (controller, store) = Create(device);
+        await using var _ = controller;
+        Assert.True(await controller.InitializeAsync(Ct));
+        var seen = WatchPending(store, "toggle:GamingMode");
+        device.Channel.FailWritesWith = new IOException("link lost");
+
+        var result = await controller.SetToggleAsync(DeviceToggle.GamingMode, true, Ct);
+
+        Assert.Equal(CommandStatus.TransportError, result.Status);
+        Assert.True(seen());
+        Assert.Empty(store.Current.PendingCommands);
+        Assert.Equal(CommandStatus.TransportError, store.Current.LastError!.Status);
+        // Once the session is gone a write is refused before anything is marked.
+        Assert.Equal(CommandStatus.NotConnected, (await controller.SetToggleAsync(DeviceToggle.GamingMode, true, Ct)).Status);
+        Assert.Empty(store.Current.PendingCommands);
+    }
 }

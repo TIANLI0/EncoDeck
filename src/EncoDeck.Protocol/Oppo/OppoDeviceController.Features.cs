@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: GPL-3.0-only
-using System.IO;
 using EncoDeck.Core.Capabilities;
 using EncoDeck.Core.Commands;
 using EncoDeck.Core.State;
@@ -109,7 +108,7 @@ public sealed partial class OppoDeviceController : IAdvancedDeviceCommands
         if (Model.HasSpatialAudioV2)
         {
             result = await ExecuteConfirmedAsync(
-                "spatial",
+                PendingKeys.Spatial,
                 s => s,
                 new OppoRequest(OppoCommand.SetSpatialAudio, [(byte)mode], SequenceMode.FixedSet),
                 ct => ReadBackAsync(new OppoRequest(OppoCommand.QuerySpatialType, []), s => s.Spatial?.Value == mode, ct),
@@ -128,7 +127,7 @@ public sealed partial class OppoDeviceController : IAdvancedDeviceCommands
     public async Task<CommandResult> SetLeBrSwitchAsync(bool enabled, CancellationToken cancellationToken = default)
     {
         var result = await ExecuteConfirmedAsync(
-            "le-br-switch",
+            PendingKeys.LeBrSwitch,
             s => s,
             new OppoRequest(OppoCommand.SetLeBrSwitch, [(byte)(enabled ? 1 : 0)], SequenceMode.FixedSet),
             async ct =>
@@ -140,17 +139,9 @@ public sealed partial class OppoDeviceController : IAdvancedDeviceCommands
                 return (state.Enabled == enabled, RequestStatus.Success);
             },
             cancellationToken).ConfigureAwait(false);
-        try
-        {
-            File.AppendAllText(Path.Combine(Path.GetTempPath(), "enco-leaudio.log"),
-                $"{DateTime.Now:O} 0x0433 [{enabled}] -> {result.Status}{Environment.NewLine}");
-        }
-        catch (IOException)
-        {
-        }
-        catch (UnauthorizedAccessException)
-        {
-        }
+        // The generic "Command le-br-switch -> …" line omits the requested value; LE Audio switch
+        // reports need it to tell an enable from a disable attempt.
+        _logger.LogInformation("LE/BR switch 0x{Command:X4} [{Enabled}] -> {Status}", OppoCommand.SetLeBrSwitch, enabled, result.Status);
         return result;
     }
 
@@ -158,7 +149,7 @@ public sealed partial class OppoDeviceController : IAdvancedDeviceCommands
     {
         if (!IsAvailable(DeviceCapability.GamingMode) || !Model.GameSoundTypes.Contains(type)) return Task.FromResult(CommandResult.Unsupported("Game sound type not offered."));
         return ExecuteConfirmedAsync(
-            "game-sound",
+            PendingKeys.GameSound,
             s => s,
             new OppoRequest(OppoCommand.SetGameSound, [(byte)type, 0x01], SequenceMode.FixedSet),
             ct => ReadBackAsync(new OppoRequest(OppoCommand.QueryGameSound, []), s => s.GameSound?.Value.SelectedType == type, ct),
@@ -187,7 +178,7 @@ public sealed partial class OppoDeviceController : IAdvancedDeviceCommands
         var (min, max) = Model.PromptVolumeRange;
         if (level < min || level > max) return Task.FromResult(CommandResult.Unsupported($"Prompt volume must be {min}–{max}."));
         return ExecuteConfirmedAsync(
-            "prompt-volume",
+            PendingKeys.PromptVolume,
             s => s,
             new OppoRequest(OppoCommand.SetPromptVolume, [(byte)level], SequenceMode.FixedSet),
             ct => ReadBackAsync(new OppoRequest(OppoCommand.QueryPromptVolume, []), s => s.PromptVolume?.Value == level, ct),
@@ -203,7 +194,7 @@ public sealed partial class OppoDeviceController : IAdvancedDeviceCommands
         if (_store.Current.BassEngine?.Value is not { } bass) return Task.FromResult(CommandResult.Unsupported("Bass engine range unknown."));
         int value = Math.Clamp(level, bass.Min, bass.Max);
         return ExecuteConfirmedAsync(
-            "bass-engine",
+            PendingKeys.BassEngine,
             s => s,
             new OppoRequest(OppoCommand.SetBassEngine, [unchecked((byte)(sbyte)bass.Min), unchecked((byte)(sbyte)bass.Max), unchecked((byte)(sbyte)value)], SequenceMode.FixedSet),
             ct => ReadBackAsync(new OppoRequest(OppoCommand.QueryBassEngine, []), s => s.BassEngine?.Value.Current == value, ct),
@@ -220,7 +211,7 @@ public sealed partial class OppoDeviceController : IAdvancedDeviceCommands
         var wireSide = once ? EarSide.Both : assignment.Side;
         byte[] record = [(byte)wireSide, (byte)row.Button, (byte)assignment.Action, (byte)assignment.Function];
         return ExecuteConfirmedAsync(
-            "gesture",
+            PendingKeys.Gesture,
             s => s,
             new OppoRequest(OppoCommand.SetKeyFunction, [0x01, .. record], SequenceMode.FixedSet),
             ct => ReadBackAsync(
@@ -241,7 +232,7 @@ public sealed partial class OppoDeviceController : IAdvancedDeviceCommands
         // Shared cycle: type 1 for both earbuds; otherwise 3 left / 4 right.
         byte type = Model.NoiseCycleShared ? (byte)0x01 : side == EarSide.Left ? (byte)0x03 : (byte)0x04;
         return ExecuteConfirmedAsync(
-            "noise-cycle",
+            PendingKeys.NoiseCycle,
             s => s,
             new OppoRequest(OppoCommand.SetNoiseControl, [0x02, type, .. MinimalMask(mask)], SequenceMode.FixedSet),
             ct => ReadBackAsync(
@@ -255,7 +246,7 @@ public sealed partial class OppoDeviceController : IAdvancedDeviceCommands
     {
         if (type is not (0 or 1)) return Task.FromResult(CommandResult.Unsupported("Unknown head gesture assignment."));
         return ExecuteConfirmedAsync(
-            "head-motion",
+            PendingKeys.HeadMotion,
             s => s,
             new OppoRequest(OppoCommand.SetHeadMotionType, [(byte)type], SequenceMode.FixedSet),
             ct => ReadBackAsync(new OppoRequest(OppoCommand.QueryHeadMotionType, []), s => s.HeadMotionType?.Value == type, ct),
@@ -344,7 +335,7 @@ public sealed partial class OppoDeviceController : IAdvancedDeviceCommands
         // An ACK or an unrelated list notification does not prove the operation completed.
         // Confirm the targeted device, allowing the shared pipeline to retry while it settles.
         return await ExecuteConfirmedAsync(
-            "multi-connect",
+            PendingKeys.MultiConnect,
             s => s,
             new OppoRequest(OppoCommand.OperateMultiConnect, [(byte)operation, .. address], SequenceMode.FixedSet),
             async ct =>
@@ -373,7 +364,7 @@ public sealed partial class OppoDeviceController : IAdvancedDeviceCommands
         if (address is not null && address.Length != 6) return CommandResult.Unsupported("Invalid device address.");
         byte[] payload = address is { Length: 6 } ? [0x04, 0x01, .. address] : [0x04, 0x00];
         return await ExecuteConfirmedAsync(
-            "preferred-device",
+            PendingKeys.PreferredDevice,
             s => s,
             new OppoRequest(OppoCommand.OperateMultiConnect, payload, SequenceMode.FixedSet),
             ct => ReadBackAsync(

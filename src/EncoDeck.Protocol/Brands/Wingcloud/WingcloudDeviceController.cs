@@ -224,20 +224,7 @@ internal sealed class WingcloudDeviceController(IDuplexByteChannel channel, Cont
         return [1, 2, mode, level];
     }
 
-    private async Task<CommandResult> Serialized(Func<CancellationToken, Task<CommandResult>> action, CancellationToken ct)
-    {
-        bool entered = false;
-        try
-        {
-            await Operations.WaitAsync(ct).ConfigureAwait(false); entered = true;
-            if (Closed.IsCompleted || Store.Current.Device?.DeviceId != DeviceId) return CommandResult.NotConnected;
-            var result = await action(ct).ConfigureAwait(false);
-            Store.TryUpdate(DeviceId, s => s with { LastError = result.IsSuccess ? null : new DeviceError(result.Detail ?? result.Status.ToString(), result.Status, Now) });
-            return result;
-        }
-        catch (OperationCanceledException) { return new(CommandStatus.Cancelled); }
-        finally { if (entered) Operations.Release(); }
-    }
+    protected override bool CanRunCommands => base.CanRunCommands && Store.Current.Device?.DeviceId == DeviceId;
 
     private async Task<CommandResult> WriteConfirmed(ushort set, byte[] payload, ushort get, CancellationToken ct)
     {
@@ -343,7 +330,7 @@ internal sealed class WingcloudDeviceController(IDuplexByteChannel channel, Cont
         return value;
     }
 
-    public override Task<CommandResult> RefreshAsync(CancellationToken cancellationToken) => Serialized(async ct =>
+    public override Task<CommandResult> RefreshAsync(CancellationToken cancellationToken) => RunExclusiveAsync(Operations, async ct =>
     {
         // 2B 39 is never answered on this firmware; the battery arrives in the 01 27 envelope instead,
         // so a refresh re-reads the settings and the noise cycle, which do answer.
@@ -362,7 +349,7 @@ internal sealed class WingcloudDeviceController(IDuplexByteChannel channel, Cont
             : offered.FirstOrDefault(o => o.Matches(target));
         if (option is null) return Task.FromResult(NotSupported("Noise control"));
         var requested = option.ToState();
-        return Serialized(async ct =>
+        return RunCommandAsync(PendingKeys.NoiseControl, Operations, async ct =>
         {
             var result = await WriteConfirmed(AncSet, NoiseWrite(requested), AncGet, ct).ConfigureAwait(false);
             if (result.IsSuccess) ConfirmNoise(requested);
@@ -374,7 +361,7 @@ internal sealed class WingcloudDeviceController(IDuplexByteChannel channel, Cont
     {
         if (!_profile.EqualizerPresets.Any(p => p.Id == presetId) || !int.TryParse(presetId, out int value))
             return Task.FromResult(NotSupported("EQ preset"));
-        return Serialized(async ct =>
+        return RunCommandAsync(PendingKeys.Equalizer, Operations, async ct =>
         {
             var result = await WritePropertyAsync(EarphoneService, EqProperty, value, ct).ConfigureAwait(false);
             if (result.IsSuccess)
@@ -393,7 +380,7 @@ internal sealed class WingcloudDeviceController(IDuplexByteChannel channel, Cont
         };
         if (property < 0 || !_profile.QualityConfirmed)
             return Task.FromResult(NotSupported(toggle.ToString()));
-        return Serialized(async ct =>
+        return RunCommandAsync(PendingKeys.Toggle(toggle), Operations, async ct =>
         {
             if (toggle == DeviceToggle.Ldac) return await SetLdacAsync(enabled, ct).ConfigureAwait(false);
             var result = await WritePropertyAsync(SettingsService, property, enabled ? 1 : 0, ct).ConfigureAwait(false);
@@ -439,7 +426,7 @@ internal sealed class WingcloudDeviceController(IDuplexByteChannel channel, Cont
         if (slot is null || choice is null || property < 0
             || (choice.Requires is { } capability && !_profile.Capabilities.IsAvailable(capability, allowExperimental: false)))
             return Task.FromResult(NotSupported("Gesture assignment"));
-        return Serialized(async ct =>
+        return RunCommandAsync(PendingKeys.KeyFunction, Operations, async ct =>
         {
             var result = await WritePropertyAsync(WingcloudGestures.Service(slot), property, assignment.Function, ct).ConfigureAwait(false);
             if (result.IsSuccess) StoreGesture(slot, assignment.Function);
@@ -452,7 +439,7 @@ internal sealed class WingcloudDeviceController(IDuplexByteChannel channel, Cont
         var cycle = WingcloudGestures.Cycles.FirstOrDefault(c => c.Mask == modeMask && modeMask != 0);
         if (!_profile.CycleConfirmed || cycle.Mask == 0 || side is not (EarSide.Left or EarSide.Right or EarSide.Both))
             return Task.FromResult(NotSupported("Noise cycle"));
-        return Serialized(async ct =>
+        return RunCommandAsync(PendingKeys.NoiseCycle, Operations, async ct =>
         {
             // Only the left field takes effect and both earbuds follow it, so both fields carry the value.
             var ack = await Exchange(CycleSet, [1, 1, (byte)cycle.Value, 2, 1, (byte)cycle.Value], p => p.Command == CycleSet, ct).ConfigureAwait(false);

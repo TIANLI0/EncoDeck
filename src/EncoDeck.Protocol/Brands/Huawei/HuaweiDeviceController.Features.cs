@@ -91,12 +91,12 @@ internal sealed partial class HuaweiDeviceController
         byte nod = type == 0 ? HuaweiCommands.HeadActionAnswer : HuaweiCommands.HeadActionDecline;
         byte shake = type == 0 ? HuaweiCommands.HeadActionDecline : HuaweiCommands.HeadActionAnswer;
         byte[] query = FeatureFor(DeviceToggle.HeadGestures)!.Query;
-        return SerializedAsync(async ct =>
+        return RunExclusiveAsync(_operations, async ct =>
         {
             foreach (var (field, value) in new[] { ((byte)3, nod), ((byte)4, shake) })
             {
                 if (_headActions is { } current && (field == 3 ? current.Nod : current.Shake) == value) continue;
-                var result = await ExecuteConfirmedCoreAsync("head-motion", s => s, HuaweiCommands.FeatureState, FeatureWrite(HuaweiCommands.FeatureHeadGestures, field, value),
+                var result = await ExecuteConfirmedCoreAsync(PendingKeys.HeadMotion, s => s, HuaweiCommands.FeatureState, FeatureWrite(HuaweiCommands.FeatureHeadGestures, field, value),
                     HuaweiCommands.FeatureState, query, _ => _headActions is { } read && (field == 3 ? read.Nod : read.Shake) == value, ct).ConfigureAwait(false);
                 if (!result.IsSuccess) return result;
             }

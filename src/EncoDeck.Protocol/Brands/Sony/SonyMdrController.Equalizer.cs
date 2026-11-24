@@ -34,7 +34,7 @@ internal sealed partial class SonyMdrController
 
     public override async Task<CommandResult> SetEqualizerPresetAsync(string presetId, CancellationToken cancellationToken)
     {
-        return await Exclusive(async ct =>
+        return await Exclusive(PendingKeys.Equalizer, async ct =>
         {
             if (!_eqType.HasValue || !_equalizers.Any(p => p.Id == presetId)
                 || !byte.TryParse(presetId.AsSpan(5), out byte id)) return NotSupported("EQ preset has not been reported by this device.");
@@ -68,7 +68,7 @@ internal sealed partial class SonyMdrController
 
     public override async Task<CommandResult> SetEqualizerBandsAsync(IReadOnlyList<int> bands, CancellationToken cancellationToken)
     {
-        return await Exclusive(async ct =>
+        return await Exclusive(PendingKeys.Equalizer, async ct =>
         {
             if (!_eqType.HasValue) return NotSupported("Equalizer");
             if (bands.Count == 0) return new(CommandStatus.Rejected, "No band values were supplied.");

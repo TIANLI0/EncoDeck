@@ -290,7 +290,7 @@ public sealed partial class MoondropDeviceController : BrandControllerBase
         if (!_profile.Capabilities.IsAvailable(DeviceCapability.NoiseCancellation, Context.AllowExperimental()) ||
             _profile.AncFeature is not { } feature || !_profile.HasFeature(feature) || _profile.EncodeNoise(target) is not { } value)
             return Task.FromResult(NotSupported("Noise mode"));
-        return RunWriteAsync("noise-control", async ct =>
+        return RunWriteAsync(PendingKeys.NoiseControl, async ct =>
         {
             await RequestAsync(feature, feature == 2 ? 2 : 4, [value], ct).ConfigureAwait(false);
             var actual = await RequestAsync(feature, feature == 2 ? 1 : 3, [], ct).ConfigureAwait(false);
@@ -323,7 +323,7 @@ public sealed partial class MoondropDeviceController : BrandControllerBase
             : _profile.Capabilities.Get(MoondropProfile.ToggleCapability(toggle)).Support;
         if (support != CapabilitySupport.Supported && !(support == CapabilitySupport.Experimental && Context.AllowExperimental()))
             return Task.FromResult(NotSupported(toggle.ToString()));
-        return RunWriteAsync($"toggle:{toggle}", async ct =>
+        return RunWriteAsync(PendingKeys.Toggle(toggle), async ct =>
         {
             if (enabled && toggle is DeviceToggle.HiRes or DeviceToggle.DualDeviceConnection)
             {
@@ -357,25 +357,9 @@ public sealed partial class MoondropDeviceController : BrandControllerBase
     private async Task<CommandResult> RunWriteAsync(string description, Func<CancellationToken, Task<CommandResult>> action, CancellationToken ct)
     {
         if (Closed.IsCompleted) return CommandResult.NotConnected;
+        // Disposal stops a write that is still waiting for the gate or the device.
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, _stopToken);
-        var pending = new PendingCommand(Guid.NewGuid(), description, Now);
-        bool entered = false;
-        try
-        {
-            await _operations.WaitAsync(linked.Token).ConfigureAwait(false);
-            entered = true;
-            Store.TryUpdate(DeviceId, s => s with { PendingCommands = s.PendingCommands.Add(pending), LastError = null });
-            var result = await action(linked.Token).ConfigureAwait(false);
-            if (!result.IsSuccess)
-                Store.TryUpdate(DeviceId, s => s with { LastError = new DeviceError(result.Detail ?? result.Status.ToString(), result.Status, Now) });
-            return result;
-        }
-        catch (OperationCanceledException) { return new(CommandStatus.Cancelled); }
-        finally
-        {
-            Store.TryUpdate(DeviceId, s => s with { PendingCommands = s.PendingCommands.RemoveAll(p => p.Id == pending.Id) });
-            if (entered) _operations.Release();
-        }
+        return await RunCommandAsync(description, _operations, action, linked.Token).ConfigureAwait(false);
     }
 
     private async Task PollAsync(CancellationToken ct)

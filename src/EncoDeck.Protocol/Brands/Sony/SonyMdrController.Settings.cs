@@ -118,7 +118,7 @@ internal sealed partial class SonyMdrController
 
     public override async Task<CommandResult> SetToggleAsync(DeviceToggle toggle, bool enabled, CancellationToken cancellationToken)
     {
-        return await Exclusive(async ct =>
+        return await Exclusive(PendingKeys.Toggle(toggle), async ct =>
         {
             if (!_toggles.Contains(toggle)) return NotSupported(toggle.ToString());
             byte[]? reply;
@@ -143,7 +143,7 @@ internal sealed partial class SonyMdrController
 
     public override async Task<CommandResult> SetOptionAsync(string id, int value, CancellationToken cancellationToken = default)
     {
-        return await Exclusive(async ct =>
+        return await Exclusive(PendingKeys.Option(id), async ct =>
         {
             if (!Store.Current.Options.TryGetValue(id, out var option) || !option.Value.Accepts(value)) return NotSupported($"Option {id}");
             byte[]? reply;

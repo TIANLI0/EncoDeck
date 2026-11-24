@@ -139,7 +139,7 @@ internal sealed class GoogleDeviceController : BrandControllerBase
         }
     }
 
-    public override Task<CommandResult> RefreshAsync(CancellationToken cancellationToken) => Serialized(RefreshCoreAsync, cancellationToken);
+    public override Task<CommandResult> RefreshAsync(CancellationToken cancellationToken) => RunExclusiveAsync(_operations, RefreshCoreAsync, cancellationToken);
 
     private async Task<CommandResult> RefreshCoreAsync(CancellationToken ct)
     {
@@ -180,7 +180,7 @@ internal sealed class GoogleDeviceController : BrandControllerBase
     {
         if (target.LevelId is not null || target.Mode is not (NoiseControlMode.Off or NoiseControlMode.NoiseCancellation or NoiseControlMode.Transparency))
             return Task.FromResult(NotSupported($"Noise mode {target.Mode}/{target.LevelId}"));
-        return Serialized(async ct =>
+        return RunCommandAsync(PendingKeys.NoiseControl, _operations, async ct =>
         {
             if (!_profile.NoiseConfirmed) return NotSupported("Noise control has not been confirmed by this device.");
             var write = await RpcAsync(WriteSetting, GoogleMaestro.NoiseWrite(target.Mode), null, _requestTimeout, probe: false, ct).ConfigureAwait(false);
@@ -200,7 +200,7 @@ internal sealed class GoogleDeviceController : BrandControllerBase
     {
         if (!int.TryParse(presetId, out int id) || id < 0 || id >= GoogleMaestro.Presets.Length)
             return Task.FromResult(NotSupported($"EQ preset {presetId}"));
-        return Serialized(async ct =>
+        return RunCommandAsync(PendingKeys.Equalizer, _operations, async ct =>
         {
             if (!_profile.EqualizerConfirmed) return NotSupported("EQ has not been confirmed by this device.");
             var write = await RpcAsync(WriteSetting, GoogleMaestro.EqualizerWrite(GoogleMaestro.Presets[id]), null, _requestTimeout, probe: false, ct).ConfigureAwait(false);
@@ -354,25 +354,8 @@ internal sealed class GoogleDeviceController : BrandControllerBase
         }
     }
 
-    private async Task<CommandResult> Serialized(Func<CancellationToken, Task<CommandResult>> action, CancellationToken ct)
-    {
-        bool entered = false;
-        try
-        {
-            await _operations.WaitAsync(ct).ConfigureAwait(false);
-            entered = true;
-            if (Closed.IsCompleted || _route is null) return CommandResult.NotConnected;
-            return await action(ct).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
-            return new(CommandStatus.Cancelled);
-        }
-        finally
-        {
-            if (entered) _operations.Release();
-        }
-    }
+    /// <summary>Commands need the Maestro route confirmed at start-up.</summary>
+    protected override bool CanRunCommands => base.CanRunCommands && _route is not null;
 
     private async Task PollAsync(CancellationToken cancellationToken)
     {

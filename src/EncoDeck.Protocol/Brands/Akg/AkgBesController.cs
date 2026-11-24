@@ -95,7 +95,7 @@ internal sealed class AkgBesController(IDuplexByteChannel channel, ControllerCon
             _ => null,
         };
         if (ambient is null) return CommandResult.Unsupported("This protocol exposes off, noise cancelling, ambient aware and TalkThru only.");
-        return await Exclusive(async ct =>
+        return await RunCommandAsync(PendingKeys.NoiseControl, _commands, async ct =>
         {
             if (!_anc.HasValue || !_ambient.HasValue) return CommandResult.Unsupported("ANC and ambient status have not been confirmed on this device.");
             // ANC and ambient are separate switches; turn the other one off first so the modes stay exclusive.
@@ -120,7 +120,7 @@ internal sealed class AkgBesController(IDuplexByteChannel channel, ControllerCon
     {
         if (!presetId.StartsWith("akg-eq-", StringComparison.Ordinal) || !byte.TryParse(presetId.AsSpan(7), out byte index) || index >= EqPresets.Length)
             return NotSupported("EQ preset");
-        return await Exclusive(async ct =>
+        return await RunCommandAsync(PendingKeys.Equalizer, _commands, async ct =>
         {
             if (!_eq.HasValue) return NotSupported("EQ preset");
             if (!await WriteAsync(AkgFrameCodec.Encode(SetEqPreset, [index]), ct).ConfigureAwait(false)) return new(CommandStatus.TransportError);
@@ -133,7 +133,7 @@ internal sealed class AkgBesController(IDuplexByteChannel channel, ControllerCon
     public override async Task<CommandResult> SetToggleAsync(DeviceToggle toggle, bool enabled, CancellationToken cancellationToken)
     {
         if (toggle != DeviceToggle.InEarDetection) return NotSupported(toggle.ToString());
-        return await Exclusive(async ct =>
+        return await RunCommandAsync(PendingKeys.Toggle(toggle), _commands, async ct =>
         {
             if (!_profile.Toggles.Contains(DeviceToggle.InEarDetection)) return NotSupported(toggle.ToString());
             if (!await WriteAsync(AkgFrameCodec.Encode(SetAutoPlay, [enabled ? (byte)1 : (byte)0]), ct).ConfigureAwait(false)) return new(CommandStatus.TransportError);
@@ -141,21 +141,6 @@ internal sealed class AkgBesController(IDuplexByteChannel channel, ControllerCon
             return response is null ? new CommandResult(CommandStatus.Timeout)
                 : (response[4] == 1) == enabled ? CommandResult.Ok : new CommandResult(CommandStatus.Rejected, "The device kept its previous auto-play/pause setting.");
         }, cancellationToken).ConfigureAwait(false);
-    }
-
-    private async Task<CommandResult> Exclusive(Func<CancellationToken, Task<CommandResult>> body, CancellationToken cancellationToken)
-    {
-        bool entered = false;
-        try
-        {
-            await _commands.WaitAsync(cancellationToken).ConfigureAwait(false); entered = true;
-            if (Closed.IsCompleted) return CommandResult.NotConnected;
-            var result = await body(cancellationToken).ConfigureAwait(false);
-            Store.TryUpdate(DeviceId, s => s with { LastError = result.IsSuccess ? null : new DeviceError(result.Detail ?? result.Status.ToString(), result.Status, Now) });
-            return result;
-        }
-        catch (OperationCanceledException) { return new(CommandStatus.Cancelled); }
-        finally { if (entered) _commands.Release(); }
     }
 
     /// <summary>A status reply this controller understands: <c>AA 22 len sub data…</c>.</summary>

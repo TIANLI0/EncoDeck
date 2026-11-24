@@ -75,7 +75,7 @@ internal sealed partial class HuaweiDeviceController : BrandControllerBase
         return true;
     }
 
-    public override Task<CommandResult> RefreshAsync(CancellationToken cancellationToken) => SerializedAsync(RefreshCoreAsync, cancellationToken);
+    public override Task<CommandResult> RefreshAsync(CancellationToken cancellationToken) => RunExclusiveAsync(_operations, RefreshCoreAsync, cancellationToken);
 
     private async Task<CommandResult> RefreshCoreAsync(CancellationToken cancellationToken)
     {
@@ -339,7 +339,7 @@ internal sealed partial class HuaweiDeviceController : BrandControllerBase
         }
 
         return ExecuteConfirmedAsync(
-            "noise-control",
+            PendingKeys.NoiseControl,
             s => s with { NoiseControl = Observed.From(target, Now, StateSource.Optimistic) },
             HuaweiCommands.SetAnc,
             [0x01, 0x02, mode, sub],
@@ -354,7 +354,7 @@ internal sealed partial class HuaweiDeviceController : BrandControllerBase
         var preset = Profile.EqualizerPresets.Any(p => p.Id == presetId) ? Model.EqPresets.FirstOrDefault(p => p.PresetId == presetId) : null;
         if (preset is null) return Task.FromResult(Model.EqPresets.Count == 0 ? NotSupported("Equalizer") : CommandResult.Unsupported($"EQ preset {presetId} is not available."));
         return ExecuteConfirmedAsync(
-            "equalizer",
+            PendingKeys.Equalizer,
             s => s with { Equalizer = Observed.From(new EqualizerState(presetId, preset.ProtocolId), Now, StateSource.Optimistic) },
             HuaweiCommands.SetEqualizer,
             [0x01, 0x01, preset.ProtocolId],
@@ -378,7 +378,7 @@ internal sealed partial class HuaweiDeviceController : BrandControllerBase
         };
         if (!supported) return Task.FromResult(NotSupported(toggle.ToString()));
         return ExecuteConfirmedAsync(
-            "toggle:" + toggle,
+            PendingKeys.Toggle(toggle),
             s => s with { Toggles = s.Toggles.SetItem(toggle, Observed.From(enabled, Now, StateSource.Optimistic)) },
             set,
             setPayload,
@@ -395,9 +395,19 @@ internal sealed partial class HuaweiDeviceController : BrandControllerBase
     private Task<CommandResult> ExecuteConfirmedAsync(
         string name, Func<DeviceState, DeviceState> applyOptimistic, ushort setCommand, byte[] setPayload,
         ushort queryCommand, byte[] queryPayload, Func<DeviceState, bool> confirmed, CancellationToken cancellationToken) =>
-        SerializedAsync(ct => ExecuteConfirmedCoreAsync(name, applyOptimistic, setCommand, setPayload, queryCommand, queryPayload, confirmed, ct), cancellationToken);
+        RunCommandAsync(name, _operations,
+            ct => WriteConfirmedAsync(name, applyOptimistic, setCommand, setPayload, queryCommand, queryPayload, confirmed, ct),
+            cancellationToken, applyOptimistic);
 
-    private async Task<CommandResult> ExecuteConfirmedCoreAsync(
+    /// <summary><see cref="ExecuteConfirmedAsync"/> for a step of a sequence that already holds the command gate.</summary>
+    private Task<CommandResult> ExecuteConfirmedCoreAsync(
+        string name, Func<DeviceState, DeviceState> applyOptimistic, ushort setCommand, byte[] setPayload,
+        ushort queryCommand, byte[] queryPayload, Func<DeviceState, bool> confirmed, CancellationToken cancellationToken) =>
+        RunCommandAsync(name, null,
+            ct => WriteConfirmedAsync(name, applyOptimistic, setCommand, setPayload, queryCommand, queryPayload, confirmed, ct),
+            cancellationToken, applyOptimistic);
+
+    private async Task<CommandResult> WriteConfirmedAsync(
         string name,
         Func<DeviceState, DeviceState> applyOptimistic,
         ushort setCommand,
@@ -407,17 +417,6 @@ internal sealed partial class HuaweiDeviceController : BrandControllerBase
         Func<DeviceState, bool> confirmed,
         CancellationToken cancellationToken)
     {
-        if (Closed.IsCompleted) return CommandResult.NotConnected;
-
-        var pending = new PendingCommand(Guid.NewGuid(), name, Now);
-        DeviceState? before = null;
-        Store.TryUpdate(DeviceId, s =>
-        {
-            before = s;
-            return applyOptimistic(s) with { PendingCommands = s.PendingCommands.Add(pending), LastError = null };
-        });
-
-        CommandResult result;
         // When the write and the query share a command (low latency, feature switches), an error reply
         // fails the read-back and a bare acknowledgement is skipped by the read.
         var errorWaiter = setCommand != queryCommand ? Register(setCommand, acceptsAck: true) : null;
@@ -425,69 +424,32 @@ internal sealed partial class HuaweiDeviceController : BrandControllerBase
         {
             if (!await WriteAsync(_codec.Encode(setCommand, setPayload), cancellationToken).ConfigureAwait(false))
             {
-                result = new CommandResult(CommandStatus.TransportError, $"{name}: control channel error.");
+                return new CommandResult(CommandStatus.TransportError, $"{name}: control channel error.");
             }
-            else
+            await Task.Delay(ReadBackDelay, Context.Time, cancellationToken).ConfigureAwait(false);
+            if (errorWaiter is { Task.IsCompletedSuccessfully: true }
+                && HuaweiWire.ParseTlv(errorWaiter.Task.Result.Payload) is var answer && HuaweiWire.IsError(answer))
             {
-                await Task.Delay(ReadBackDelay, Context.Time, cancellationToken).ConfigureAwait(false);
-                if (errorWaiter is { Task.IsCompletedSuccessfully: true }
-                    && HuaweiWire.ParseTlv(errorWaiter.Task.Result.Payload) is var answer && HuaweiWire.IsError(answer))
-                {
-                    result = new CommandResult(CommandStatus.Rejected, $"Device rejected {name} (error {Convert.ToHexString(answer[HuaweiCommands.ErrorTlv])}).");
-                }
-                else
-                {
-                    var (_, status) = await QueryAsync(queryCommand, queryPayload, cancellationToken).ConfigureAwait(false);
-                    bool matches = status == CommandStatus.Success && confirmed(Store.Current);
-                    foreach (var settle in SettleDelays)
-                    {
-                        if (matches || status != CommandStatus.Success) break;
-                        // Keep showing the requested value while the earbuds settle (a delayed report may still be stale).
-                        Store.TryUpdate(DeviceId, applyOptimistic);
-                        await Task.Delay(settle, Context.Time, cancellationToken).ConfigureAwait(false);
-                        (_, status) = await QueryAsync(queryCommand, queryPayload, cancellationToken).ConfigureAwait(false);
-                        matches = status == CommandStatus.Success && confirmed(Store.Current);
-                    }
-                    result = status != CommandStatus.Success
-                        ? new CommandResult(status, $"{name}: no read-back from the device.")
-                        : matches ? CommandResult.Ok : new CommandResult(CommandStatus.Rejected, "The device reports a different value.");
-                }
+                return new CommandResult(CommandStatus.Rejected, $"Device rejected {name} (error {Convert.ToHexString(answer[HuaweiCommands.ErrorTlv])}).");
             }
-        }
-        catch (OperationCanceledException)
-        {
-            result = new CommandResult(CommandStatus.Cancelled);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "Command {Name} failed", name);
-            result = new CommandResult(CommandStatus.TransportError, ex.Message);
+            var (_, status) = await QueryAsync(queryCommand, queryPayload, cancellationToken).ConfigureAwait(false);
+            bool matches = status == CommandStatus.Success && confirmed(Store.Current);
+            foreach (var settle in SettleDelays)
+            {
+                if (matches || status != CommandStatus.Success) break;
+                // Keep showing the requested value while the earbuds settle (a delayed report may still be stale).
+                Store.TryUpdate(DeviceId, applyOptimistic);
+                await Task.Delay(settle, Context.Time, cancellationToken).ConfigureAwait(false);
+                (_, status) = await QueryAsync(queryCommand, queryPayload, cancellationToken).ConfigureAwait(false);
+                matches = status == CommandStatus.Success && confirmed(Store.Current);
+            }
+            return status != CommandStatus.Success
+                ? new CommandResult(status, $"{name}: no read-back from the device.")
+                : matches ? CommandResult.Ok : new CommandResult(CommandStatus.Rejected, "The device reports a different value.");
         }
         finally
         {
             if (errorWaiter is not null) Unregister(setCommand, errorWaiter);
         }
-
-        Store.TryUpdate(DeviceId, s =>
-        {
-            var next = s with { PendingCommands = s.PendingCommands.RemoveAll(p => p.Id == pending.Id) };
-            if (result.IsSuccess) return next;
-            if (before is not null)
-            {
-                if (next.NoiseControl?.Source == StateSource.Optimistic) next = next with { NoiseControl = before.NoiseControl };
-                if (next.Equalizer?.Source == StateSource.Optimistic) next = next with { Equalizer = before.Equalizer };
-                foreach (var (toggle, _) in next.Toggles.Where(t => t.Value.Source == StateSource.Optimistic).ToList())
-                {
-                    next = next with
-                    {
-                        Toggles = before.Toggles.TryGetValue(toggle, out var old) ? next.Toggles.SetItem(toggle, old) : next.Toggles.Remove(toggle),
-                    };
-                }
-            }
-            return next with { LastError = new DeviceError(result.Detail ?? result.Status.ToString(), result.Status, Now) };
-        });
-
-        Logger.LogInformation("Command {Name} -> {Result}", name, result);
-        return result;
     }
 }

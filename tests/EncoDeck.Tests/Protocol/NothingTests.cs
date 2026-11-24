@@ -578,6 +578,56 @@ public class NothingTests
     }
 
     [Fact]
+    public async Task WritesArePendingUntilConfirmedOrRefused()
+    {
+        var device = new Device("Nothing Ear (a)");
+        var (controller, store) = Create(device);
+        await using var session = controller;
+        Assert.True(await controller.InitializeAsync(Ct));
+        bool pendingAtWrite = false;
+        device.BeforeResponse = r => { if (r.Command is 0xF00F or 0xF010) pendingAtWrite = store.Current.PendingCommands.Count == 1; };
+
+        Assert.True((await controller.SetNoiseControlAsync(new(NoiseControlMode.Transparency), Ct)).IsSuccess);
+        Assert.True(pendingAtWrite);
+        Assert.Empty(store.Current.PendingCommands);
+        Assert.Null(store.Current.LastError);
+
+        pendingAtWrite = false;
+        device.BeforeResponse = r =>
+        {
+            if (r.Command == 0xF010) pendingAtWrite = store.Current.IsPending(PendingKeys.Equalizer);
+        };
+        device.ApplyWrites = false;
+        Assert.Equal(CommandStatus.Rejected, (await controller.SetEqualizerPresetAsync("3", Ct)).Status);
+        Assert.True(pendingAtWrite);
+        Assert.Empty(store.Current.PendingCommands);
+        Assert.Equal(CommandStatus.Rejected, store.Current.LastError!.Status);
+    }
+
+    [Fact]
+    public async Task ChannelFailureDuringAWriteClearsThePendingMarker()
+    {
+        var device = new Device("Nothing Ear (a)");
+        var (controller, store) = Create(device);
+        await using var session = controller;
+        Assert.True(await controller.InitializeAsync(Ct));
+        bool pendingAtWrite = false;
+        device.BeforeResponse = r =>
+        {
+            if (r.Command != 0xF00F) return;
+            pendingAtWrite = store.Current.IsPending(PendingKeys.NoiseControl);
+            throw new IOException("link lost");
+        };
+
+        var result = await controller.SetNoiseControlAsync(new(NoiseControlMode.Transparency), Ct);
+
+        Assert.Equal(CommandStatus.TransportError, result.Status);
+        Assert.True(pendingAtWrite);
+        Assert.Empty(store.Current.PendingCommands);
+        Assert.Equal(CommandStatus.TransportError, store.Current.LastError!.Status);
+    }
+
+    [Fact]
     public async Task MalformedReadbackWithdrawsNoiseUntilReadAgain()
     {
         var device = new Device("Nothing Ear (a)");

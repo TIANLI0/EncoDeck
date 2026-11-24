@@ -101,7 +101,7 @@ internal sealed class NothingDeviceController : BrandControllerBase
         }
     }
 
-    public override Task<CommandResult> RefreshAsync(CancellationToken cancellationToken) => Serialized(async ct =>
+    public override Task<CommandResult> RefreshAsync(CancellationToken cancellationToken) => RunExclusiveAsync(_operations, async ct =>
     {
         bool ok = await ReadBatteryAsync(ct).ConfigureAwait(false)
             && (!_noiseAvailable || await ReadNoiseAsync(false, ct).ConfigureAwait(false) is not null);
@@ -121,7 +121,7 @@ internal sealed class NothingDeviceController : BrandControllerBase
     {
         if (!_profile.NoiseControlOptions.Any(o => o.Matches(target))) return Task.FromResult(NotSupported("Noise control"));
         byte value = target.Mode switch { NoiseControlMode.Off => 5, NoiseControlMode.NoiseCancellation => 1, _ => 7 };
-        return Serialized(async ct =>
+        return RunCommandAsync(PendingKeys.NoiseControl, _operations, async ct =>
         {
             if (!_noiseAvailable || !_noiseObserved) return NotSupported("Noise control has not been read back from this device.");
             if (!await SendAsync(NothingModel.NoiseWrite(value)!, ct).ConfigureAwait(false)) return new(CommandStatus.TransportError);
@@ -141,7 +141,7 @@ internal sealed class NothingDeviceController : BrandControllerBase
     {
         if (!_profile.EqualizerPresets.Any(p => p.Id == presetId) || !byte.TryParse(presetId, out byte id) || _model.EqWrite(id) is not { } write)
             return Task.FromResult(NotSupported("EQ preset has not been read back from this device."));
-        return Serialized(async ct =>
+        return RunCommandAsync(PendingKeys.Equalizer, _operations, async ct =>
         {
             if (!_eqAvailable || !_eqObserved) return NotSupported("EQ has not been read back from this device.");
             // Fresh Advanced EQ gate before changing a preset (Headphone (1)).
@@ -322,25 +322,7 @@ internal sealed class NothingDeviceController : BrandControllerBase
         }
     }
 
-    private async Task<CommandResult> Serialized(Func<CancellationToken, Task<CommandResult>> action, CancellationToken ct)
-    {
-        bool entered = false;
-        try
-        {
-            await _operations.WaitAsync(ct).ConfigureAwait(false);
-            entered = true;
-            if (Closed.IsCompleted || Store.Current.Device?.DeviceId != DeviceId) return CommandResult.NotConnected;
-            return await action(ct).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
-            return new(CommandStatus.Cancelled);
-        }
-        finally
-        {
-            if (entered) _operations.Release();
-        }
-    }
+    protected override bool CanRunCommands => base.CanRunCommands && Store.Current.Device?.DeviceId == DeviceId;
 
     private async Task PollAsync(CancellationToken cancellationToken)
     {

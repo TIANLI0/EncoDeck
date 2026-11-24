@@ -315,64 +315,24 @@ public sealed class EdifierDeviceController : BrandControllerBase
     private static bool AnnouncesNoise(NoiseControlState from, NoiseControlState to) =>
         from.Mode != to.Mode || to.Mode == NoiseControlMode.NoiseCancellation && to.LevelId is not null && from.LevelId != to.LevelId;
 
-    private async Task<CommandResult> WriteNoiseAsync(NoiseControlState target, byte[] payload, CancellationToken cancellationToken)
-    {
-        var pending = new PendingCommand(Guid.NewGuid(), "noise-control", Now);
-        DeviceState? before = null;
-        Store.TryUpdate(DeviceId, s =>
+    // Prompted writes are serialized by AfterVoicePromptAsync and requests by RequestAsync; no command gate here.
+    private Task<CommandResult> WriteNoiseAsync(NoiseControlState target, byte[] payload, CancellationToken cancellationToken) =>
+        RunCommandAsync(PendingKeys.NoiseControl, null, async ct =>
         {
-            before = s;
-            return s with
-            {
-                NoiseControl = Observed.From(target, Now, StateSource.Optimistic),
-                PendingCommands = s.PendingCommands.Add(pending),
-                LastError = null,
-            };
-        });
-
-        CommandResult result;
-        try
-        {
-            var ack = await RequestAsync(EdifierConstants.SetNoiseMode, payload, cancellationToken).ConfigureAwait(false);
+            var ack = await RequestAsync(EdifierConstants.SetNoiseMode, payload, ct).ConfigureAwait(false);
             // Even without an ack the write may have landed: trust a matching read-back.
-            var actual = await RefreshNoiseAsync(cancellationToken).ConfigureAwait(false);
+            var actual = await RefreshNoiseAsync(ct).ConfigureAwait(false);
             // Over-ear BES headsets announce the new mode; the W830NB is given the same grace as the W860NB PRO.
             if (actual is null && Spec.Anc is EdifierAnc.SlotW860 or EdifierAnc.SlotW830)
             {
-                await Task.Delay(PromptRetryDelay, Context.Time, cancellationToken).ConfigureAwait(false);
-                actual = await RefreshNoiseAsync(cancellationToken).ConfigureAwait(false);
+                await Task.Delay(PromptRetryDelay, Context.Time, ct).ConfigureAwait(false);
+                actual = await RefreshNoiseAsync(ct).ConfigureAwait(false);
             }
-            if (actual is null)
-            {
-                result = new CommandResult(CommandStatus.Timeout, ack is null ? "noise-control" : "Read-back");
-            }
-            else
-            {
-                result = EdifierSettings.Satisfies(actual, target)
-                    ? CommandResult.Ok
-                    : new CommandResult(ack is null ? CommandStatus.Timeout : CommandStatus.Rejected, "Device reports a different noise mode.");
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            result = new CommandResult(CommandStatus.Cancelled);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "Noise control command failed");
-            result = new CommandResult(CommandStatus.TransportError, ex.Message);
-        }
-
-        Store.TryUpdate(DeviceId, s =>
-        {
-            var next = s with { PendingCommands = s.PendingCommands.RemoveAll(p => p.Id == pending.Id) };
-            if (result.IsSuccess) return next;
-            if (before is not null && next.NoiseControl?.Source == StateSource.Optimistic) next = next with { NoiseControl = before.NoiseControl };
-            return next with { LastError = new DeviceError(result.Detail ?? result.Status.ToString(), result.Status, Now) };
-        });
-        Logger.LogInformation("Command noise-control -> {Result}", result);
-        return result;
-    }
+            if (actual is null) return new CommandResult(CommandStatus.Timeout, ack is null ? PendingKeys.NoiseControl : "Read-back");
+            return EdifierSettings.Satisfies(actual, target)
+                ? CommandResult.Ok
+                : new CommandResult(ack is null ? CommandStatus.Timeout : CommandStatus.Rejected, "Device reports a different noise mode.");
+        }, cancellationToken, s => s with { NoiseControl = Observed.From(target, Now, StateSource.Optimistic) });
 
     public override Task<CommandResult> SetToggleAsync(DeviceToggle toggle, bool enabled, CancellationToken cancellationToken)
     {
@@ -380,10 +340,10 @@ public sealed class EdifierDeviceController : BrandControllerBase
         return toggle switch
         {
             DeviceToggle.GamingMode when CurrentProfile.Offers(EdifierFeatures.GameMode) => WriteSettingAsync(
-                $"toggle:{toggle}", EdifierConstants.SetGameMode, [value], EdifierConstants.QueryGameMode, [],
+                PendingKeys.Toggle(toggle), EdifierConstants.SetGameMode, [value], EdifierConstants.QueryGameMode, [],
                 s => s.Toggles.TryGetValue(toggle, out var on) && on.Value == enabled, cancellationToken),
             DeviceToggle.InEarDetection when CurrentProfile.Offers(EdifierFeatures.InEarSwitch) => WriteSettingAsync(
-                $"toggle:{toggle}", EdifierConstants.SetInEarSwitch, [value], EdifierConstants.QueryInEarSwitch, [],
+                PendingKeys.Toggle(toggle), EdifierConstants.SetInEarSwitch, [value], EdifierConstants.QueryInEarSwitch, [],
                 s => s.Toggles.TryGetValue(toggle, out var on) && on.Value == enabled, cancellationToken),
             _ => Task.FromResult(NotSupported(toggle.ToString())),
         };
@@ -399,7 +359,7 @@ public sealed class EdifierDeviceController : BrandControllerBase
             return Task.FromResult(NotSupported("This button setting"));
         }
         byte mask = (byte)assignment.Function;
-        return WriteSettingAsync("key-function", EdifierConstants.SetKeyControl, [EdifierConstants.KeyControlSlot, mask],
+        return WriteSettingAsync(PendingKeys.KeyFunction, EdifierConstants.SetKeyControl, [EdifierConstants.KeyControlSlot, mask],
             EdifierConstants.QueryKeyControl, [EdifierConstants.KeyControlSlot],
             s => s.KeyFunctions?.Value.Any(k => EdifierSettings.KeyControlSlot.Matches(k) && k.Function == mask) == true, cancellationToken);
     }
@@ -411,7 +371,7 @@ public sealed class EdifierDeviceController : BrandControllerBase
             return Task.FromResult(NotSupported("This equalizer preset"));
         }
         return AfterVoicePromptAsync(p => p.SoundEffect, () => Store.Current.Equalizer?.Value.ActivePresetId != presetId,
-            ct => WriteSettingAsync("equalizer", EdifierConstants.SetSoundEffect, [value], EdifierConstants.QuerySoundEffect, [],
+            ct => WriteSettingAsync(PendingKeys.Equalizer, EdifierConstants.SetSoundEffect, [value], EdifierConstants.QuerySoundEffect, [],
                 s => s.Equalizer?.Value.ActivePresetId == presetId, ct),
             cancellationToken);
     }
@@ -549,40 +509,16 @@ public sealed class EdifierDeviceController : BrandControllerBase
     /// Sends a setting, then reads it back and checks the store; the write's own echo or
     /// acknowledgement is never taken as the new state.
     /// </summary>
-    private async Task<CommandResult> WriteSettingAsync(string description, byte command, byte[] payload, byte queryCommand, byte[] queryPayload,
-        Func<DeviceState, bool> applied, CancellationToken ct)
-    {
-        if (Closed.IsCompleted) return CommandResult.NotConnected;
-        var pending = new PendingCommand(Guid.NewGuid(), description, Now);
-        Store.TryUpdate(DeviceId, s => s with { PendingCommands = s.PendingCommands.Add(pending), LastError = null });
-        CommandResult result;
-        try
+    private Task<CommandResult> WriteSettingAsync(string description, byte command, byte[] payload, byte queryCommand, byte[] queryPayload,
+        Func<DeviceState, bool> applied, CancellationToken cancellationToken) =>
+        RunCommandAsync(description, null, async ct =>
         {
             var ack = await RequestAsync(command, payload, ct).ConfigureAwait(false);
             var readBack = await QueryAsync(queryCommand, queryPayload, ct).ConfigureAwait(false);
-            if (readBack is null) result = new CommandResult(CommandStatus.Timeout, ack is null ? description : "Read-back");
-            else if (applied(Store.Current)) result = CommandResult.Ok;
-            else result = new CommandResult(ack is null ? CommandStatus.Timeout : CommandStatus.Rejected, "The headset kept the previous setting.");
-        }
-        catch (OperationCanceledException)
-        {
-            result = new CommandResult(CommandStatus.Cancelled);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "Command {Description} failed", description);
-            result = new CommandResult(CommandStatus.TransportError, ex.Message);
-        }
-        Store.TryUpdate(DeviceId, s =>
-        {
-            var next = s with { PendingCommands = s.PendingCommands.RemoveAll(p => p.Id == pending.Id) };
-            return result.IsSuccess || result.Status == CommandStatus.Cancelled
-                ? next
-                : next with { LastError = new DeviceError(result.Detail ?? result.Status.ToString(), result.Status, Now) };
-        });
-        Logger.LogInformation("Command {Description} -> {Result}", description, result);
-        return result;
-    }
+            if (readBack is null) return new CommandResult(CommandStatus.Timeout, ack is null ? description : "Read-back");
+            if (applied(Store.Current)) return CommandResult.Ok;
+            return new CommandResult(ack is null ? CommandStatus.Timeout : CommandStatus.Rejected, "The headset kept the previous setting.");
+        }, cancellationToken);
 
     private async Task<bool> RefreshBatteryAsync(CancellationToken cancellationToken)
     {

@@ -183,7 +183,7 @@ internal sealed class EarFunDeviceController(IDuplexByteChannel channel, Control
         if (!Model.Has("list") || operation == MultiConnectOperation.Remove || address.Length < 2) return Task.FromResult(NotSupported("Dual connection operation"));
         bool connect = operation == MultiConnectOperation.Connect;
         bool Same(SourceDevice d) => d.Address.AsSpan(1).SequenceEqual(address.AsSpan(1));
-        return Serialized(async ct =>
+        return RunCommandAsync(PendingKeys.MultiConnect, Operations, async ct =>
         {
             // Verify on a fresh list: same number and address, not this PC, and a free connection slot.
             var before = await ReadSourcesAsync(ct).ConfigureAwait(false);
@@ -420,22 +420,19 @@ internal sealed class EarFunDeviceController(IDuplexByteChannel channel, Control
         var reply = await Request(EarFunSettings.Command(Model, setting).Read, [], ct).ConfigureAwait(false);
         return reply is { Type: 0 } && Apply(reply, StateSource.QueryResponse) ? reply.Payload : null;
     }
-    private Task<CommandResult> Serialized(Func<CancellationToken, Task<CommandResult>> action, CancellationToken ct) => Run(action, ct);
-    private async Task<CommandResult> Run(Func<CancellationToken, Task<CommandResult>> action, CancellationToken ct)
-    {
-        bool entered = false;
-        try
-        {
-            await Operations.WaitAsync(ct).ConfigureAwait(false); entered = true;
-            if (Closed.IsCompleted || Store.Current.Device?.DeviceId != DeviceId) return CommandResult.NotConnected;
-            return await action(ct).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException) { return new(CommandStatus.Cancelled); }
-        finally { if (entered) Operations.Release(); }
-    }
+    protected override bool CanRunCommands => base.CanRunCommands && Store.Current.Device?.DeviceId == DeviceId;
 
     private Task<CommandResult> Change(EarFunSetting setting, byte[] payload, Func<byte[], bool> matches, CancellationToken ct, bool stopping = false) =>
-        Serialized(token => ChangeCore(setting, payload, matches, token, stopping), ct);
+        RunCommandAsync(PendingKey(setting), Operations, token => ChangeCore(setting, payload, matches, token, stopping), ct);
+
+    private static string PendingKey(EarFunSetting setting) => setting switch
+    {
+        EarFunSetting.Noise => PendingKeys.NoiseControl,
+        EarFunSetting.Spatial => PendingKeys.Spatial,
+        EarFunSetting.Prompt => PendingKeys.PromptVolume,
+        EarFunSetting.Find => PendingKeys.FindEarbuds,
+        _ => PendingKeys.Option("earfun-" + setting.ToString().ToLowerInvariant()),
+    };
 
     private async Task<CommandResult> ChangeCore(EarFunSetting setting, byte[] payload, Func<byte[], bool> matches, CancellationToken token, bool stopping = false, bool restarts = false)
     {
@@ -501,7 +498,7 @@ internal sealed class EarFunDeviceController(IDuplexByteChannel channel, Control
         return result;
     }
 
-    public override Task<CommandResult> RefreshAsync(CancellationToken cancellationToken) => Serialized(async ct =>
+    public override Task<CommandResult> RefreshAsync(CancellationToken cancellationToken) => RunExclusiveAsync(Operations, async ct =>
     {
         foreach (var setting in Settings().Where(s => s is EarFunSetting.Firmware or EarFunSetting.Battery || _profile.Confirmed(EarFunSettings.Command(Model, s).Read)))
             if (await Read(setting, ct).ConfigureAwait(false) is null)
@@ -530,10 +527,10 @@ internal sealed class EarFunDeviceController(IDuplexByteChannel channel, Control
     }
     public override Task<CommandResult> SetToggleAsync(DeviceToggle toggle, bool enabled, CancellationToken cancellationToken)
     {
-        if (EarFunSettings.CodecBits(Model).ContainsKey(toggle)) return Serialized(ct => WriteCodec(toggle, enabled, ct), cancellationToken);
+        if (EarFunSettings.CodecBits(Model).ContainsKey(toggle)) return RunCommandAsync(PendingKeys.Toggle(toggle), Operations, ct => WriteCodec(toggle, enabled, ct), cancellationToken);
         EarFunSetting? setting = toggle switch { DeviceToggle.GamingMode => EarFunSetting.Game, DeviceToggle.DualDeviceConnection => EarFunSetting.Dual, DeviceToggle.InEarDetection => EarFunSetting.Wear, _ => null };
         if (setting is null || !Model.Has(Feature(setting.Value))) return Task.FromResult(NotSupported("Toggle"));
-        return Serialized(ct => setting == EarFunSetting.Dual ? SetDual(enabled, ct) : WriteToggle(setting.Value, enabled, ct), cancellationToken);
+        return RunCommandAsync(PendingKeys.Toggle(toggle), Operations, ct => setting == EarFunSetting.Dual ? SetDual(enabled, ct) : WriteToggle(setting.Value, enabled, ct), cancellationToken);
     }
     public override Task<CommandResult> SetSpatialAudioAsync(SpatialAudioMode mode, CancellationToken cancellationToken = default) =>
         mode is not (SpatialAudioMode.Off or SpatialAudioMode.Fixed) ? Task.FromResult(NotSupported("Head tracking")) : Change(EarFunSetting.Spatial, [mode == SpatialAudioMode.Off ? (byte)1 : (byte)2], p => p[0] == (mode == SpatialAudioMode.Off ? 1 : 2), cancellationToken);
@@ -560,7 +557,7 @@ internal sealed class EarFunDeviceController(IDuplexByteChannel channel, Control
             : Change(setting.Value, [(byte)value], p => EarFunSettings.Option(Model, setting.Value, p[0])?.Value == value, cancellationToken);
     }
 
-    public override Task<CommandResult> SetKeyFunctionAsync(KeyFunction assignment, CancellationToken cancellationToken = default) => Serialized(async ct =>
+    public override Task<CommandResult> SetKeyFunctionAsync(KeyFunction assignment, CancellationToken cancellationToken = default) => RunCommandAsync(PendingKeys.KeyFunction, Operations, async ct =>
     {
         if (!Model.Has("keys")) return NotSupported("Gestures");
         var slots = EarFunGestures.Slots(Model);
@@ -584,7 +581,7 @@ internal sealed class EarFunDeviceController(IDuplexByteChannel channel, Control
 
     public override Task<CommandResult> SaveCustomEqualizerAsync(CustomEqualizer preset, CancellationToken cancellationToken = default) =>
         preset.Id != EarFunEqualizer.CurveId || !EarFunEqualizer.Fits(Model, preset) ? Task.FromResult(NotSupported("EQ curve"))
-        : Serialized(ct => WriteCurve([.. preset.Bands.Select(b => b.Gain)], ct), cancellationToken);
+        : RunCommandAsync(PendingKeys.CustomEqualizer, Operations, ct => WriteCurve([.. preset.Bands.Select(b => b.Gain)], ct), cancellationToken);
 
     /// <summary>The curve is the earbuds' only EQ; selecting it sends it again.</summary>
     public override Task<CommandResult> SelectCustomEqualizerAsync(int id, CancellationToken cancellationToken = default) =>
@@ -617,7 +614,7 @@ internal sealed class EarFunDeviceController(IDuplexByteChannel channel, Control
     }
 
     /// <summary>EarKit's reset (GAIA 0x0336, EF 0x1000 with AF A5). The earbuds restart and forget every host, so the link drops.</summary>
-    public override Task<CommandResult> FactoryResetAsync(CancellationToken cancellationToken = default) => Serialized(async ct =>
+    public override Task<CommandResult> FactoryResetAsync(CancellationToken cancellationToken = default) => RunCommandAsync(PendingKeys.FactoryReset, Operations, async ct =>
     {
         if (!await Send(EarFunSettings.Reset(Model), Model.Gaia ? [] : [0xAF, 0xA5], ct).ConfigureAwait(false)) return TimedOut;
         Logger.LogInformation("EarFun factory reset sent");

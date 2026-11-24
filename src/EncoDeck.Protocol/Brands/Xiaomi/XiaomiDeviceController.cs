@@ -63,7 +63,7 @@ internal sealed partial class XiaomiDeviceController : BrandControllerBase
         return true;
     }
 
-    public override Task<CommandResult> RefreshAsync(CancellationToken cancellationToken) => SerializedAsync(RefreshCoreAsync, cancellationToken);
+    public override Task<CommandResult> RefreshAsync(CancellationToken cancellationToken) => RunExclusiveAsync(_operations, RefreshCoreAsync, cancellationToken);
 
     private async Task<CommandResult> RefreshCoreAsync(CancellationToken cancellationToken)
     {

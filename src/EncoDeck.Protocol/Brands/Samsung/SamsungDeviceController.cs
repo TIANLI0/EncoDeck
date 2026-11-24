@@ -126,7 +126,7 @@ internal sealed class SamsungDeviceController(IDuplexByteChannel channel, Contro
         return true;
     }
 
-    public override Task<CommandResult> RefreshAsync(CancellationToken cancellationToken) => Serialized(async ct =>
+    public override Task<CommandResult> RefreshAsync(CancellationToken cancellationToken) => RunExclusiveAsync(Operations, async ct =>
     {
         var (result, _) = await ReadStatusAsync(ct).ConfigureAwait(false);
         return result switch
@@ -139,18 +139,7 @@ internal sealed class SamsungDeviceController(IDuplexByteChannel channel, Contro
 
     private static CommandResult Malformed => new(CommandStatus.Rejected, "Galaxy Buds returned a malformed extended status.");
 
-    private async Task<CommandResult> Serialized(Func<CancellationToken, Task<CommandResult>> action, CancellationToken ct)
-    {
-        bool entered = false;
-        try
-        {
-            await Operations.WaitAsync(ct).ConfigureAwait(false); entered = true;
-            if (Closed.IsCompleted || Store.Current.Device?.DeviceId != DeviceId) return CommandResult.NotConnected;
-            return await action(ct).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException) { return new(CommandStatus.Cancelled); }
-        finally { if (entered) Operations.Release(); }
-    }
+    protected override bool CanRunCommands => base.CanRunCommands && Store.Current.Device?.DeviceId == DeviceId;
 
     /// <summary>Sends the writes, then polls fresh status until it shows the requested setting.</summary>
     private async Task<CommandResult> WriteAndConfirm(IReadOnlyList<byte[]> writes, Func<SamsungStatus, bool> confirmed, CancellationToken ct)
@@ -174,7 +163,7 @@ internal sealed class SamsungDeviceController(IDuplexByteChannel channel, Contro
             || SamsungProfiles.NoiseByte(Model, target.Mode) is not { } mode)
             return Task.FromResult(NotSupported("Noise control"));
         byte? level = target.LevelId is { } id ? (byte)(int.Parse(id.AsSpan("level".Length)) - 1) : null;
-        return Serialized(ct =>
+        return RunCommandAsync(PendingKeys.NoiseControl, Operations, ct =>
         {
             var current = Store.Current.NoiseControl?.Value;
             List<byte[]> writes = [];
@@ -188,7 +177,7 @@ internal sealed class SamsungDeviceController(IDuplexByteChannel channel, Contro
     {
         if (!_profile.EqualizerPresets.Any(p => p.Id == presetId) || !byte.TryParse(presetId, out byte value) || value > 5)
             return Task.FromResult(NotSupported("EQ preset has not been confirmed by this device."));
-        return Serialized(ct => WriteAndConfirm([SamsungFrameCodec.Encode(SetEqualizer, [value])], s => s.Equalizer == value, ct), cancellationToken);
+        return RunCommandAsync(PendingKeys.Equalizer, Operations, ct => WriteAndConfirm([SamsungFrameCodec.Encode(SetEqualizer, [value])], s => s.Equalizer == value, ct), cancellationToken);
     }
 
     public override Task<CommandResult> SetToggleAsync(DeviceToggle toggle, bool enabled, CancellationToken cancellationToken)
@@ -196,7 +185,7 @@ internal sealed class SamsungDeviceController(IDuplexByteChannel channel, Contro
         // The shared toggle is "touch controls on"; the earbuds store the inverse (touch locked).
         if (toggle != DeviceToggle.TouchControls || !_profile.Toggles.Contains(toggle)) return Task.FromResult(NotSupported(toggle.ToString()));
         bool locked = !enabled;
-        return Serialized(async ct =>
+        return RunCommandAsync(PendingKeys.Toggle(toggle), Operations, async ct =>
         {
             // Build the payload from fresh flags so gestures changed on the phone are preserved.
             var (result, fresh) = await ReadStatusAsync(ct).ConfigureAwait(false);

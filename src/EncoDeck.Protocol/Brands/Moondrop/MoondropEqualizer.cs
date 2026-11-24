@@ -131,12 +131,12 @@ public sealed partial class MoondropDeviceController
         byte? preset = _eqPresets?.Where(id => id != UserCurvePreset && MoondropProfile.FactoryPresetId(id) == presetId)
             .Select(id => (byte?)id).FirstOrDefault();
         if (!CanUseEqualizer(DeviceCapability.Equalizer) || preset is not { } id) return Task.FromResult(NotSupported("EQ preset"));
-        return RunWriteAsync("equalizer", ct => SelectPresetAsync(id, ct), cancellationToken);
+        return RunWriteAsync(PendingKeys.Equalizer, ct => SelectPresetAsync(id, ct), cancellationToken);
     }
 
     public override Task<CommandResult> SelectCustomEqualizerAsync(int id, CancellationToken cancellationToken = default) =>
         id != UserCurvePreset || !CanUseEqualizer(DeviceCapability.CustomEqualizer) || _profile.BandEqualizer is null
-            ? Task.FromResult(NotSupported("Custom EQ")) : RunWriteAsync("custom-eq", ct => SelectPresetAsync(UserCurvePreset, ct), cancellationToken);
+            ? Task.FromResult(NotSupported("Custom EQ")) : RunWriteAsync(PendingKeys.CustomEqualizer, ct => SelectPresetAsync(UserCurvePreset, ct), cancellationToken);
 
     private async Task<CommandResult> SelectPresetAsync(byte id, CancellationToken ct)
     {
@@ -153,7 +153,7 @@ public sealed partial class MoondropDeviceController
     {
         if (preset.Id != UserCurvePreset || !CanUseEqualizer(DeviceCapability.CustomEqualizer) || _profile.BandEqualizer is not { } range)
             return Task.FromResult(NotSupported("Custom EQ"));
-        return RunWriteAsync("custom-eq", async ct =>
+        return RunWriteAsync(PendingKeys.CustomEqualizer, async ct =>
         {
             // Always rebuild from a fresh read: frequency, Q, filter and pre-gain bytes are written back unchanged.
             var current = await ReadCurveAsync(ct).ConfigureAwait(false);

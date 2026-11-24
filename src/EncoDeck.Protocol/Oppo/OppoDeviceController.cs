@@ -381,7 +381,7 @@ public sealed partial class OppoDeviceController : IDeviceController
 
         var request = new OppoRequest(OppoCommand.SetNoiseControl, [0x01, 0x01, .. MaskBytes(setIndex)], SequenceMode.FixedSet);
         return await ExecuteConfirmedAsync(
-            "noise-control",
+            PendingKeys.NoiseControl,
             state => state with { NoiseControl = Observed.From(target, _time.GetUtcNow(), StateSource.Optimistic) },
             request,
             async ct =>
@@ -408,7 +408,7 @@ public sealed partial class OppoDeviceController : IDeviceController
         byte index = entry.Key;
         var request = new OppoRequest(OppoCommand.SetEqualizer, [index]);
         return await ExecuteConfirmedAsync(
-            "equalizer",
+            PendingKeys.Equalizer,
             state => DeselectCustomEqualizer(state with { Equalizer = Observed.From(new EqualizerState(presetId, index), _time.GetUtcNow(), StateSource.Optimistic) }, _time.GetUtcNow(), StateSource.Optimistic),
             request,
             async ct =>
@@ -436,7 +436,7 @@ public sealed partial class OppoDeviceController : IDeviceController
 
         var request = new OppoRequest(OppoCommand.SetFeature, [feature.FeatureId, enabled ? (byte)1 : (byte)0], SequenceMode.FixedSet);
         return await ExecuteConfirmedAsync(
-            "toggle:" + toggle,
+            PendingKeys.Toggle(toggle),
             state => state with { Toggles = state.Toggles.SetItem(toggle, Observed.From(enabled, _time.GetUtcNow(), StateSource.Optimistic)) },
             request,
             async ct =>
@@ -537,6 +537,9 @@ public sealed partial class OppoDeviceController : IDeviceController
             {
                 if (next.NoiseControl?.Source == StateSource.Optimistic) next = next with { NoiseControl = before.NoiseControl };
                 if (next.Equalizer?.Source == StateSource.Optimistic) next = next with { Equalizer = before.Equalizer };
+                // A built-in preset write deselects the active custom EQ optimistically; when the
+                // write fails the earbuds keep playing that custom EQ, so its selection must return.
+                if (next.CustomEqualizers?.Source == StateSource.Optimistic) next = next with { CustomEqualizers = before.CustomEqualizers };
                 foreach (var (toggle, value) in next.Toggles.Where(t => t.Value.Source == StateSource.Optimistic).ToList())
                 {
                     next = next with

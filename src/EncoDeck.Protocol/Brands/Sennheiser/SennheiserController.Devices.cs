@@ -82,10 +82,8 @@ internal sealed partial class SennheiserController
         if (operation != MultiConnectOperation.Connect || !profile.WithLive(_live).CanConnectPairedDevices || address is not [var index])
             return NotSupported("Remote disconnect or removal");
         string? expected = Store.Current.SourceDevices?.Value.FirstOrDefault(d => d.Address is [var i] && i == index)?.Name;
-        await Operations.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
+        return await RunCommandAsync(PendingKeys.MultiConnect, Operations, async cancellationToken =>
         {
-            if (Closed.IsCompleted) return CommandResult.NotConnected;
             // Verify on a fresh list: same index and name, unique, not this PC, and a free connection slot.
             var before = await ReadPairedAsync(cancellationToken).ConfigureAwait(false);
             if (before is null) return TimedOut;
@@ -113,9 +111,7 @@ internal sealed partial class SennheiserController
             return connected && after.Hosts.Any(h => h.Index == index && h.Name == target.Name && h.Connected)
                 && after.Hosts.Any(h => h.Index == after.Own && h.Connected)
                 ? CommandResult.Ok : new(CommandStatus.Rejected, "The device did not report the host as connected.");
-        }
-        catch (OperationCanceledException) { return new(CommandStatus.Cancelled); }
-        finally { Operations.Release(); }
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     // ---- find earbuds (TW4) ----------------------------------------------------------------------
