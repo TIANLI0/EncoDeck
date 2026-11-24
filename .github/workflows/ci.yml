@@ -230,12 +230,21 @@ jobs:
   # User management → Microsoft Entra applications, role Manager). Without them the job is skipped.
   # Also runnable by hand (Actions → CI → Run workflow) to resubmit the version in Directory.Build.props.
   store:
-    # Pre-releases (1.11.0-beta.1) are GitHub-only; the Store gets stable versions.
-    if: (needs.version.outputs.release == 'true' && !contains(needs.version.outputs.version, '-')) || github.event_name == 'workflow_dispatch'
-    needs: [version, build-test]
+    # Pre-releases (1.11.0-beta.1) are GitHub-only; the Store gets stable versions. A release reaches the Store only
+    # after its GitHub release was published (component pins verified, installer signed): never a version that failed
+    # there. A run by hand has no release job to wait for (it is skipped, hence !cancelled()) and submits main only.
+    if: >-
+      ${{ !cancelled() && needs.build-test.result == 'success' && (
+        (needs.version.outputs.release == 'true' && !contains(needs.version.outputs.version, '-') && needs.release.result == 'success')
+        || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')) }}
+    needs: [version, build-test, release]
     runs-on: windows-latest
+    # Keep the STORE_* secrets in this environment and limit it to main and v* tags (repository settings →
+    # Environments), as "codesign" is: a run from any other branch then cannot read them at all.
+    environment: store
     env:
       STORE_TENANT_ID: ${{ secrets.STORE_TENANT_ID }}
+      RELEASE_VERSION: ${{ needs.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         if: env.STORE_TENANT_ID != ''
@@ -251,7 +260,8 @@ jobs:
         run: |
           dotnet restore src/EncoDeck.App
           $props = Get-Content Directory.Build.props -Raw
-          $version = if ('${{ needs.version.outputs.version }}') { '${{ needs.version.outputs.version }}' } else { [regex]::Match($props, '<VersionPrefix>([^<]+)</VersionPrefix>').Groups[1].Value }
+          # Through the environment, not pasted into the script: the value comes from CHANGELOG.md or a tag name.
+          $version = if ($env:RELEASE_VERSION) { $env:RELEASE_VERSION } else { [regex]::Match($props, '<VersionPrefix>([^<]+)</VersionPrefix>').Groups[1].Value }
           ./build/build-msix.ps1 -SkipTests -Version $version
           # Keep the upload apart from the build output.
           New-Item -ItemType Directory -Force artifacts/store | Out-Null
