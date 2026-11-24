@@ -74,6 +74,8 @@ public sealed class LhdcBackend(string packageRoot, string resultsDirectory)
         Directory.CreateDirectory(resultsDirectory);
         string resultFile = Path.Combine(resultsDirectory, $"mode-{Guid.NewGuid():N}.json");
         string command = ModeCommand(packageRoot, instance, lhdc, profile, resultFile);
+        // The next line asks for administrator rights for this runtime's PowerShell and script: not for an altered one.
+        await Task.Run(() => LhdcComponent.VerifyFiles(packageRoot)).ConfigureAwait(false);
         var start = new ProcessStartInfo(Path.Combine(packageRoot, "runtime", "powershell", "pwsh.exe"))
         {
             UseShellExecute = true, Verb = "runas", WindowStyle = ProcessWindowStyle.Hidden,

@@ -56,6 +56,9 @@ public sealed class A2dpBridgeMonitor : IAsyncDisposable
     private long _wakes;
     private A2dpBridgeConnection? _connection;
     private Task _loop = Task.CompletedTask;
+    // A pipe refused for its owner is logged once until a session opens again (loop thread only).
+    private bool _refusedLogged;
+    private static readonly TimeSpan RefusedInterval = TimeSpan.FromMinutes(1);
     private BridgeStatus _status = BridgeStatus.NotRunning;
 
     /// <param name="instance">The core's <c>BLUECASTER_INSTANCE</c> (a side-by-side test core); null for the normal one.</param>
@@ -210,6 +213,7 @@ public sealed class A2dpBridgeMonitor : IAsyncDisposable
                     await IdleAsync(TimeSpan.FromSeconds(2), token).ConfigureAwait(false);
                     continue;
                 }
+                _refusedLogged = false;
                 await using (connection)
                 {
                     lock (_gate) _connection = connection;
@@ -231,6 +235,20 @@ public sealed class A2dpBridgeMonitor : IAsyncDisposable
                 await IdleAsync(TimeSpan.FromMinutes(1), token).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (token.IsCancellationRequested) { break; }
+            catch (UnauthorizedAccessException ex)
+            {
+                // The pipe's owner is not this user's token owner (a core started elevated while EncoDeck is not, or
+                // someone else's server on the name), or its DACL refuses us. Retrying soon cannot change that: treat the
+                // core as unavailable, say so once, and look again only now and then or when asked (Wake).
+                if (!_refusedLogged)
+                {
+                    _refusedLogged = true;
+                    _logger.LogWarning("BlueCaster's pipe is not owned by this user (is the core running elevated?); not connecting: {Error}", ex.Message);
+                }
+                SetStatus(BridgeStatus.NotRunning);
+                try { await IdleAsync(RefusedInterval, token).ConfigureAwait(false); }
+                catch (OperationCanceledException) { break; }
+            }
             catch (Exception ex)
             {
                 _logger.LogWarning("BlueCaster session failed: {Error}", ex.Message);

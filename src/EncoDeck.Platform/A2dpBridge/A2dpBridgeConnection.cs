@@ -2,6 +2,7 @@
 using System.Buffers.Binary;
 using System.Collections.Concurrent;
 using System.IO.Pipes;
+using System.Security.Principal;
 using System.Text;
 using System.Text.Json.Nodes;
 
@@ -51,6 +52,7 @@ internal sealed class A2dpBridgeConnection : IAsyncDisposable
     // Set before the reader fails the pending requests: a request registered later sees it and fails at once.
     private volatile bool _closed;
     private Task _reader = Task.CompletedTask;
+    private int _disposed;
 
     private A2dpBridgeConnection(Stream pipe, string server, IReadOnlyList<string> features, BridgeSnapshot snapshot, long revision)
     {
@@ -76,12 +78,18 @@ internal sealed class A2dpBridgeConnection : IAsyncDisposable
     /// <summary>Completes when the core closes the pipe, says bye, or the connection is disposed.</summary>
     public Task Completion => _reader;
 
+    /// <exception cref="UnauthorizedAccessException">
+    /// The pipe belongs to someone other than this user, an administrator or the system (another user's program
+    /// holding the name), or its access list refuses this user.
+    /// </exception>
     public static async Task<A2dpBridgeConnection> OpenAsync(string pipeName, string client, TimeSpan connectTimeout, CancellationToken ct)
     {
-        var pipe = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
+        // Identification: the core may learn who connects but cannot act as us.
+        var pipe = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous, TokenImpersonationLevel.Identification);
         try
         {
             await pipe.ConnectAsync(connectTimeout, ct).ConfigureAwait(false);
+            RequireTrustedOwner(pipe);
             return await HandshakeAsync(pipe, client, ct).ConfigureAwait(false);
         }
         catch
@@ -89,6 +97,22 @@ internal sealed class A2dpBridgeConnection : IAsyncDisposable
             await pipe.DisposeAsync().ConfigureAwait(false);
             throw;
         }
+    }
+
+    /// <summary>
+    /// Pipe names are shared by every account on the PC: a program of another user that created this name first would
+    /// receive the control traffic meant for the earbuds and could feed back any state. PipeOptions.CurrentUserOnly
+    /// would refuse that, but also a core started as administrator (its pipe is owned by the Administrators group), so
+    /// the owner is checked here: this user, or an account that controls this session anyway.
+    /// </summary>
+    private static void RequireTrustedOwner(NamedPipeClientStream pipe)
+    {
+        var owner = pipe.GetAccessControl().GetOwner(typeof(SecurityIdentifier)) as SecurityIdentifier;
+        using var identity = WindowsIdentity.GetCurrent();
+        if (owner is not null && (owner == identity.User || owner == identity.Owner
+            || owner.IsWellKnown(WellKnownSidType.BuiltinAdministratorsSid) || owner.IsWellKnown(WellKnownSidType.LocalSystemSid)))
+            return;
+        throw new UnauthorizedAccessException("The BlueCaster pipe is owned by another account.");
     }
 
     /// <summary>The handshake on an open stream (tests use an in-memory duplex stream).</summary>
@@ -121,22 +145,39 @@ internal sealed class A2dpBridgeConnection : IAsyncDisposable
         _pending[id] = answer;
         try
         {
-            if (_closed) throw new IOException("BlueCaster closed the connection.");
+            if (_closed) throw Closed();
             var request = new JsonObject { ["type"] = "request", ["id"] = id, ["method"] = method };
             if (parameters is not null) request["params"] = parameters;
-            using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, _stop.Token);
-            await _write.WaitAsync(linked.Token).ConfigureAwait(false);
-            try { await WriteFrameAsync(_pipe, request, linked.Token).ConfigureAwait(false); }
-            finally { _write.Release(); }
-            linked.CancelAfter(timeout);
-            try { return await answer.Task.WaitAsync(linked.Token).ConfigureAwait(false); }
+            using var linked = LinkToStop(ct);
+            try
+            {
+                await _write.WaitAsync(linked.Token).ConfigureAwait(false);
+                try { await WriteFrameAsync(_pipe, request, linked.Token).ConfigureAwait(false); }
+                finally { _write.Release(); }
+                linked.CancelAfter(timeout);
+                return await answer.Task.WaitAsync(linked.Token).ConfigureAwait(false);
+            }
             catch (OperationCanceledException) when (!ct.IsCancellationRequested)
             {
-                if (_stop.IsCancellationRequested || _closed) throw new IOException("BlueCaster closed the connection.");
+                // The session ending (here, while waiting to write, or while writing) is a closed connection to callers.
+                if (_stop.IsCancellationRequested || _closed) throw Closed();
                 throw new TimeoutException($"BlueCaster did not answer {method}.");
             }
+            catch (ObjectDisposedException ex) { throw Closed(ex); }
         }
         finally { _pending.TryRemove(id, out _); }
+    }
+
+    private static IOException Closed(Exception? inner = null) => new("BlueCaster closed the connection.", inner);
+
+    /// <summary>
+    /// <paramref name="ct"/> linked to the session's end. The monitor hands out the connection under its lock but calls
+    /// it outside: a session disposed in between has a disposed <see cref="_stop"/>, which is reported as closed.
+    /// </summary>
+    private CancellationTokenSource LinkToStop(CancellationToken ct)
+    {
+        try { return CancellationTokenSource.CreateLinkedTokenSource(ct, _stop.Token); }
+        catch (ObjectDisposedException ex) { throw Closed(ex); }
     }
 
     /// <summary>
@@ -152,28 +193,29 @@ internal sealed class A2dpBridgeConnection : IAsyncDisposable
         bool answered = false;
         try
         {
-            if (_closed) throw new IOException("BlueCaster closed the connection.");
+            if (_closed) throw Closed();
             var request = new JsonObject
             {
                 ["type"] = "request", ["id"] = id, ["method"] = "rfcomm.open",
                 ["params"] = new JsonObject { ["address"] = address, ["uuid"] = service.ToString("D") },
             };
-            using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, _stop.Token);
-            await _write.WaitAsync(linked.Token).ConfigureAwait(false);
-            try { await WriteFrameAsync(_pipe, request, linked.Token).ConfigureAwait(false); }
-            finally { _write.Release(); }
-            linked.CancelAfter(RfcommOpenTimeout);
+            using var linked = LinkToStop(ct);
             try
             {
+                await _write.WaitAsync(linked.Token).ConfigureAwait(false);
+                try { await WriteFrameAsync(_pipe, request, linked.Token).ConfigureAwait(false); }
+                finally { _write.Release(); }
+                linked.CancelAfter(RfcommOpenTimeout);
                 var channel = await opened.Task.WaitAsync(linked.Token).ConfigureAwait(false);
                 answered = true;
                 return channel;
             }
             catch (OperationCanceledException) when (!ct.IsCancellationRequested)
             {
-                if (_stop.IsCancellationRequested || _closed) throw new IOException("BlueCaster closed the connection.");
+                if (_stop.IsCancellationRequested || _closed) throw Closed();
                 throw new TimeoutException("BlueCaster did not answer rfcomm.open.");
             }
+            catch (ObjectDisposedException ex) { throw Closed(ex); }
         }
         catch (BridgeRequestException)
         {
@@ -393,6 +435,7 @@ internal sealed class A2dpBridgeConnection : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
         await _stop.CancelAsync().ConfigureAwait(false);
         await _pipe.DisposeAsync().ConfigureAwait(false);
         try { await _reader.ConfigureAwait(false); } catch (Exception) { }

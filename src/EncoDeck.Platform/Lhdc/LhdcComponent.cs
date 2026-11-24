@@ -75,6 +75,52 @@ public static class LhdcComponent
             or KeyNotFoundException or InvalidOperationException) { return false; }
     }
 
+    /// <summary>
+    /// Checks the runtime in <paramref name="directory"/> against the SHA-256 list its build wrote (checksums.json): every
+    /// listed file is there unchanged and nothing else was added (a DLL next to pwsh.exe would be loaded by it). The
+    /// download is verified once, as an archive; this is run again before each deployment, which starts the runtime's
+    /// PowerShell as administrator, so a runtime damaged or altered since is not. The list sits in the same folder, which
+    /// the user's programs can write to like EncoDeck's own: it tells an altered runtime apart from the built one, not
+    /// one altered together with its list. Throws <see cref="InvalidDataException"/>.
+    /// </summary>
+    public static void VerifyFiles(string directory)
+    {
+        const string list = "checksums.json";
+        var expected = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            using var checksums = JsonDocument.Parse(File.ReadAllText(Path.Combine(directory, list)));
+            foreach (var entry in checksums.RootElement.EnumerateArray())
+            {
+                string? path = entry.GetProperty("Path").GetString(), sha = entry.GetProperty("SHA256").GetString();
+                if (string.IsNullOrEmpty(path) || sha is not { Length: 64 } || !sha.All(Uri.IsHexDigit) || !expected.TryAdd(path.Replace('\\', '/'), sha))
+                    throw new InvalidDataException("Invalid LHDC checksum list.");
+            }
+        }
+        catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException or FileNotFoundException)
+        {
+            throw new InvalidDataException("Invalid LHDC checksum list.", ex);
+        }
+        if (expected.Count == 0) throw new InvalidDataException("Invalid LHDC checksum list.");
+
+        var options = new EnumerationOptions { RecurseSubdirectories = true, AttributesToSkip = FileAttributes.None };
+        foreach (var entry in new DirectoryInfo(directory).EnumerateFileSystemInfos("*", options))
+        {
+            string relative = Path.GetRelativePath(directory, entry.FullName).Replace('\\', '/');
+            // A link could point the deployment at files outside the runtime.
+            if (entry.Attributes.HasFlag(FileAttributes.ReparsePoint)) throw Changed(relative);
+            if (entry is not FileInfo file || relative.Equals(list, StringComparison.OrdinalIgnoreCase)) continue;
+            if (!expected.Remove(relative, out string? sha)) throw Changed(relative);
+            using var stream = file.OpenRead();
+            if (!Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(stream)).Equals(sha, StringComparison.OrdinalIgnoreCase))
+                throw Changed(relative);
+        }
+        if (expected.Count > 0) throw Changed(expected.Keys.First());
+
+        static InvalidDataException Changed(string path) =>
+            new($"The LHDC runtime was changed after it was installed ({path}). Remove it and install it again.");
+    }
+
     internal static string ReadVersion(string directory)
     {
         using var runtime = JsonDocument.Parse(File.ReadAllText(Path.Combine(directory, "runtime.json")));

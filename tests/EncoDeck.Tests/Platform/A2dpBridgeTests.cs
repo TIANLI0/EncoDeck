@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 using System.Globalization;
 using System.IO.Pipes;
+using System.Security.AccessControl;
+using System.Security.Principal;
 using System.Text.Json.Nodes;
 using EncoDeck.Core.Devices;
 using EncoDeck.Core.Privacy;
@@ -283,6 +285,125 @@ public sealed class A2dpBridgeTests
         var accept = core.AcceptAsync(State(), rev: 1);
         Assert.True(await wait);
         await accept;
+    }
+
+    [Fact]
+    public async Task RequestsOnAnEndingSessionFailAsAClosedConnection()
+    {
+        // The monitor hands out the connection under its lock and calls it outside: a session that ends in between
+        // must fail its requests with IOException (what callers handle), not ObjectDisposedException or cancellation.
+        var ct = TestContext.Current.CancellationToken;
+        var incoming = new MemoryStream();
+        await A2dpBridgeConnection.WriteFrameAsync(incoming, new JsonObject { ["type"] = "welcome", ["protocol"] = 1, ["server"] = "bluecaster-core/3.0.0" }, ct);
+        await A2dpBridgeConnection.WriteFrameAsync(incoming, new JsonObject { ["type"] = "snapshot", ["rev"] = 1, ["state"] = State() }, ct);
+        var stream = new StallingStream(incoming.ToArray());
+        var connection = await A2dpBridgeConnection.HandshakeAsync(stream, "encodeck/test", ct);
+
+        // The first request stalls while writing (holding the write lock), the second waits for that lock.
+        var writing = connection.RequestAsync("stream.stop", null, TimeSpan.FromSeconds(30), ct);
+        await stream.SecondWrite.WaitAsync(TimeSpan.FromSeconds(5), ct);
+        var queued = connection.RequestAsync("stream.start", null, TimeSpan.FromSeconds(30), ct);
+        var rfcomm = connection.OpenRfcommAsync("AA:BB:CC:DD:EE:FF", ControlService, ct);
+        await Task.Delay(100, ct);
+        await connection.DisposeAsync();
+
+        await Assert.ThrowsAsync<IOException>(() => writing);
+        await Assert.ThrowsAsync<IOException>(() => queued);
+        await Assert.ThrowsAsync<IOException>(() => rfcomm);
+        // After the end (its cancellation source disposed) as well.
+        await Assert.ThrowsAsync<IOException>(() => connection.RequestAsync("stream.stop", null, TimeSpan.FromSeconds(5), ct));
+        await Assert.ThrowsAsync<IOException>(() => connection.OpenRfcommAsync("AA:BB:CC:DD:EE:FF", ControlService, ct));
+        await connection.DisposeAsync(); // A second dispose is harmless.
+    }
+
+    [Fact]
+    public async Task APipeThatRefusesThisUserIsReportedOnceAndNotRetriedInALoop()
+    {
+        // A core whose pipe this user may not open (as with a pipe owned by someone else, which CurrentUserOnly
+        // refuses): UnauthorizedAccessException on connect. The monitor treats the core as not available.
+        var ct = TestContext.Current.CancellationToken;
+        string instance = "encodeck-test-" + Guid.NewGuid().ToString("N")[..8];
+        using var mutex = new Mutex(false, A2dpBridgeMonitor.MutexName(instance));
+        var security = new PipeSecurity();
+        security.AddAccessRule(new PipeAccessRule(WindowsIdentity.GetCurrent().User!, PipeAccessRights.ReadWrite, AccessControlType.Deny));
+        security.AddAccessRule(new PipeAccessRule(new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null), PipeAccessRights.FullControl, AccessControlType.Allow));
+        await using var pipe = NamedPipeServerStreamAcl.Create(A2dpBridgeMonitor.PipeName(instance), PipeDirection.InOut, 1, PipeTransmissionMode.Byte,
+            PipeOptions.Asynchronous, 0, 0, security);
+
+        var logger = new CountingLogger();
+        await using var monitor = new A2dpBridgeMonitor(logger, instance) { IdleInterval = TimeSpan.FromMilliseconds(100) };
+        monitor.Start();
+        for (int i = 0; i < 50 && logger.Warnings == 0; i++) await Task.Delay(100, ct);
+        Assert.Equal(1, logger.Warnings);
+        // Asked to look again (as after "start BlueCaster"): another attempt, but no second warning.
+        monitor.Wake();
+        await Task.Delay(500, ct);
+        monitor.Wake();
+        await Task.Delay(500, ct);
+        Assert.Equal(1, logger.Warnings);
+        Assert.Equal(BridgeLink.NotRunning, monitor.Status.Link);
+    }
+
+    private sealed class CountingLogger : Microsoft.Extensions.Logging.ILogger
+    {
+        private int _warnings;
+
+        public int Warnings => Volatile.Read(ref _warnings);
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
+
+        public void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            if (logLevel >= Microsoft.Extensions.Logging.LogLevel.Warning) Interlocked.Increment(ref _warnings);
+        }
+    }
+
+    /// <summary>
+    /// Serves the core's handshake, then never answers; the first write (hello) goes through, every later one hangs
+    /// until cancelled, as a core that stopped reading.
+    /// </summary>
+    private sealed class StallingStream(byte[] incoming) : Stream
+    {
+        private int _position;
+        private int _writes;
+        private readonly TaskCompletionSource _secondWrite = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task SecondWrite => _secondWrite.Task;
+
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => true;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            if (_position < incoming.Length)
+            {
+                int n = Math.Min(buffer.Length, incoming.Length - _position);
+                incoming.AsMemory(_position, n).CopyTo(buffer);
+                _position += n;
+                return n;
+            }
+            await Task.Delay(Timeout.Infinite, cancellationToken);
+            return 0;
+        }
+
+        public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            if (Interlocked.Increment(ref _writes) == 1) return;
+            _secondWrite.TrySetResult();
+            await Task.Delay(Timeout.Infinite, cancellationToken);
+        }
+
+        public override Task FlushAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+        public override void Flush() { }
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
     }
 
     private static readonly Guid ControlService = new("00001107-D102-11E1-9B23-00025B00A5A5");

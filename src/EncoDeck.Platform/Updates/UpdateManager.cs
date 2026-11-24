@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 using System.Globalization;
 using System.Net;
+using System.Security.Cryptography;
 using EncoDeck.Platform.Settings;
 using Microsoft.Extensions.Logging;
 
@@ -49,6 +50,9 @@ public sealed record UpdateStatus
 
     public string? InstallerPath { get; init; }
 
+    /// <summary>The SHA-256 <see cref="InstallerPath"/> was verified against; checked again before it is started.</summary>
+    public string? InstallerSha256 { get; init; }
+
     public DateTimeOffset? LastChecked { get; init; }
 
     public bool IsBusy => Stage is UpdateStage.Checking or UpdateStage.Downloading or UpdateStage.Installing;
@@ -83,8 +87,10 @@ public sealed class UpdateManager : IAsyncDisposable
 
     /// <param name="stateFile">Holds the time of the last successful check, so restarts do not hammer the API.</param>
     /// <param name="checkInterval">Minimum time between automatic checks.</param>
+    /// <param name="signatures">Code-signature checks before the installer starts (Authenticode by default).</param>
+    /// <param name="currentExecutable">The running app, whose signer the installer's must match; the process's own file by default.</param>
     public UpdateManager(GitHubUpdateClient client, ISettingsStore settings, string stateFile, ILogger<UpdateManager> logger,
-        TimeSpan? firstCheckDelay = null, TimeSpan? checkInterval = null)
+        TimeSpan? firstCheckDelay = null, TimeSpan? checkInterval = null, ISignatureVerifier? signatures = null, string? currentExecutable = null)
     {
         _client = client;
         _settings = settings;
@@ -92,8 +98,18 @@ public sealed class UpdateManager : IAsyncDisposable
         _logger = logger;
         _firstCheckDelay = firstCheckDelay ?? TimeSpan.FromSeconds(30);
         _checkInterval = checkInterval ?? TimeSpan.FromHours(1);
+        _signatures = signatures ?? AuthenticodeVerifier.Instance;
+        string? self = currentExecutable ?? Environment.ProcessPath;
+        // Checked once, when an installer is first about to start; the running file does not change meanwhile.
+        _selfSignature = new Lazy<SignatureInfo>(() => self is null ? new SignatureInfo(SignatureState.Unsigned) : _signatures.Verify(self));
         _status = new UpdateStatus { LastChecked = ReadLastCheck() };
     }
+
+    private readonly ISignatureVerifier _signatures;
+    private readonly Lazy<SignatureInfo> _selfSignature;
+
+    /// <summary>Starts the installer; tests replace it so nothing is ever run.</summary>
+    internal Action<System.Diagnostics.ProcessStartInfo> StartProcess { get; set; } = static info => System.Diagnostics.Process.Start(info)?.Dispose();
 
     public SemanticVersion CurrentVersion => _client.Current;
 
@@ -214,11 +230,11 @@ public sealed class UpdateManager : IAsyncDisposable
 
     private async Task<string?> DownloadCoreAsync(UpdateRelease release, bool automatic, CancellationToken ct)
     {
-        Publish(s => s with { Stage = UpdateStage.Downloading, Release = release, Received = 0, Total = release.Installer.Size, Failure = UpdateFailure.None, InstallerPath = null });
+        Publish(s => s with { Stage = UpdateStage.Downloading, Release = release, Received = 0, Total = release.Installer.Size, Failure = UpdateFailure.None, InstallerPath = null, InstallerSha256 = null });
         try
         {
-            string path = await _client.DownloadAsync(release, new Callback(p => Publish(s => s with { Received = p.Received, Total = p.Total })), ct).ConfigureAwait(false);
-            Publish(s => s with { Stage = UpdateStage.Ready, Release = release, Received = release.Installer.Size, InstallerPath = path });
+            var (path, sha256) = await _client.DownloadVerifiedAsync(release, new Callback(p => Publish(s => s with { Received = p.Received, Total = p.Total })), ct).ConfigureAwait(false);
+            Publish(s => s with { Stage = UpdateStage.Ready, Release = release, Received = release.Installer.Size, InstallerPath = path, InstallerSha256 = sha256 });
             _logger.LogInformation("Update {Version} downloaded and verified", release.Version);
             bool announce;
             lock (_gate) announce = automatic && _announced.Add(release.Version);
@@ -238,30 +254,77 @@ public sealed class UpdateManager : IAsyncDisposable
     /// Starts the verified installer silently. The caller then shuts the app down; the installer closes
     /// anything left, installs over the current version and starts EncoDeck again.
     /// </summary>
+    /// <remarks>
+    /// The file sits in a user-writable folder, possibly for days, so right before it starts it is hashed again against
+    /// the SHA-256 it was downloaded with, and its Authenticode signer must match the running app's (when the running
+    /// app is validly signed; development builds and old unsigned installs skip that comparison). The file is held
+    /// open without write or delete sharing from the hash until the installer has started, so the file checked is
+    /// the file run. A refusal is a <see cref="UpdateFailure.Verification"/> failure.
+    /// </remarks>
     public bool TryStartInstaller()
     {
         var status = Status;
         if (status is not { Stage: UpdateStage.Ready, InstallerPath: { } path } || !File.Exists(path)) return false;
+        string? refusal;
         try
         {
-            string log = Path.Combine(_client.DownloadDirectory, "install.log");
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path)
+            using (var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
-                Arguments = $"{InstallerArguments} /LOG=\"{log}\"",
-                WorkingDirectory = _client.DownloadDirectory,
-                // Shell execution so a UAC prompt can appear if Windows decides the installer needs one.
-                UseShellExecute = true,
-            });
-            Publish(s => s with { Stage = UpdateStage.Installing });
-            _logger.LogInformation("Started the installer for {Version}", status.Release?.Version);
-            return true;
+                refusal = status.InstallerSha256 is not { } expected
+                    ? "no SHA-256 is known for it"
+                    : Convert.ToHexStringLower(SHA256.HashData(file)) != expected
+                        ? "it changed after it was downloaded and verified"
+                        : CheckPublisher(path);
+                if (refusal is null)
+                {
+                    string log = Path.Combine(_client.DownloadDirectory, "install.log");
+                    StartProcess(new System.Diagnostics.ProcessStartInfo(path)
+                    {
+                        Arguments = $"{InstallerArguments} /LOG=\"{log}\"",
+                        WorkingDirectory = _client.DownloadDirectory,
+                        // Shell execution so a UAC prompt can appear if Windows decides the installer needs one.
+                        UseShellExecute = true,
+                    });
+                }
+            }
+            if (refusal is null)
+            {
+                Publish(s => s with { Stage = UpdateStage.Installing });
+                _logger.LogInformation("Started the installer for {Version}", status.Release?.Version);
+                return true;
+            }
         }
-        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException or InvalidOperationException)
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException or InvalidOperationException or UnauthorizedAccessException)
         {
             _logger.LogWarning("Could not start the installer ({Reason})", ex.GetType().Name);
             Publish(s => s with { Stage = UpdateStage.Failed, Failure = UpdateFailure.Storage });
             return false;
         }
+        _logger.LogWarning("Refused to start the installer for {Version}: {Reason}", status.Release?.Version, refusal);
+        // A file that is not what was published is not kept around (and the failure text says it was deleted). The
+        // release stays offered: downloading again fetches a fresh copy, which is checked the same way.
+        try { File.Delete(path); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { _logger.LogDebug("Could not delete the refused installer ({Reason})", ex.GetType().Name); }
+        Publish(s => s with { Stage = UpdateStage.Failed, Failure = UpdateFailure.Verification, InstallerPath = null, InstallerSha256 = null });
+        return false;
+    }
+
+    /// <summary>Null when the installer may start; otherwise why not.</summary>
+    private string? CheckPublisher(string installer)
+    {
+        var self = _selfSignature.Value;
+        if (self.State != SignatureState.Valid || string.IsNullOrEmpty(self.SignerName))
+        {
+            // No publisher to compare with: the SHA-256 published with the release is all there is.
+            _logger.LogInformation("EncoDeck itself is not validly signed ({State}, 0x{Status:X8}); not comparing the installer's publisher", self.State, self.Status);
+            return null;
+        }
+        var theirs = _signatures.Verify(installer);
+        if (theirs.State != SignatureState.Valid)
+            return $"its signature is not valid ({theirs.State}, 0x{theirs.Status:X8})";
+        if (!string.Equals(theirs.SignerName, self.SignerName, StringComparison.Ordinal))
+            return $"it is signed by \"{theirs.SignerName}\", not by \"{self.SignerName}\"";
+        return null;
     }
 
     internal static UpdateFailure Classify(Exception exception) => exception switch

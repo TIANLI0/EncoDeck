@@ -323,6 +323,144 @@ public sealed class GitHubUpdateTests : IDisposable
     }
 
     [Fact]
+    public async Task AnInstallerWithoutAPublishedSha256IsNeverDownloaded()
+    {
+        byte[] installer = RandomNumberGenerator.GetBytes(10_000);
+        var (handler, release) = Downloadable(installer, null);
+        Assert.Null(release.Installer.Sha256);
+        Assert.Null(release.Checksum);
+        using (var client = Client(handler))
+        {
+            var error = await Assert.ThrowsAsync<UpdateVerificationException>(() => client.DownloadAsync(release, null, Ct));
+            Assert.Contains("SHA-256", error.Message);
+        }
+        Assert.Empty(handler.Requests);
+        Assert.Empty(Directory.EnumerateFiles(_root));
+
+        // Through the manager: a verification failure that keeps the release (and its page) on offer.
+        var api = new Handler(request => new(HttpStatusCode.OK)
+        {
+            Content = request.RequestUri!.Host == Api.Host
+                ? new StringContent(JsonSerializer.Serialize(new[] { Release("v0.6.0", false, false, Installer("v0.6.0", installer.Length)) }))
+                : new ByteArrayContent(installer),
+        });
+        await using var updates = new UpdateManager(Client(api), new MemorySettings(), Path.Combine(_root, "state"), NullLogger<UpdateManager>.Instance);
+        await updates.RunAutomaticCheckAsync();
+        Assert.Equal(UpdateStage.Failed, updates.Status.Stage);
+        Assert.Equal(UpdateFailure.Verification, updates.Status.Failure);
+        Assert.NotNull(updates.Status.Release?.NotesUrl);
+        Assert.Single(api.Requests); // The release list only.
+    }
+
+    private const string SelfPath = @"C:\Program Files\EncoDeck\EncoDeck.exe";
+
+    /// <summary>The running app's and the installer's signatures, without any signed file.</summary>
+    private sealed class FakeSignatures(SignatureInfo self, SignatureInfo installer) : ISignatureVerifier
+    {
+        public List<string> Checked { get; } = [];
+
+        public SignatureInfo Verify(string path)
+        {
+            Checked.Add(path);
+            return path == SelfPath ? self : installer;
+        }
+    }
+
+    private static SignatureInfo Signed(string name) => new(SignatureState.Valid, name);
+
+    private async Task<(UpdateManager Updates, List<System.Diagnostics.ProcessStartInfo> Started, byte[] Installer)> ReadyAsync(ISignatureVerifier signatures)
+    {
+        byte[] installer = RandomNumberGenerator.GetBytes(5000);
+        var handler = new Handler(request => new(HttpStatusCode.OK)
+        {
+            Content = request.RequestUri!.Host == Api.Host
+                ? new StringContent(JsonSerializer.Serialize(new[] { Release("v0.6.0", false, false, Installer("v0.6.0", installer.Length, "sha256:" + Convert.ToHexStringLower(SHA256.HashData(installer)))) }))
+                : new ByteArrayContent(installer),
+        });
+        var updates = new UpdateManager(Client(handler), new MemorySettings(), Path.Combine(_root, "state-" + Guid.NewGuid().ToString("N")), NullLogger<UpdateManager>.Instance,
+            signatures: signatures, currentExecutable: SelfPath);
+        var started = new List<System.Diagnostics.ProcessStartInfo>();
+        // Never run anything from a test.
+        updates.StartProcess = started.Add;
+        await updates.RunAutomaticCheckAsync();
+        Assert.Equal(UpdateStage.Ready, updates.Status.Stage);
+        Assert.Equal(Convert.ToHexStringLower(SHA256.HashData(installer)), updates.Status.InstallerSha256);
+        return (updates, started, installer);
+    }
+
+    [Fact]
+    public async Task AnInstallerChangedAfterItsDownloadIsNotStarted()
+    {
+        var signatures = new FakeSignatures(new SignatureInfo(SignatureState.Unsigned), new SignatureInfo(SignatureState.Unsigned));
+        var (updates, started, installer) = await ReadyAsync(signatures);
+        await using (updates)
+        {
+            installer[100] ^= 0xFF;
+            string path = updates.Status.InstallerPath!;
+            await File.WriteAllBytesAsync(path, installer, Ct);
+            Assert.False(updates.TryStartInstaller());
+            Assert.False(File.Exists(path));
+            Assert.Empty(started);
+            Assert.Equal(UpdateStage.Failed, updates.Status.Stage);
+            Assert.Equal(UpdateFailure.Verification, updates.Status.Failure);
+            Assert.NotNull(updates.Status.Release);
+        }
+    }
+
+    [Fact]
+    public async Task AnInstallerSignedBySomeoneElseIsNotStarted()
+    {
+        var signatures = new FakeSignatures(Signed("TIANLI0"), Signed("Somebody Else"));
+        var (updates, started, _) = await ReadyAsync(signatures);
+        await using (updates)
+        {
+            string path = updates.Status.InstallerPath!;
+            Assert.False(updates.TryStartInstaller());
+            Assert.Empty(started);
+            Assert.Equal(UpdateFailure.Verification, updates.Status.Failure);
+            Assert.False(File.Exists(path));
+        }
+
+        // Unsigned (or a signature that does not verify) while the running app is signed: refused as well.
+        var (unsignedUpdates, unsignedStarted, _) = await ReadyAsync(new FakeSignatures(Signed("TIANLI0"), new SignatureInfo(SignatureState.Unsigned, null, unchecked((int)0x800B0100))));
+        await using (unsignedUpdates)
+        {
+            Assert.False(unsignedUpdates.TryStartInstaller());
+            Assert.Empty(unsignedStarted);
+        }
+    }
+
+    [Fact]
+    public async Task AnInstallerFromTheSamePublisherStarts()
+    {
+        var signatures = new FakeSignatures(Signed("TIANLI0"), Signed("TIANLI0"));
+        var (updates, started, _) = await ReadyAsync(signatures);
+        await using (updates)
+        {
+            Assert.True(updates.TryStartInstaller());
+            var info = Assert.Single(started);
+            Assert.Equal(updates.Status.InstallerPath, info.FileName);
+            Assert.StartsWith(UpdateManager.InstallerArguments, info.Arguments);
+            Assert.Equal(UpdateStage.Installing, updates.Status.Stage);
+            Assert.Equal([SelfPath, info.FileName], signatures.Checked);
+        }
+    }
+
+    [Fact]
+    public async Task AnUnsignedRunningAppStartsAnInstallerWhoseHashStillMatches()
+    {
+        // Development builds and old installs are not signed: there is no publisher to compare, the hash still counts.
+        var signatures = new FakeSignatures(new SignatureInfo(SignatureState.Unsigned), Signed("Anyone"));
+        var (updates, started, _) = await ReadyAsync(signatures);
+        await using (updates)
+        {
+            Assert.True(updates.TryStartInstaller());
+            Assert.Single(started);
+            Assert.Equal([SelfPath], signatures.Checked);
+        }
+    }
+
+    [Fact]
     public void OlderSettingsFilesGetAutomaticUpdateChecksOn()
     {
         var legacy = JsonSerializer.Deserialize<AppSettings>("{}")! with { AutoCheckUpdates = null };
@@ -333,6 +471,33 @@ public sealed class GitHubUpdateTests : IDisposable
     public void Dispose()
     {
         try { Directory.Delete(_root, recursive: true); } catch (IOException) { }
+    }
+}
+
+public sealed class AuthenticodeVerifierTests
+{
+    [Fact]
+    public void AFileWithoutASignatureIsUnsigned()
+    {
+        string path = Path.Combine(Directory.CreateTempSubdirectory("encodeck-sig-test").FullName, "plain.exe");
+        File.WriteAllBytes(path, RandomNumberGenerator.GetBytes(4096));
+        try
+        {
+            var result = AuthenticodeVerifier.Instance.Verify(path);
+            Assert.NotEqual(SignatureState.Valid, result.State);
+            Assert.Null(result.SignerName);
+        }
+        finally { Directory.Delete(Path.GetDirectoryName(path)!, recursive: true); }
+    }
+
+    [Fact]
+    public void TheRuntimesOwnSignatureNamesItsSigner()
+    {
+        // System.Private.CoreLib carries an embedded signature (CN=.NET, by Microsoft). Its chain is built from the local
+        // stores only, so a machine without the root would report Invalid; it is never Unsigned.
+        var result = AuthenticodeVerifier.Instance.Verify(typeof(object).Assembly.Location);
+        Assert.NotEqual(SignatureState.Unsigned, result.State);
+        if (result.State == SignatureState.Valid) Assert.False(string.IsNullOrWhiteSpace(result.SignerName));
     }
 }
 

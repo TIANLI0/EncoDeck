@@ -34,6 +34,9 @@ public sealed record UpdateCheckResult(UpdateCheckOutcome Outcome, UpdateRelease
 
 public readonly record struct UpdateDownloadProgress(long Received, long Total);
 
+/// <summary>A downloaded installer and the lower-case hex SHA-256 it was verified against.</summary>
+public sealed record VerifiedInstaller(string Path, string Sha256);
+
 /// <summary>The downloaded installer does not match the release's size or checksum.</summary>
 public sealed class UpdateVerificationException(string message) : IOException(message);
 
@@ -168,8 +171,17 @@ public sealed partial class GitHubUpdateClient(HttpClient http, string downloadD
     /// Downloads the installer into <see cref="DownloadDirectory"/> (or reuses an already verified copy) and
     /// returns its path. The file appears under its final name only after size and checksum verification.
     /// </summary>
-    /// <exception cref="UpdateVerificationException">Size or checksum mismatch, or a checksum file without this installer.</exception>
-    public async Task<string> DownloadAsync(UpdateRelease release, IProgress<UpdateDownloadProgress>? progress = null, CancellationToken cancellationToken = default)
+    /// <exception cref="UpdateVerificationException">
+    /// No SHA-256 published for the installer, size or checksum mismatch, or a checksum file without this installer.
+    /// </exception>
+    public async Task<string> DownloadAsync(UpdateRelease release, IProgress<UpdateDownloadProgress>? progress = null, CancellationToken cancellationToken = default) =>
+        (await DownloadVerifiedAsync(release, progress, cancellationToken).ConfigureAwait(false)).Path;
+
+    /// <summary>
+    /// As <see cref="DownloadAsync"/>, with the SHA-256 the file was verified against, so it can be checked again
+    /// right before it is started (the download folder is writable by the user, and the file may wait there for days).
+    /// </summary>
+    public async Task<VerifiedInstaller> DownloadVerifiedAsync(UpdateRelease release, IProgress<UpdateDownloadProgress>? progress = null, CancellationToken cancellationToken = default)
     {
         var installer = release.Installer;
         if (installer.Size is <= 0 or > MaxInstaller) throw new UpdateVerificationException("Unexpected installer size.");
@@ -181,13 +193,16 @@ public sealed partial class GitHubUpdateClient(HttpClient http, string downloadD
             if (expected is not null && expected != published) throw new UpdateVerificationException("Published checksums disagree.");
             expected = published;
         }
+        // Fail closed: a size alone proves nothing about the file, so an installer without a published SHA-256 (no
+        // GitHub asset digest, no checksum file) is never downloaded. The release page stays available to the user.
+        if (expected is null) throw new UpdateVerificationException("The release publishes no SHA-256 for the installer.");
 
         Directory.CreateDirectory(DownloadDirectory);
         string target = Path.Combine(DownloadDirectory, installer.Name);
         if (File.Exists(target) && await VerifyAsync(target, installer.Size, expected, cancellationToken).ConfigureAwait(false))
         {
             progress?.Report(new UpdateDownloadProgress(installer.Size, installer.Size));
-            return target;
+            return new VerifiedInstaller(target, expected);
         }
         CleanUp(keep: installer.Name);
 
@@ -226,10 +241,10 @@ public sealed partial class GitHubUpdateClient(HttpClient http, string downloadD
                 await output.FlushAsync(stall.Token).ConfigureAwait(false);
             }
             if (received != installer.Size) throw new UpdateVerificationException("The download is incomplete.");
-            if (expected is not null && Convert.ToHexStringLower(hash.GetHashAndReset()) != expected)
+            if (Convert.ToHexStringLower(hash.GetHashAndReset()) != expected)
                 throw new UpdateVerificationException("Installer SHA-256 verification failed.");
             File.Move(partial, target, overwrite: true);
-            return target;
+            return new VerifiedInstaller(target, expected);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
@@ -277,12 +292,11 @@ public sealed partial class GitHubUpdateClient(HttpClient http, string downloadD
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
 
-    private static async Task<bool> VerifyAsync(string path, long size, string? sha256, CancellationToken ct)
+    private static async Task<bool> VerifyAsync(string path, long size, string sha256, CancellationToken ct)
     {
         try
         {
             if (new FileInfo(path).Length != size) return false;
-            if (sha256 is null) return true;
             await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true);
             return Convert.ToHexStringLower(await SHA256.HashDataAsync(stream, ct).ConfigureAwait(false)) == sha256;
         }
