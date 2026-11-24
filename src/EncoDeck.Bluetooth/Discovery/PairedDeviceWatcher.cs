@@ -39,8 +39,8 @@ public sealed partial class PairedDeviceWatcher : IDisposable
     private readonly Lock _gate = new();
     private readonly Dictionary<string, PairedDevice> _devices = new(StringComparer.Ordinal);
     private readonly Dictionary<string, LeBond> _leBonds = new(StringComparer.Ordinal);
-    private DeviceWatcher? _watcher;
-    private DeviceWatcher? _leWatcher;
+    private WatcherRecovery? _classic;
+    private WatcherRecovery? _le;
     private bool _leEnumerated;
 
     public PairedDeviceWatcher(ILogger<PairedDeviceWatcher>? logger = null)
@@ -85,40 +85,102 @@ public sealed partial class PairedDeviceWatcher : IDisposable
 
     public void Start()
     {
-        if (_watcher is not null) return;
-        string selector = BluetoothDevice.GetDeviceSelectorFromPairingState(true);
-        try
-        {
-            _watcher = DeviceInformation.CreateWatcher(selector, [IsConnectedKey, AddressKey, CodMajorKey], DeviceInformationKind.AssociationEndpoint);
-        }
-        catch (ArgumentException)
-        {
-            // Older builds may not know the class-of-device property; fall back without it.
-            _watcher = DeviceInformation.CreateWatcher(selector, [IsConnectedKey, AddressKey], DeviceInformationKind.AssociationEndpoint);
-        }
-        _watcher.Added += OnAdded;
-        _watcher.Updated += OnUpdated;
-        _watcher.Removed += OnRemoved;
-        _watcher.EnumerationCompleted += OnEnumerationCompleted;
-        _watcher.Start();
+        if (_classic is not null) return;
+        _classic = new WatcherRecovery("Paired Classic", StartClassicWatcher, ClearClassic, _logger);
+        _classic.Start();
         LeAudioOnlyDevices.Changed += OnLeOnlyChanged;
 
+        var le = new WatcherRecovery("Bonded LE", StartLeWatcher, ClearLe, _logger);
         try
         {
-            _leWatcher = DeviceInformation.CreateWatcher(BluetoothLEDevice.GetDeviceSelectorFromPairingState(true),
-                [IsConnectedKey, AddressKey], DeviceInformationKind.AssociationEndpoint);
-            _leWatcher.Added += OnLeAdded;
-            _leWatcher.Updated += OnLeUpdated;
-            _leWatcher.Removed += OnLeRemoved;
-            _leWatcher.EnumerationCompleted += OnLeEnumerationCompleted;
-            _leWatcher.Start();
+            le.Start();
+            _le = le;
         }
         catch (Exception ex) when (ex is ArgumentException or System.Runtime.InteropServices.COMException)
         {
             // LE Audio connection state is optional; Classic devices still work without it.
             _logger.LogInformation("Bonded LE watcher unavailable (0x{Result:X8})", ex.HResult);
-            _leWatcher = null;
+            le.Dispose();
         }
+    }
+
+    private IDisposable StartClassicWatcher(Action<string> stopped)
+    {
+        string selector = BluetoothDevice.GetDeviceSelectorFromPairingState(true);
+        DeviceWatcher watcher;
+        try
+        {
+            watcher = DeviceInformation.CreateWatcher(selector, [IsConnectedKey, AddressKey, CodMajorKey], DeviceInformationKind.AssociationEndpoint);
+        }
+        catch (ArgumentException)
+        {
+            // Older builds may not know the class-of-device property; fall back without it.
+            watcher = DeviceInformation.CreateWatcher(selector, [IsConnectedKey, AddressKey], DeviceInformationKind.AssociationEndpoint);
+        }
+        void OnStopped(DeviceWatcher sender, object args) => stopped(sender.Status.ToString());
+        watcher.Added += OnAdded;
+        watcher.Updated += OnUpdated;
+        watcher.Removed += OnRemoved;
+        watcher.EnumerationCompleted += OnEnumerationCompleted;
+        watcher.Stopped += OnStopped;
+        var subscription = new WatcherSubscription(watcher, () =>
+        {
+            watcher.Added -= OnAdded;
+            watcher.Updated -= OnUpdated;
+            watcher.Removed -= OnRemoved;
+            watcher.EnumerationCompleted -= OnEnumerationCompleted;
+            watcher.Stopped -= OnStopped;
+        });
+        subscription.Start();
+        return subscription;
+    }
+
+    private IDisposable StartLeWatcher(Action<string> stopped)
+    {
+        var watcher = DeviceInformation.CreateWatcher(BluetoothLEDevice.GetDeviceSelectorFromPairingState(true),
+            [IsConnectedKey, AddressKey], DeviceInformationKind.AssociationEndpoint);
+        void OnStopped(DeviceWatcher sender, object args) => stopped(sender.Status.ToString());
+        watcher.Added += OnLeAdded;
+        watcher.Updated += OnLeUpdated;
+        watcher.Removed += OnLeRemoved;
+        watcher.EnumerationCompleted += OnLeEnumerationCompleted;
+        watcher.Stopped += OnStopped;
+        var subscription = new WatcherSubscription(watcher, () =>
+        {
+            watcher.Added -= OnLeAdded;
+            watcher.Updated -= OnLeUpdated;
+            watcher.Removed -= OnLeRemoved;
+            watcher.EnumerationCompleted -= OnLeEnumerationCompleted;
+            watcher.Stopped -= OnStopped;
+        });
+        subscription.Start();
+        return subscription;
+    }
+
+    /// <summary>
+    /// The Classic watcher was lost: Windows no longer tells us about these devices, so they go away until the new
+    /// watcher lists them again. Not enumerated in between, so DeviceManager does not reselect (e.g. hand the selection
+    /// to a USB receiver) on the empty list of a stack reset; it reselects once the new enumeration completes.
+    /// </summary>
+    private void ClearClassic()
+    {
+        lock (_gate)
+        {
+            _devices.Clear();
+            IsEnumerated = false;
+        }
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>The LE watcher was lost: its connection flags are stale, so no Classic device counts as connected through LE.</summary>
+    private void ClearLe()
+    {
+        lock (_gate)
+        {
+            _leBonds.Clear();
+            _leEnumerated = false;
+        }
+        Changed?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnLeOnlyChanged(object? sender, EventArgs e) => Changed?.Invoke(this, EventArgs.Empty);
@@ -202,8 +264,13 @@ public sealed partial class PairedDeviceWatcher : IDisposable
 
     private void OnEnumerationCompleted(DeviceWatcher sender, object args)
     {
-        IsEnumerated = true;
-        _logger.LogInformation("Paired device enumeration completed ({Count} devices)", _devices.Count);
+        int count;
+        lock (_gate)
+        {
+            IsEnumerated = true;
+            count = _devices.Count;
+        }
+        _logger.LogInformation("Paired device enumeration completed ({Count} devices)", count);
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
@@ -227,24 +294,7 @@ public sealed partial class PairedDeviceWatcher : IDisposable
     public void Dispose()
     {
         LeAudioOnlyDevices.Changed -= OnLeOnlyChanged;
-        var leWatcher = Interlocked.Exchange(ref _leWatcher, null);
-        if (leWatcher is not null)
-        {
-            leWatcher.Added -= OnLeAdded;
-            leWatcher.Updated -= OnLeUpdated;
-            leWatcher.Removed -= OnLeRemoved;
-            leWatcher.EnumerationCompleted -= OnLeEnumerationCompleted;
-            if (leWatcher.Status is DeviceWatcherStatus.Started or DeviceWatcherStatus.EnumerationCompleted) leWatcher.Stop();
-        }
-        var watcher = Interlocked.Exchange(ref _watcher, null);
-        if (watcher is null) return;
-        watcher.Added -= OnAdded;
-        watcher.Updated -= OnUpdated;
-        watcher.Removed -= OnRemoved;
-        watcher.EnumerationCompleted -= OnEnumerationCompleted;
-        if (watcher.Status is DeviceWatcherStatus.Started or DeviceWatcherStatus.EnumerationCompleted)
-        {
-            watcher.Stop();
-        }
+        Interlocked.Exchange(ref _le, null)?.Dispose();
+        Interlocked.Exchange(ref _classic, null)?.Dispose();
     }
 }

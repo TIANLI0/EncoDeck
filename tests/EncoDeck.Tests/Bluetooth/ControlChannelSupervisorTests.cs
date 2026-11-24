@@ -407,6 +407,68 @@ public class ControlChannelSupervisorTests
         Assert.Equal(1, linkEvents);
     }
 
+    /// <summary>Holds the first open until released (a slow RFCOMM/GATT connect), then fails it; later opens fail at once.</summary>
+    private sealed class SlowFirstConnector : IChannelConnector
+    {
+        public int Attempts;
+        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource SecondAttempt { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public async Task<ChannelOpenResult> OpenAsync(string deviceId, IReadOnlyList<Guid> serviceUuids, CancellationToken cancellationToken)
+        {
+            int attempt = Interlocked.Increment(ref Attempts);
+            if (attempt == 1)
+            {
+                Entered.TrySetResult();
+                await Release.Task.WaitAsync(cancellationToken);
+            }
+            else SecondAttempt.TrySetResult();
+            return ChannelOpenResult.Failed(ChannelOpenStatus.ConnectFailed, "fake failure");
+        }
+    }
+
+    // Long enough that a test passes only if the event during the attempt cuts the backoff short.
+    private static readonly ReconnectPolicy HourPolicy = new(TimeSpan.FromHours(1), 2, TimeSpan.FromHours(1), 3);
+
+    [Fact]
+    public async Task LinkDropsDuringFailingConnect_GoesDisconnectedWithoutWaitingOutTheBackoff()
+    {
+        var link = new FakeLink(true);
+        var connector = new SlowFirstConnector();
+        var store = new DeviceStateStore();
+        store.Reset(DeviceState.Empty with { Device = X4 });
+        await using var supervisor = new ControlChannelSupervisor(X4, new OppoDeviceProfile(OppoModels.EncoX4), link, connector, store, HourPolicy, linkSettleDelay: TimeSpan.FromMilliseconds(20));
+        supervisor.Start();
+        await connector.Entered.Task.WaitAsync(TimeSpan.FromSeconds(3), TestContext.Current.CancellationToken);
+
+        link.Set(false);
+        connector.Release.SetResult();
+
+        await WaitFor(store, DeviceConnectionState.Disconnected);
+        Assert.Equal(1, connector.Attempts);
+    }
+
+    [Fact]
+    public async Task RetryDuringFailingConnect_RetriesWithoutWaitingOutTheBackoff()
+    {
+        var link = new FakeLink(true);
+        var connector = new SlowFirstConnector();
+        var store = new DeviceStateStore();
+        store.Reset(DeviceState.Empty with { Device = X4 });
+        await using var supervisor = new ControlChannelSupervisor(X4, new OppoDeviceProfile(OppoModels.EncoX4), link, connector, store, HourPolicy, linkSettleDelay: TimeSpan.FromMilliseconds(20));
+        supervisor.Start();
+        await connector.Entered.Task.WaitAsync(TimeSpan.FromSeconds(3), TestContext.Current.CancellationToken);
+
+        supervisor.RequestReconnect();
+        connector.Release.SetResult();
+
+        await connector.SecondAttempt.Task.WaitAsync(TimeSpan.FromSeconds(3), TestContext.Current.CancellationToken);
+        // The second attempt also fails; with no pending event it now sits in the (hour-long) backoff.
+        await WaitFor(store, DeviceConnectionState.Reconnecting);
+        Assert.Equal(2, connector.Attempts);
+    }
+
     [Fact]
     public async Task ChannelDropWhileLinkUp_ReconnectsWithBackoff()
     {

@@ -48,6 +48,11 @@ public sealed class ControlChannelSupervisor : IAsyncDisposable
     /// <summary>What a down link shows instead of "not connected" (disconnected in EncoDeck, followed through BlueCaster only).</summary>
     private readonly DeviceConnectionState? _idleState;
     private readonly CancellationTokenSource _lifetime = new();
+    /// <summary>
+    /// Completes when the supervisor is disposed. One task for the whole lifetime: a fresh
+    /// <c>Task.Delay(Infinite, ct)</c> per wait would leave its token registration behind until dispose.
+    /// </summary>
+    private readonly Task _stopped;
     private readonly Lock _gate = new();
     private TaskCompletionSource _wake = NewWake();
     private bool _manualRetry;
@@ -83,6 +88,7 @@ public sealed class ControlChannelSupervisor : IAsyncDisposable
         _time = time ?? TimeProvider.System;
         _trace = trace;
         _linkSettleDelay = linkSettleDelay ?? DefaultLinkSettleDelay;
+        _stopped = Task.Delay(Timeout.Infinite, _lifetime.Token);
         _link.ConnectionChanged += OnLinkChanged;
         _link.TransportChanged += OnTransportChanged;
         _link.LinkDetailsChanged += OnLinkDetailsChanged;
@@ -273,8 +279,10 @@ public sealed class ControlChannelSupervisor : IAsyncDisposable
                 // instead of counting failed attempts towards giving up.
                 attempt = 0;
                 exhausted = false;
+                var restartWake = CurrentWake();
+                if (EventPendingSinceAttempt()) continue;
                 SetConnection(DeviceConnectionState.Reconnecting);
-                await WaitAsync(CurrentWake(), _policy.GetDelay(1) ?? TimeSpan.FromSeconds(1), ct).ConfigureAwait(false);
+                await WaitAsync(restartWake, _policy.GetDelay(1) ?? TimeSpan.FromSeconds(1), ct).ConfigureAwait(false);
                 continue;
             }
             if (_policy.GetDelay(attempt) is not { } delay)
@@ -283,10 +291,34 @@ public sealed class ControlChannelSupervisor : IAsyncDisposable
                 exhausted = true;
                 continue;
             }
+            // The wake is taken before checking for events, so one arriving in between still ends the wait.
+            var backoffWake = CurrentWake();
+            if (EventPendingSinceAttempt())
+            {
+                // Something happened while the attempt was in flight (RFCOMM/GATT opens can take 10-15 s): its wake
+                // fired then and was not seen by this wait. Re-evaluate now instead of sitting out the whole backoff
+                // showing Reconnecting for a link that is gone, or ignoring the user's Retry.
+                _logger.LogInformation("Control channel attempt {Attempt} failed; an event during the attempt skips the backoff", attempt);
+                continue;
+            }
             _logger.LogInformation("Control channel attempt {Attempt} failed; retrying in {Delay} ms", attempt, (int)delay.TotalMilliseconds);
             SetConnection(DeviceConnectionState.Reconnecting);
-            await WaitAsync(CurrentWake(), delay, ct).ConfigureAwait(false);
+            await WaitAsync(backoffWake, delay, ct).ConfigureAwait(false);
         }
+    }
+
+    /// <summary>
+    /// Whether something that must not wait out the backoff happened during a failed attempt: the link went down,
+    /// reconnects were held, or the user asked to retry. Only peeks; the top of the loop consumes them, and each leads
+    /// to a wait of its own or is user-driven, so skipping the backoff cannot spin. Transport / LE link-detail changes
+    /// are deliberately not included: they can fire as a side effect of every attempt (paging Classic moves the LE
+    /// links), and skipping the backoff for them could retry back to back; their flags stay set and still reset the
+    /// attempt count once the backoff ends.
+    /// </summary>
+    private bool EventPendingSinceAttempt()
+    {
+        if (!_link.IsConnected || _held) return true;
+        lock (_gate) return _manualRetry;
     }
 
     /// <summary>A transport change ends the session unless this session stays valid across it (then it is consumed).</summary>
@@ -395,7 +427,7 @@ public sealed class ControlChannelSupervisor : IAsyncDisposable
             while (true)
             {
                 var wake = CurrentWake();
-                await Task.WhenAny(closed, wake.Task, Task.Delay(Timeout.Infinite, ct)).ConfigureAwait(false);
+                await Task.WhenAny(closed, wake.Task, _stopped).ConfigureAwait(false);
                 if (ct.IsCancellationRequested) return ServeOutcome.EndedByLinkOrUser;
                 if (closed.IsCompleted)
                 {
@@ -490,9 +522,15 @@ public sealed class ControlChannelSupervisor : IAsyncDisposable
 
     private async Task WaitAsync(TaskCompletionSource wake, TimeSpan? delay, CancellationToken ct)
     {
-        var tasks = new List<Task> { wake.Task, Task.Delay(Timeout.Infinite, ct) };
-        if (delay is { } d) tasks.Add(Task.Delay(d, _time, ct));
-        await Task.WhenAny(tasks).ConfigureAwait(false);
+        if (delay is not { } d)
+        {
+            await Task.WhenAny(wake.Task, _stopped).ConfigureAwait(false);
+            return;
+        }
+        // Cancel the timer once the wait ends, so a wake does not leave it (and its registration on ct) running.
+        using var timer = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        await Task.WhenAny(wake.Task, _stopped, Task.Delay(d, _time, timer.Token)).ConfigureAwait(false);
+        timer.Cancel();
     }
 
     private static TaskCompletionSource NewWake() => new(TaskCreationOptions.RunContinuationsAsynchronously);

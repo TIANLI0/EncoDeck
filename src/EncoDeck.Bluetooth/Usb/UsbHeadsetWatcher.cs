@@ -21,7 +21,7 @@ public sealed class UsbHeadsetWatcher : IDisposable
     private int _pending;
     private bool _completed;
     private readonly CancellationTokenSource _stop = new();
-    private DeviceWatcher? _watcher;
+    private WatcherRecovery? _recovery;
     // One receiver often exposes several render endpoints (game/chat); list it once per container.
     public IReadOnlyList<PairedDevice> Devices
     {
@@ -36,15 +36,37 @@ public sealed class UsbHeadsetWatcher : IDisposable
     public Guid? Container(string id) { lock (_gate) return _containers.TryGetValue(id, out var value) ? value : null; }
     public void Start()
     {
-        if (_watcher is not null) return;
+        if (_recovery is not null) return;
+        _recovery = new WatcherRecovery("USB audio", StartWatcher, Clear);
+        _recovery.Start();
+    }
+    private IDisposable StartWatcher(Action<string> stopped)
+    {
         // Audio render interface class; input-only microphones and arbitrary HID devices are excluded.
-        _watcher = DeviceInformation.CreateWatcher("System.Devices.InterfaceClassGuid:=\"{e6327cad-dcec-4949-ae8a-991e976a79d2}\"",
+        var watcher = DeviceInformation.CreateWatcher("System.Devices.InterfaceClassGuid:=\"{e6327cad-dcec-4949-ae8a-991e976a79d2}\"",
             [ContainerKey], DeviceInformationKind.DeviceInterface);
-        _watcher.Added += Added;
-        _watcher.Updated += Updated;
-        _watcher.Removed += Removed;
-        _watcher.EnumerationCompleted += Completed;
-        _watcher.Start();
+        void Stopped(DeviceWatcher sender, object args) => stopped(sender.Status.ToString());
+        watcher.Added += Added;
+        watcher.Updated += Updated;
+        watcher.Removed += Removed;
+        watcher.EnumerationCompleted += Completed;
+        watcher.Stopped += Stopped;
+        var subscription = new WatcherSubscription(watcher, () =>
+        {
+            watcher.Added -= Added; watcher.Updated -= Updated; watcher.Removed -= Removed; watcher.EnumerationCompleted -= Completed;
+            watcher.Stopped -= Stopped;
+        });
+        subscription.Start();
+        return subscription;
+    }
+    /// <summary>
+    /// The watcher was aborted (audio/USB stack reset): forget every endpoint so receivers go away until the new
+    /// watcher lists them again. Dropping the revisions also discards ancestry checks still running for them.
+    /// </summary>
+    private void Clear()
+    {
+        lock (_gate) { _endpoints.Clear(); _devices.Clear(); _containers.Clear(); _revisions.Clear(); }
+        Changed?.Invoke(this, EventArgs.Empty);
     }
     private void Added(DeviceWatcher sender, DeviceInformation info)
     {
@@ -116,10 +138,6 @@ public sealed class UsbHeadsetWatcher : IDisposable
     public void Dispose()
     {
         _stop.Cancel();
-        if (_watcher is { } watcher)
-        {
-            watcher.Added -= Added; watcher.Updated -= Updated; watcher.Removed -= Removed; watcher.EnumerationCompleted -= Completed;
-            if (watcher.Status is DeviceWatcherStatus.Started or DeviceWatcherStatus.EnumerationCompleted) watcher.Stop();
-        }
+        _recovery?.Dispose();
     }
 }
