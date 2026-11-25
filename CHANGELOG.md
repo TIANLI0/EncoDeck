@@ -4,6 +4,52 @@
 
 This file records the user-visible changes of every EncoDeck version (Keep a Changelog, Semantic Versioning). Since 1.15.0 each version lists the Chinese notes first and the English ones below the divider.
 
+## [1.18.0] - 2026-11-26 · 设置重新分类与分段式降噪控件 / Settings regrouped and segmented noise controls
+
+### 新增
+
+- 新增“连接”页：设备双连（已配对设备、优先设备）、Swift Pair 快速配对和 2.4G 勿扰集中在这里（[#16](https://github.com/TIANLI0/EncoDeck/issues/16)）。
+
+### 改进
+
+- 各品牌耳机的设置按用途分到“音效”“控制”等页面的卡片中，取代原来的“更多设置”；耳机没有的设置整张卡片隐藏（[#16](https://github.com/TIANLI0/EncoDeck/issues/16)）。
+- 降噪档位和子模式改为分段按钮，切换立即生效并平滑过渡；只有耳机迟迟未确认时才显示转圈（[#16](https://github.com/TIANLI0/EncoDeck/issues/16)）。
+- 各品牌设置写入期间控件暂时停用，失败时只恢复这一项并显示原因。
+- 应用内更新在运行安装程序前校验哈希和数字签名；BlueCaster 连接和 LHDC 部署增加安全校验。
+- 空闲或窗口不可见时减少后台轮询和界面刷新；日志文件限制大小并保留最近 7 天。
+- EDIFIER W830NB 经 BlueCaster 以 LHDC 连接时无法切换空间音效，提示会说明原因（[#18](https://github.com/TIANLI0/EncoDeck/issues/18)）。
+- 实验室的 LE Audio 码率改进了自动恢复方式，之前应用过的请重新点一次“应用”。
+
+### 修复
+
+- 拖动滑块后立即切换页面或退出，改动不再丢失。
+- 蓝牙驱动重置或适配器重新插拔后，设备列表会自动恢复。
+- 连接过程中耳机断开时，状态不再长时间停在“重连中”。
+- 其他若干稳定性问题。
+
+---
+
+### Added
+
+- A new Connections page brings together dual connection (paired devices, preferred device), Swift Pair and 2.4 GHz do not disturb ([#16](https://github.com/TIANLI0/EncoDeck/issues/16)).
+
+### Improved
+
+- Every brand's settings are sorted by purpose into cards on the Sound, Controls and other pages, replacing the old "More settings" list; cards for settings the earbuds don't have are hidden ([#16](https://github.com/TIANLI0/EncoDeck/issues/16)).
+- Noise levels and sub-modes are now segmented buttons that apply at once with smooth transitions; a spinner appears only when the earbuds are slow to confirm ([#16](https://github.com/TIANLI0/EncoDeck/issues/16)).
+- While a setting is being written its control is disabled; if the write fails, only that setting is restored and the reason is shown.
+- In-app updates check the hash and digital signature before running the installer; the BlueCaster connection and LHDC deployment gained security checks.
+- Less background polling and rendering when idle or when the window is hidden; log files are size-limited and kept for 7 days.
+- When EDIFIER W830NB refuses spatial sound over LHDC through BlueCaster, the message explains why ([#18](https://github.com/TIANLI0/EncoDeck/issues/18)).
+- The Labs LE Audio bitrate restores your choice in a new way; if you had applied one, press Apply once more.
+
+### Fixed
+
+- Slider changes are no longer lost when you switch pages or quit right after dragging.
+- The device list recovers on its own after a Bluetooth driver reset or adapter re-plug.
+- If the earbuds disconnect while connecting, the status no longer stays on "Reconnecting" for long.
+- Various other reliability fixes.
+
 ## [1.18.0-beta.3] - 2026-11-24 · 安全加固与稳定性 / Hardening and reliability
 
 ### 改进
